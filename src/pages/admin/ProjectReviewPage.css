@@ -1,0 +1,265 @@
+/* Project Review Page Styles */
+
+.project-review-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.review-top-tags {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Header Card */
+.review-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%);
+  border: 1.5px solid #BAE6FD;
+}
+
+.review-pill-tag {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #0369A1;
+  background: #E0F2FE;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.review-project-title {
+  margin: 0 0 4px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #07223D;
+}
+
+.review-project-meta {
+  margin: 0 0 16px 0;
+  font-size: 0.9rem;
+  color: #64748B;
+}
+
+.review-meta-strip {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid #E2E8F0;
+}
+
+.review-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.review-header-status-box {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 18px 24px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(10, 61, 117, 0.04);
+}
+
+.review-prog-val {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #10B981;
+  line-height: 1;
+}
+
+.review-prog-lbl {
+  display: block;
+  font-size: 0.74rem;
+  color: #64748B;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.review-tasks-count {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0A3D75;
+  background: #EBF3FA;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-top: 8px;
+}
+
+/* Two Col */
+.review-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.review-notes-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.review-notes-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1E293B;
+  line-height: 1.5;
+}
+
+/* Checklist */
+.review-reqs-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+
+.check-bullet.done {
+  width: 20px;
+  height: 20px;
+  background: #10B981;
+  color: #FFFFFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Submitted Files */
+.submitted-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submitted-file-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+
+/* Review Tasks List */
+.review-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.review-task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+}
+
+.task-done-dot {
+  width: 18px;
+  height: 18px;
+  background: #10B981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Decision Card */
+.review-decision-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 22px 28px;
+  background: linear-gradient(135deg, #FFFDF8 0%, #FFF5E9 100%);
+  border: 1.5px solid #FDBA74;
+}
+
+.decision-title {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #07223D;
+}
+
+.decision-subtitle {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.review-decision-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-request-revision {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border: 1px solid #FCA5A5 !important;
+  font-weight: 700 !important;
+}
+
+.btn-request-revision:hover {
+  background: #FECDCA !important;
+}
+
+.btn-approve-project {
+  background: #16A34A !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  padding: 10px 24px !important;
+}
+
+.btn-approve-project:hover {
+  background: #15803D !important;
+}
+
+@media (max-width: 992px) {
+  .review-two-col-grid {
+    grid-template-columns: 1fr;
+  }
+}

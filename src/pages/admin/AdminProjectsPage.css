@@ -1,0 +1,116 @@
+/* Admin Projects Page Styles */
+
+.admin-projects-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-projects-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.admin-projects-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.admin-filter-selects-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.priority-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.priority-pill.low {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.priority-pill.medium {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.priority-pill.high {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.priority-pill.urgent {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+
+/* 8 Filter Status Tabs */
+.projects-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #E2E8F0;
+  scrollbar-width: thin;
+}
+
+.projects-filter-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.projects-filter-tabs::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.filter-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #64748B;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.filter-tab-pill:hover {
+  background-color: #F1F5F9;
+  color: #0A3D75;
+}
+
+.filter-tab-pill.active {
+  background-color: #E8F2FC;
+  color: #0A3D75;
+  border-color: #C7DCF0;
+}
+
+.filter-tab-count {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background-color: rgba(10, 61, 117, 0.1);
+  color: #0A3D75;
+  padding: 1px 6px;
+  border-radius: 10px;
+}

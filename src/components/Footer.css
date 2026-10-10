@@ -1,0 +1,119 @@
+.footer {
+  background-color: #061B30;
+  color: #FFFFFF;
+  padding-top: 56px;
+  padding-bottom: 28px;
+  border-top: 3px solid var(--color-primary-orange);
+}
+
+/* Contact Ribbon from Screenshot 3 */
+.footer-contact-ribbon {
+  background-color: #082442;
+  border: 1px solid #103860;
+  border-radius: var(--radius-md);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ribbon-contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #D6E4F0;
+  font-size: 0.88rem;
+}
+
+.ribbon-contact-item a:hover {
+  color: var(--color-primary-orange);
+}
+
+.footer-main-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-col-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 320px;
+}
+
+.footer-tagline-text {
+  font-size: 0.88rem;
+  color: #A5C4E3;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.footer-col-heading {
+  font-size: 0.825rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-white);
+  margin-bottom: 14px;
+}
+
+.footer-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-nav-link {
+  font-size: 0.88rem;
+  color: #B2CCE5;
+  transition: color var(--transition-fast);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-nav-link:hover {
+  color: var(--color-primary-orange);
+}
+
+.footer-bottom-bar {
+  border-top: 1px solid #103860;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.825rem;
+  color: #7E9FB9;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 860px) {
+  .footer-main-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 520px) {
+  .footer-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .footer-contact-ribbon {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

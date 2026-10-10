@@ -1,0 +1,240 @@
+/* Notifications Page Styles */
+
+.notifications-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.notif-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.notif-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notif-icon-bubble {
+  width: 48px;
+  height: 48px;
+  background: #EBF3FA;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notif-dot-pulse {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 10px;
+  height: 10px;
+  background: #F3821D;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+}
+
+.notif-heading {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #07223D;
+}
+
+.notif-subheading {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748B;
+}
+
+.btn-mark-all-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #0A3D75;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-mark-all-read:hover {
+  background: #EBF3FA;
+  border-color: #0A3D75;
+}
+
+/* Filters */
+.notif-filters-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* List */
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification-item-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-item-card:hover {
+  border-color: #0A3D75;
+  box-shadow: 0 4px 14px rgba(10, 61, 117, 0.05);
+  transform: translateY(-1px);
+}
+
+.notification-item-card.unread {
+  background: #F8FBFF;
+  border-left: 4px solid #F3821D;
+  border-color: #BAE6FD;
+}
+
+.notif-type-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notif-type-icon-box.revision {
+  background: #FEE2E2;
+}
+
+.notif-type-icon-box.project {
+  background: #EBF3FA;
+}
+
+.notif-type-icon-box.earning {
+  background: #DCFCE7;
+}
+
+.notif-type-icon-box.deadline {
+  background: #FEF3C7;
+}
+
+.notif-type-icon-box.approved {
+  background: #DCFCE7;
+}
+
+.notif-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.notif-item-title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.notif-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.notif-item-date {
+  font-size: 0.78rem;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn-toggle-read {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.read-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #CBD5E1;
+}
+
+.read-dot.active {
+  background: #F3821D;
+  box-shadow: 0 0 6px rgba(243, 130, 29, 0.6);
+}
+
+.notif-item-desc {
+  margin: 0 0 10px 0;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.notif-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #E2E8F0;
+}
+
+.notif-project-chip {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0A3D75;
+  background: #EBF3FA;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.notif-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0A3D75;
+}
+
+.notification-item-card:hover .notif-open-link {
+  color: #F3821D;
+}

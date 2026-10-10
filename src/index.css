@@ -1,0 +1,364 @@
+/* ==========================================================================
+   DAHEJ SUPPORT • EXACT BRAND DESIGN SYSTEM (MATCHING OFFICIAL WEBSITE)
+   ========================================================================== */
+
+:root {
+  /* Exact Colors extracted from Dahej Support Website Screenshots */
+  --color-primary-navy: #0A3D75;
+  --color-navy-deep: #07223D;
+  --color-navy-dark: #0A2647;
+  --color-navy-medium: #0F3B66;
+  --color-navy-gradient: linear-gradient(180deg, #07223D 0%, #0D3256 60%, #12406F 100%);
+  --color-navy-surface: #E8F2FC;
+  --color-navy-pill: #E6F0FA;
+  
+  --color-primary-orange: #F3821D;
+  --color-orange-dark: #E06500;
+  --color-orange-hover: #DF7210;
+  --color-orange-soft: #FFF2E8;
+  --color-orange-cream: #FFF5EE;
+  --color-orange-border: #FFDEC7;
+  --color-orange-tag-text: #E06500;
+
+  --color-white: #FFFFFF;
+  --color-bg-light: #F8FAFC;
+  --color-bg-page: #F4F8FB;
+  
+  --color-text-dark: #17212B;
+  --color-text-heading: #111827;
+  --color-text-secondary: #5F6B76;
+  --color-text-muted: #8492A0;
+  --color-text-light: #C5DBEE;
+  
+  --color-border: #E2E8F0;
+  --color-border-subtle: #EDF2F7;
+  --color-card-border: #E5E7EB;
+  
+  --color-tag-bg: #E8F1FA;
+  --color-tag-text: #0F3E6D;
+  --color-success: #10B981;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px -2px rgba(10, 38, 71, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 25px -4px rgba(10, 38, 71, 0.12);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 12px 24px -4px rgba(10, 38, 71, 0.12);
+  --shadow-orange: 0 4px 14px rgba(243, 130, 29, 0.35);
+
+  /* Radii matching screenshot buttons & cards */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  --container-max-width: 1240px;
+  --navbar-height: 72px;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-page);
+  color: var(--color-text-dark);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+  font-size: 15px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.section-padding {
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+@media (max-width: 768px) {
+  .section-padding {
+    padding-top: 50px;
+    padding-bottom: 50px;
+  }
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Typography matching screenshots */
+.heading-hero {
+  font-size: clamp(2.4rem, 4.5vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-white);
+  letter-spacing: -0.02em;
+}
+
+.heading-hero .highlight-orange {
+  color: var(--color-primary-orange);
+}
+
+.heading-section {
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--color-text-heading);
+  letter-spacing: -0.015em;
+}
+
+.heading-card {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-heading);
+}
+
+/* Featured Badge like Screenshot 2 */
+.badge-featured {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background-color: var(--color-orange-soft);
+  color: var(--color-orange-tag-text);
+  border: 1px solid var(--color-orange-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+
+.badge-featured .badge-icon {
+  color: var(--color-primary-orange);
+}
+
+/* Section Header (Centered or Left with Action) */
+.section-header-center {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 48px auto;
+}
+
+.section-header-center .section-subtitle {
+  margin-top: 10px;
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+}
+
+.section-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Exact Button Styles from Screenshots */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-size: 0.925rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+/* Orange CTA Button (Screenshot 1 & 2) */
+.btn-orange-primary {
+  background-color: var(--color-primary-orange);
+  color: var(--color-white);
+  box-shadow: var(--shadow-orange);
+}
+
+.btn-orange-primary:hover {
+  background-color: var(--color-orange-hover);
+  box-shadow: 0 6px 18px rgba(243, 130, 29, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Dark Navy Card Button (Screenshot 2 "Call") */
+.btn-navy-action {
+  background-color: var(--color-navy-dark);
+  color: var(--color-white);
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-navy-action:hover {
+  background-color: var(--color-navy-deep);
+}
+
+/* Navy Outline / White Button (Screenshot 2 "Profile") */
+.btn-outline-action {
+  background-color: var(--color-white);
+  color: var(--color-text-dark);
+  border: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-outline-action:hover {
+  background-color: var(--color-bg-light);
+  border-color: var(--color-primary-orange);
+  color: var(--color-primary-orange);
+}
+
+/* Glass Semi-transparent Button on Hero (Screenshot 1 "List your business") */
+.btn-hero-glass {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--color-white);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.btn-hero-glass:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Navy Pill Action Button (Screenshot 2 top right "View All Directory") */
+.btn-navy-pill {
+  background-color: #0B2B4E;
+  color: var(--color-white);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-navy-pill:hover {
+  background-color: #07223D;
+  transform: translateY(-1px);
+}
+
+/* Verified Badge (Screenshot 2 top right of cards) */
+.badge-verified-pill {
+  background-color: var(--color-orange-soft);
+  color: var(--color-orange-dark);
+  border: 1px solid var(--color-orange-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Blue Category Tag (Screenshot 2 cards) */
+.tag-blue-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--color-tag-bg);
+  color: var(--color-tag-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.02em;
+}
+
+/* Peach Highlight Box (Screenshot 3 About Us) */
+.highlight-peach-box {
+  background-color: var(--color-orange-cream);
+  border: 1px solid var(--color-orange-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-dark);
+}
+
+/* Blue Vision Box (Screenshot 3 Our Vision) */
+.vision-blue-box {
+  background-color: #F0F6FB;
+  border: 1px solid #D4E3F0;
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+
+/* Dark Contact Bar (Screenshot 3 bottom bar) */
+.dark-contact-bar {
+  background-color: #082442;
+  border-radius: var(--radius-sm);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-white);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dark-contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #D6E4F0;
+}
+
+.dark-contact-item a:hover {
+  color: var(--color-primary-orange);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}

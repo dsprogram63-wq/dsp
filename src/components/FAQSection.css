@@ -1,0 +1,72 @@
+.faq-section {
+  background-color: var(--color-white);
+  padding: 72px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.faq-container-box {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item-card {
+  background-color: #F8FAFC;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.faq-item-card.open {
+  background-color: var(--color-white);
+  border-color: var(--color-primary-orange);
+  box-shadow: var(--shadow-sm);
+}
+
+.faq-toggle-button {
+  width: 100%;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.faq-q-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-heading);
+}
+
+.faq-chevron-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  background-color: #E2E8F0;
+  color: var(--color-primary-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.faq-item-card.open .faq-chevron-icon {
+  background-color: var(--color-primary-orange);
+  color: var(--color-white);
+  transform: rotate(180deg);
+}
+
+.faq-a-body {
+  padding: 0 20px 18px 20px;
+  font-size: 0.925rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}

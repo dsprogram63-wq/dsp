@@ -1,0 +1,120 @@
+/* Admin Project Detail Page Styles */
+
+.admin-project-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-detail-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Tabs */
+.admin-project-tabs-bar {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748B;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-tab-pill:hover {
+  color: #0A3D75;
+  border-color: #0A3D75;
+}
+
+.admin-tab-pill.active {
+  background: #0A3D75;
+  color: #FFFFFF;
+  border-color: #0A3D75;
+}
+
+/* Assignment Timeline */
+.assignment-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  padding-left: 12px;
+}
+
+.timeline-entry {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.timeline-node {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #0A3D75;
+  border: 3px solid #EBF3FA;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.timeline-body {
+  flex: 1;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.timeline-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #0F172A;
+  margin-bottom: 4px;
+}
+
+.timeline-date {
+  font-size: 0.76rem;
+  color: #64748B;
+}
+
+.timeline-status-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0A3D75;
+  background: #EBF3FA;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.timeline-notes {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+}

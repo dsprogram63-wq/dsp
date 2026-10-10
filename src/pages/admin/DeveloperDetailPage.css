@@ -1,0 +1,201 @@
+/* Developer Detail Page Styles */
+
+.developer-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dev-profile-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 24px 28px;
+}
+
+.dev-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dev-banner-avatar-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+.dev-banner-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #0A3D75;
+}
+
+.dev-online-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  background: #10B981;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+}
+
+.dev-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dev-full-name {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #07223D;
+}
+
+.dev-id-tag {
+  font-family: monospace;
+  font-weight: 800;
+  color: #0A3D75;
+  background: #EBF3FA;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.dev-banner-headline {
+  margin: 4px 0 6px 0;
+  font-size: 0.92rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.dev-banner-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: #64748B;
+  flex-wrap: wrap;
+}
+
+/* Perf Grid */
+.dev-perf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.dev-stat-card {
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.stat-val {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.stat-sub {
+  font-size: 0.72rem;
+  color: #94A3B8;
+}
+
+/* Status Switcher Action Group */
+.dev-status-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.status-group-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #64748B;
+  padding: 0 4px 0 6px;
+  text-transform: uppercase;
+}
+
+.btn-status-toggle {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.15s ease;
+}
+
+.btn-status-toggle:hover {
+  background: #FFFFFF;
+  color: #0F172A;
+}
+
+.btn-status-toggle.active.current {
+  background: #DCFCE7;
+  color: #166534;
+  border-color: #86EFAC;
+  font-weight: 800;
+}
+
+.btn-status-toggle.on-hold.current {
+  background: #FEF3C7;
+  color: #92400E;
+  border-color: #FCD34D;
+  font-weight: 800;
+}
+
+.btn-status-toggle.deactivate.current {
+  background: #FEE2E2;
+  color: #991B1B;
+  border-color: #FCA5A5;
+  font-weight: 800;
+}
+
+/* Status Alert Card */
+.dev-status-alert-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.dev-status-alert-card.on-hold {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+}
+
+.dev-status-alert-card.deactivated {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #991B1B;
+}

@@ -1,0 +1,71 @@
+.final-cta-section {
+  background-color: var(--color-bg-page);
+  padding: 64px 0;
+}
+
+.final-cta-industrial-card {
+  background: linear-gradient(135deg, #07223D 0%, #0A2F57 50%, #0F3B66 100%);
+  border-radius: var(--radius-lg);
+  padding: 56px 36px;
+  text-align: center;
+  color: var(--color-white);
+  border: 1px solid #144473;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.final-cta-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.final-cta-heading {
+  font-size: clamp(2rem, 3.5vw, 2.7rem);
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: var(--color-white);
+}
+
+.final-cta-heading .orange-span {
+  color: var(--color-primary-orange);
+}
+
+.final-cta-subtext {
+  font-size: 1.05rem;
+  color: #C5DBEE;
+  margin-bottom: 32px;
+}
+
+.final-cta-btns-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.final-cta-note {
+  font-size: 0.85rem;
+  color: #9DBFD9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .final-cta-industrial-card {
+    padding: 36px 20px;
+  }
+  .final-cta-btns-group {
+    flex-direction: column;
+  }
+  .final-cta-btns-group .btn {
+    width: 100%;
+  }
+}

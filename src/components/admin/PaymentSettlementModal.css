@@ -1,0 +1,453 @@
+/* Payment Settlement Modal Styles */
+
+.payment-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.payment-modal-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(10, 61, 117, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #CBD5E1;
+}
+
+.payment-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+}
+
+.payment-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.payment-header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #EBF3FA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.payment-modal-title {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #07223D;
+}
+
+.payment-modal-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.payment-proj-pill {
+  font-family: monospace;
+  font-weight: 700;
+  color: #0A3D75;
+  background: #F1F5F9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.payment-modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.payment-modal-close-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #CBD5E1;
+}
+
+/* Settle All Banner */
+.settle-all-banner {
+  background: #FFFBEB;
+  border-bottom: 1px solid #FDE68A;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settle-all-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #92400E;
+}
+
+.btn-quick-settle-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #D97706;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-quick-settle-all:hover {
+  background: #B45309;
+}
+
+/* Modal Form Body */
+.payment-modal-form {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.payment-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Entity Cards */
+.payment-entity-card {
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #FFFFFF;
+  transition: all 0.2s ease;
+}
+
+.payment-entity-card.client-entity {
+  border-left: 4px solid #0A3D75;
+}
+
+.payment-entity-card.dev-entity {
+  border-left: 4px solid #2563EB;
+}
+
+.payment-entity-card.tester-entity {
+  border-left: 4px solid #7C3AED;
+}
+
+.payment-entity-card.card-settled {
+  border-left-color: #10B981 !important;
+  background: #F0FDF4;
+}
+
+.entity-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.entity-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.entity-icon-badge.client-badge {
+  background: #EBF3FA;
+  color: #0A3D75;
+}
+
+.entity-icon-badge.dev-badge {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.entity-icon-badge.tester-badge {
+  background: #F5F3FF;
+  color: #7C3AED;
+}
+
+.entity-name {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.entity-sub {
+  font-size: 0.76rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.entity-status-pill {
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.entity-status-pill.settled {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.entity-status-pill.pending {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+/* Stats Row */
+.entity-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid #F1F5F9;
+}
+
+.entity-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.stat-value.remaining-val {
+  color: #D97706;
+}
+
+/* Input Section */
+.entity-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.entity-input-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.btn-fill-full {
+  background: none;
+  border: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0A3D75;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.btn-fill-full:hover {
+  color: #F3821D;
+}
+
+.modal-currency-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.currency-prefix {
+  position: absolute;
+  left: 12px;
+  font-weight: 800;
+  color: #0A3D75;
+  font-size: 1rem;
+}
+
+.modal-portal-input {
+  width: 100%;
+  padding: 9px 12px 9px 30px;
+  border-radius: 8px;
+  border: 1.5px solid #CBD5E1;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #0F172A;
+  background: #FFFFFF;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.modal-portal-input:focus {
+  border-color: #0A3D75;
+  box-shadow: 0 0 0 3px rgba(10, 61, 117, 0.1);
+}
+
+/* Modal Footer */
+.payment-modal-footer {
+  padding-top: 14px;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-modal-cancel {
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748B;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-modal-cancel:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.btn-modal-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #0A3D75 0%, #07223D 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(10, 61, 117, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-modal-save:hover {
+  background: linear-gradient(135deg, #F3821D 0%, #D96F14 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(243, 130, 29, 0.3);
+}
+
+/* Action button in the table */
+.btn-pay-modal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #F3821D 0%, #E66A00 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(243, 130, 29, 0.25);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-pay-modal:hover {
+  background: linear-gradient(135deg, #E66A00 0%, #C45500 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(243, 130, 29, 0.35);
+}
+
+.badge-cleared-payout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+  border-radius: 20px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}

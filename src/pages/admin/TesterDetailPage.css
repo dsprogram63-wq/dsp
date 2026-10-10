@@ -1,0 +1,122 @@
+/* ==========================================================================
+   DAHEJ SUPPORT ADMIN TESTER DETAIL PAGE STYLES
+   ========================================================================== */
+
+.tester-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.tester-profile-hero-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(10, 61, 117, 0.06);
+}
+
+.hero-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.hero-large-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #0a3d75;
+}
+
+.hero-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.name-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hero-tester-name {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #07223d;
+  margin: 0;
+}
+
+.status-pill-sub {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.hero-specialization {
+  font-size: 0.85rem;
+  color: #475569;
+  margin: 0;
+  font-weight: 500;
+}
+
+.contact-details-strip {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 0.35rem;
+}
+
+.c-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.tester-metrics-five-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  background: #f8fafc;
+  padding: 1.15rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.metric-cell .m-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.metric-cell .m-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #07223d;
+}
+
+@media (max-width: 1024px) {
+  .tester-metrics-five-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,339 @@
+/* Exact Hero Styling matching Screenshot 1 */
+.hero-industrial-wrapper {
+  background: var(--color-navy-gradient);
+  color: var(--color-white);
+  padding-top: 64px;
+  padding-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Income Highlight Styling */
+.highlight-income-glow {
+  color: #FFAE42;
+  background: linear-gradient(135deg, rgba(243, 130, 29, 0.25) 0%, rgba(255, 174, 66, 0.15) 100%);
+  border: 1px solid rgba(243, 130, 29, 0.45);
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  display: inline-block;
+  box-shadow: 0 0 12px rgba(243, 130, 29, 0.25);
+}
+
+/* Background ambient light */
+.hero-industrial-bg-ambient {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1400px;
+  height: 100%;
+  background: radial-gradient(circle at 50% 20%, rgba(243, 130, 29, 0.08) 0%, rgba(10, 61, 117, 0) 70%);
+  pointer-events: none;
+}
+
+.hero-main-layout {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 920px;
+  margin: 0 auto;
+  padding-bottom: 56px;
+}
+
+.hero-eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+  font-size: 0.825rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #E2E8F0;
+  margin-bottom: 24px;
+}
+
+.hero-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.hero-role-pill.dev {
+  background: rgba(243, 130, 29, 0.15);
+  border-color: rgba(243, 130, 29, 0.4);
+  color: #FFD8A8;
+}
+
+.hero-role-pill.dev:hover {
+  background: rgba(243, 130, 29, 0.3);
+  transform: translateY(-2px);
+  color: #FFFFFF;
+}
+
+.hero-role-pill.qa {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #A7F3D0;
+}
+
+.hero-role-pill.qa:hover {
+  background: rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+  color: #FFFFFF;
+}
+
+.hero-eyebrow-pill .dot-orange {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--color-primary-orange);
+}
+
+/* Heading Typography */
+.hero-industrial-heading {
+  font-size: clamp(2.6rem, 5vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.hero-industrial-heading .text-white-bold {
+  color: var(--color-white);
+}
+
+.hero-industrial-heading .text-orange-bold {
+  color: var(--color-primary-orange);
+}
+
+.hero-support-subtitle {
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  font-weight: 600;
+  color: #E2EAF2;
+  margin-bottom: 18px;
+}
+
+.hero-industrial-desc {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--color-text-light);
+  max-width: 780px;
+  margin: 0 auto 36px auto;
+}
+
+/* Search / Referral Access Bar (Screenshot 1) */
+.hero-search-card {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: 6px 8px 6px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 680px;
+  margin: 0 auto 24px auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.hero-search-icon {
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.hero-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: var(--color-text-dark);
+  outline: none;
+}
+
+.hero-search-input::placeholder {
+  color: #64748B;
+}
+
+.hero-search-btn {
+  background-color: var(--color-primary-orange);
+  color: var(--color-white);
+  font-size: 0.925rem;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.hero-search-btn:hover {
+  background-color: var(--color-orange-hover);
+}
+
+/* Referral Notice Pill Box on Dark Hero */
+.hero-notice-banner-dark {
+  background-color: rgba(7, 29, 51, 0.7);
+  border: 1px solid rgba(243, 130, 29, 0.4);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  max-width: 680px;
+  margin: 0 auto 32px auto;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.hero-notice-badge {
+  background-color: var(--color-primary-orange);
+  color: var(--color-white);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.hero-notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-notice-headline {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-white);
+}
+
+.hero-notice-subtext {
+  font-size: 0.85rem;
+  color: #B5CEE4;
+  line-height: 1.45;
+}
+
+/* Hero Action Buttons (Screenshot 1) */
+.hero-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-btn-orange {
+  background-color: var(--color-primary-orange);
+  color: var(--color-white);
+  font-weight: 700;
+  padding: 13px 28px;
+  font-size: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(243, 130, 29, 0.4);
+}
+
+.hero-btn-orange:hover {
+  background-color: var(--color-orange-hover);
+  transform: translateY(-1px);
+}
+
+.hero-btn-glass {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-white);
+  font-weight: 600;
+  padding: 13px 26px;
+  font-size: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.hero-btn-glass:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.hero-btn-link {
+  color: #E2E8F0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+}
+
+.hero-btn-link:hover {
+  color: var(--color-primary-orange);
+}
+
+/* Bottom Stats Strip (Screenshot 1 bottom) */
+.hero-stats-strip {
+  background-color: rgba(5, 22, 39, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px 0;
+}
+
+.hero-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  text-align: center;
+}
+
+.hero-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hero-stat-number {
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-weight: 900;
+  color: var(--color-primary-orange);
+  line-height: 1.1;
+}
+
+.hero-stat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #B5CEE4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 768px) {
+  .hero-search-card {
+    flex-direction: column;
+    padding: 12px;
+    align-items: stretch;
+  }
+  .hero-search-btn {
+    width: 100%;
+  }
+  .hero-buttons-row {
+    flex-direction: column;
+    width: 100%;
+  }
+  .hero-buttons-row .btn,
+  .hero-buttons-row .hero-btn-orange,
+  .hero-buttons-row .hero-btn-glass {
+    width: 100%;
+  }
+  .hero-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
