@@ -19,6 +19,7 @@ import {
   Trash2,
   Image as ImageIcon
 } from 'lucide-react';
+import { uploadAvatar } from '../services/storageService.js';
 import './ReferralApplication.css';
 
 const DEFAULT_DEV_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
@@ -376,7 +377,7 @@ export default function ReferralApplication({
   };
 
   // Profile Photo Upload Handlers (Strict 2 MB Limit)
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
@@ -404,6 +405,26 @@ export default function ReferralApplication({
     const sizeFormatted = file.size >= 1048576 
       ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` 
       : `${Math.round(file.size / 1024)} KB`;
+
+    try {
+      const applicantTag = (formData.email || formData.fullName || 'applicant').replace(/[^a-zA-Z0-9]/g, '_');
+      const { url } = await uploadAvatar(applicantTag, file);
+      if (url) {
+        setFormData(prev => ({
+          ...prev,
+          avatar: url
+        }));
+        setAvatarInfo({
+          name: file.name,
+          sizeFormatted,
+          sizeBytes: file.size,
+          isCustom: true
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn('Storage upload fallback:', err);
+    }
 
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {

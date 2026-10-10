@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { initialProfile } from '../../data/mockData';
 import { calculateCurrentExperience } from '../../utils/projectStatusUtils';
+import { uploadAvatar } from '../../services/storageService.js';
 import './ProfilePage.css';
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -75,7 +76,7 @@ export default function ProfilePage({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleAvatarUpload = (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
@@ -93,13 +94,29 @@ export default function ProfilePage({
       return;
     }
 
+    showToast('Uploading profile photo to storage...');
+    try {
+      const { url } = await uploadAvatar(formData.referenceId || formData.id || 'freelancer', file);
+      if (url) {
+        setFormData(prev => ({
+          ...prev,
+          avatar: url
+        }));
+        showToast('✓ Profile photo saved successfully!');
+        return;
+      }
+    } catch (err) {
+      console.warn('Storage upload fallback:', err);
+    }
+
+    // Fallback to local DataURL
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
       setFormData(prev => ({
         ...prev,
         avatar: uploadEvent.target.result
       }));
-      showToast('✓ Profile photo uploaded and ready to save!');
+      showToast('✓ Profile photo loaded!');
     };
     reader.readAsDataURL(file);
   };

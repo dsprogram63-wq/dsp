@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { initialDevelopers } from '../../data/adminMockData';
 import { initialTesters, defaultTestingChecklist } from '../../data/testerMockData';
+import { uploadProjectDocument } from '../../services/storageService.js';
 import './CreateProjectPage.css';
 
 export default function CreateProjectPage({ 
@@ -209,17 +210,40 @@ export default function CreateProjectPage({
 
   const fileInputRef = useRef(null);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    files.forEach(file => {
+    for (const file of files) {
       const sizeInMB = file.size / (1024 * 1024);
       if (sizeInMB > 15) {
         alert(`Document "${file.name}" size must be less than 15 MB.`);
-        return;
+        continue;
       }
 
+      const formattedSize = sizeInMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeInMB.toFixed(1)} MB`;
+
+      try {
+        const { url } = await uploadProjectDocument(projectId || 'general', file);
+        if (url) {
+          const newDoc = {
+            id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            name: file.name,
+            type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'Specification Document'),
+            size: formattedSize,
+            url: url,
+            dataUrl: url,
+            fileData: url,
+            status: 'Uploaded'
+          };
+          setDocuments(prev => [...prev, newDoc]);
+          continue;
+        }
+      } catch (err) {
+        console.warn('Storage doc upload fallback:', err);
+      }
+
+      // Fallback
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUrl = event.target.result;
@@ -227,7 +251,7 @@ export default function CreateProjectPage({
           id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           name: file.name,
           type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'Specification Document'),
-          size: sizeInMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeInMB.toFixed(1)} MB`,
+          size: formattedSize,
           dataUrl: dataUrl,
           fileData: dataUrl,
           url: dataUrl,
@@ -236,7 +260,7 @@ export default function CreateProjectPage({
         setDocuments(prev => [...prev, newDoc]);
       };
       reader.readAsDataURL(file);
-    });
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
