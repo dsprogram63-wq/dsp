@@ -49,20 +49,36 @@ export default function FreelancerLogin({
     return initialTesters || [];
   })();
 
+  const savedDev = (() => {
+    try {
+      const s = localStorage.getItem('dahej_real_v2_freelancer_profile') || localStorage.getItem('dahej_freelancer_profile');
+      if (s) return JSON.parse(s);
+    } catch (e) {}
+    return null;
+  })();
+
+  const savedTester = (() => {
+    try {
+      const s = localStorage.getItem('dahej_real_v2_tester_profile') || localStorage.getItem('dahej_tester_profile');
+      if (s) return JSON.parse(s);
+    } catch (e) {}
+    return null;
+  })();
+
   const demoAccounts = {
     freelancer: {
-      email: savedDev?.email || allStoredDevs[0]?.email || '',
+      email: savedDev?.email || allStoredDevs[0]?.email || 'developer@hit-support.com',
       password: 'dev123',
       name: savedDev?.fullName || savedDev?.name || allStoredDevs[0]?.name || 'Developer',
-      id: savedDev?.freelancerId || savedDev?.id || allStoredDevs[0]?.id || '',
+      id: savedDev?.freelancerId || savedDev?.id || allStoredDevs[0]?.id || 'DEV-DEMO',
       roleTitle: 'The HIT Support Developer Program',
       dashboardRoute: 'portal/dashboard'
     },
     tester: {
-      email: savedTester?.email || allStoredTesters[0]?.email || '',
+      email: savedTester?.email || allStoredTesters[0]?.email || 'tester@hit-support.com',
       password: 'tester123',
       name: savedTester?.fullName || savedTester?.name || allStoredTesters[0]?.name || 'QA Tester',
-      id: savedTester?.testerId || savedTester?.id || allStoredTesters[0]?.id || '',
+      id: savedTester?.testerId || savedTester?.id || allStoredTesters[0]?.id || 'TST-DEMO',
       roleTitle: 'The HIT Support Tester Program',
       dashboardRoute: 'tester/dashboard'
     }
