@@ -18,6 +18,7 @@ import {
   XCircle
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
+import EmptyState from '../../components/portal/EmptyState';
 import { initialTesters } from '../../data/testerMockData';
 import './TesterDetailPage.css';
 
@@ -31,6 +32,20 @@ export default function TesterDetailPage({
   const [activeTab, setActiveTab] = useState('current');
   const [toastMessage, setToastMessage] = useState(null);
   const t = tester || initialTesters[0];
+
+  if (!t) {
+    return (
+      <div className="portal-card">
+        <EmptyState
+          icon={ShieldCheck}
+          title="QA Tester Not Found"
+          description="The requested QA tester profile could not be found."
+          actionLabel="Back to Testers"
+          onAction={onBack}
+        />
+      </div>
+    );
+  }
 
   const showToast = (msg) => {
     setToastMessage(msg);

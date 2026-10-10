@@ -24,20 +24,20 @@ export default function TesterProfilePage({
   profile: propProfile, 
   onUpdateProfile 
 }) {
-  const currentProfile = propProfile || initialTesterProfile;
+  const currentProfile = propProfile || {};
   const fileInputRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: currentProfile.fullName || currentProfile.name || 'Sneha Reddy',
-    testerId: currentProfile.testerId || currentProfile.id || 'TST-201',
-    joiningDate: currentProfile.joiningDate || '10 Feb 2025',
-    mobile: currentProfile.mobile || '+91 98765 11223',
-    email: currentProfile.email || 'sneha.qa@dahejsupport.com',
-    experienceAtJoining: currentProfile.experienceAtJoining !== undefined ? currentProfile.experienceAtJoining : 3,
-    experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '2025-02-10',
-    referenceName: currentProfile.referenceName || 'Amit Patel (Dahej Support Core)',
-    referenceId: currentProfile.referenceId || 'REF-00125',
+    fullName: currentProfile.fullName || currentProfile.name || '',
+    testerId: currentProfile.testerId || currentProfile.id || '',
+    joiningDate: currentProfile.joiningDate || '',
+    mobile: currentProfile.mobile || '',
+    email: currentProfile.email || '',
+    experienceAtJoining: currentProfile.experienceAtJoining !== undefined ? currentProfile.experienceAtJoining : 0,
+    experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '',
+    referenceName: currentProfile.referenceName || '',
+    referenceId: currentProfile.referenceId || '',
     program: 'The HIT Support Tester Program',
     avatar: currentProfile.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
     verified: currentProfile.verified !== false

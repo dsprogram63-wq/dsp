@@ -488,11 +488,11 @@ export default function AdminProjectsPage({
                       </td>
 
                       <td>
-                        <span style={{ fontWeight: 700, color: '#1E293B' }}>{p.developer}</span>
+                        <span style={{ fontWeight: 700, color: '#1E293B' }}>{p.developer || 'Unassigned'}</span>
                       </td>
 
                       <td>
-                        <span style={{ fontWeight: 700, color: '#C2410C' }}>{p.tester || 'Sneha Reddy'}</span>
+                        <span style={{ fontWeight: 700, color: '#C2410C' }}>{p.tester || 'Unassigned'}</span>
                       </td>
 
                       <td style={{ minWidth: '120px' }}>

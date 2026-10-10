@@ -610,12 +610,18 @@ export default function TestersPage({
         <div className="portal-card">
           <EmptyState
             icon={ShieldCheck}
-            title="No QA testers found"
-            description="No testers match your search or status filter."
-            actionLabel="Reset Filters"
+            title={totalTesters === 0 ? "No QA Testers Registered Yet" : "No QA Testers Found"}
+            description={totalTesters === 0 
+              ? "Real QA testers who register via the referral application form will appear in the Pending queue above for admin review and approval."
+              : "No testers match your search or status filter."}
+            actionLabel={totalTesters === 0 ? "Open Application Form" : "Reset Filters"}
             onAction={() => {
-              setSelectedFilter('All');
-              setSearchTerm('');
+              if (totalTesters === 0 && onNavigate) {
+                onNavigate('apply');
+              } else {
+                setSelectedFilter('All');
+                setSearchTerm('');
+              }
             }}
           />
         </div>

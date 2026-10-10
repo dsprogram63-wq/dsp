@@ -600,7 +600,7 @@ export default function TesterProjectWorkspace({
 
           <h1 className="hero-project-title">{project.name}</h1>
           <p className="hero-project-client">
-            Assigned Developer: <strong style={{ color: '#0A3D75' }}>{project.developer}</strong> • Lead QA: <strong style={{ color: '#F3821D' }}>{project.tester || 'Sneha Reddy'}</strong>
+            Assigned Developer: <strong style={{ color: '#0A3D75' }}>{project.developer || 'Unassigned'}</strong> • Lead QA: <strong style={{ color: '#F3821D' }}>{project.tester || 'Unassigned'}</strong>
           </p>
 
           <div className="hero-meta-grid">

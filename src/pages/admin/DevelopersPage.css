@@ -121,3 +121,29 @@
   }
 }
 
+/* Responsive Media Queries */
+@media (max-width: 900px) {
+  .dev-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+    gap: 12px;
+  }
+
+  .dev-status-toast {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .dev-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+
+  .portal-table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+

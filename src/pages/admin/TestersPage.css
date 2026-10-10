@@ -195,3 +195,14 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+@media (max-width: 640px) {
+  .testers-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .portal-table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -70,16 +70,15 @@ export default function Navbar({ onNavigate, currentPage = 'home' }) {
 
             {/* Actions */}
             <div className="navbar-actions">
-              <a
-                href="https://www.dahejsupport.com"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => onNavigate('admin/dashboard')}
                 className="btn-visit-link"
-                title="Visit main Dahej Support website"
+                type="button"
+                style={{ cursor: 'pointer', background: 'transparent' }}
+                title="Open Admin Operations Console"
               >
-                <span>Visit Dahej Support</span>
-                <ExternalLink size={13} />
-              </a>
+                <span>Admin Console</span>
+              </button>
 
               <button
                 onClick={() => onNavigate('login')}
@@ -87,7 +86,7 @@ export default function Navbar({ onNavigate, currentPage = 'home' }) {
                 type="button"
               >
                 <Lock size={14} />
-                <span>Freelancer Login</span>
+                <span>Portal Login</span>
               </button>
             </div>
 

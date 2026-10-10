@@ -107,6 +107,16 @@ export default function Footer({ onNavigate }) {
                   Apply as QA Tester
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('admin/dashboard')}
+                  className="footer-nav-link"
+                  style={{ color: '#F3821D' }}
+                >
+                  Admin Console
+                </button>
+              </li>
             </ul>
           </div>
 

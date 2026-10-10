@@ -146,13 +146,13 @@ export default function App() {
       if (path.includes('active-projects')) return { page: 'admin', subView: 'active-projects' };
       if (path.includes('developers/')) {
         const parts = path.split('developers/');
-        const devId = parts[1] ? parts[1].toUpperCase() : 'DEV-101';
+        const devId = parts[1] ? parts[1].toUpperCase() : '';
         return { page: 'admin', subView: 'developer-detail', selectedDeveloperId: devId };
       }
       if (path.includes('developers')) return { page: 'admin', subView: 'developers' };
       if (path.includes('testers/')) {
         const parts = path.split('testers/');
-        const tId = parts[1] ? parts[1].toUpperCase() : 'TST-201';
+        const tId = parts[1] ? parts[1].toUpperCase() : '';
         return { page: 'admin', subView: 'tester-detail', selectedTesterId: tId };
       }
       if (path.includes('testers')) return { page: 'admin', subView: 'testers' };
@@ -199,119 +199,89 @@ export default function App() {
 
   const [routeState, setRouteState] = useState(getInitialState);
   
-  // System Clean Reset: Clears legacy cached mock projects on startup
+  // System Clean Reset: Clears all cached mock entries on startup for a 100% clean real-data system
   (() => {
     try {
-      const cleanFlag = 'dahej_clean_system_v7';
-      if (!localStorage.getItem(cleanFlag)) {
-        localStorage.removeItem('dahej_freelancer_projects');
-        localStorage.removeItem('dahej_admin_projects');
-        localStorage.removeItem('dahej_developers');
-        localStorage.removeItem('dahej_testers');
-        localStorage.setItem(cleanFlag, 'true');
-      }
+      // Unconditionally wipe all legacy mock storage keys
+      const legacyKeys = [
+        'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
+        'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile', 'dahej_auth_session'
+      ];
+      legacyKeys.forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
     } catch (e) {
       console.error('Failed to reset legacy storage:', e);
     }
   })();
 
-  // State for Freelancer Portal
+  // State for Freelancer Portal (100% clean real-data only)
   const [projects, setProjects] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_freelancer_projects');
+      const saved = localStorage.getItem('dahej_real_v2_freelancer_projects');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to parse freelancer projects:', e);
     }
-    return initialProjects;
+    return [];
   });
   const [selectedProjectId, setSelectedProjectId] = useState(routeState.selectedProjectId || null);
 
-  // State for Admin Panel
+  // State for Admin Panel (100% clean real-data only)
   const [adminProjects, setAdminProjects] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_admin_projects');
+      const saved = localStorage.getItem('dahej_real_v2_admin_projects');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to parse admin projects:', e);
     }
-    return initialAdminProjects;
+    return [];
   });
+
+  // State for Developers (100% clean real-data only)
   const [developers, setDevelopers] = useState(() => {
-    let baseDevs = initialDevelopers;
     try {
-      const saved = localStorage.getItem('dahej_developers');
-      if (saved) baseDevs = JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_developers');
+      if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to parse developers:', e);
     }
-    const rawProjs = (() => {
-      try {
-        const p = localStorage.getItem('dahej_admin_projects');
-        if (p) return JSON.parse(p);
-      } catch (e) {}
-      return initialAdminProjects;
-    })();
-    return baseDevs.map(d => {
-      const allDevProjs = rawProjs.filter(
-        p => (p.developer && p.developer.toLowerCase() === d.name.toLowerCase()) || (p.developerId && p.developerId === d.id)
-      );
-      const activeCount = allDevProjs.filter(p => p.status !== 'Completed').length;
-      let avail = d.availability;
-      if (d.status === 'Active') {
-        avail = activeCount > 0 ? 'Busy' : 'Available';
-      }
-      return {
-        ...d,
-        activeProjectsCount: activeCount,
-        availability: avail,
-        currentProjects: allDevProjs
-      };
-    });
+    return [];
   });
+
+  // State for Testers (100% clean real-data only)
   const [testers, setTesters] = useState(() => {
-    let baseTesters = initialTesters;
     try {
-      const saved = localStorage.getItem('dahej_testers');
-      if (saved) baseTesters = JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_testers');
+      if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to parse testers:', e);
     }
-    const rawProjs = (() => {
-      try {
-        const p = localStorage.getItem('dahej_admin_projects');
-        if (p) return JSON.parse(p);
-      } catch (e) {}
-      return initialAdminProjects;
-    })();
-    return baseTesters.map(t => {
-      const allTesterProjs = rawProjs.filter(
-        p => (p.tester && p.tester.toLowerCase() === t.name.toLowerCase()) || (p.testerId && p.testerId === t.id)
-      );
-      const activeCount = allTesterProjs.filter(p => p.status !== 'Completed').length;
-      let avail = t.availability;
-      if (t.status === 'Active') {
-        avail = activeCount > 0 ? 'Busy' : 'Available';
-      }
-      return {
-        ...t,
-        activeTestingProjects: activeCount,
-        availability: avail,
-        currentProjects: allTesterProjs
-      };
-    });
+    return [];
   });
   const [selectedAdminProjectId, setSelectedAdminProjectId] = useState(routeState.selectedProjectId || null);
-  const [selectedDeveloperId, setSelectedDeveloperId] = useState(routeState.selectedDeveloperId || 'DEV-101');
-  const [selectedTesterId, setSelectedTesterId] = useState(routeState.selectedTesterId || 'TST-201');
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState(routeState.selectedDeveloperId || '');
+  const [selectedTesterId, setSelectedTesterId] = useState(routeState.selectedTesterId || '');
 
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
 
-  // Sync projects and team data to LocalStorage
+  // Proactive Real-Time Sanitizer: Clean state sync
+  useEffect(() => {
+    // Delete legacy keys from localStorage
+    const legacyKeys = [
+      'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
+      'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile', 'dahej_auth_session'
+    ];
+    legacyKeys.forEach(k => {
+      try { localStorage.removeItem(k); } catch (e) {}
+    });
+  }, []);
+
+  // Sync real data to LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_admin_projects', JSON.stringify(adminProjects));
+      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
     } catch (e) {
       console.error(e);
     }
@@ -319,7 +289,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(projects));
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(projects));
     } catch (e) {
       console.error(e);
     }
@@ -327,7 +297,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_developers', JSON.stringify(developers));
+      localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
     } catch (e) {
       console.error(e);
     }
@@ -335,7 +305,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_testers', JSON.stringify(testers));
+      localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
     } catch (e) {
       console.error(e);
     }
@@ -412,8 +382,8 @@ export default function App() {
     setProjects(updatedDevList);
     setAdminProjects(updatedAdminList);
     try {
-      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(updatedDevList));
-      localStorage.setItem('dahej_admin_projects', JSON.stringify(updatedAdminList));
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
+      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedAdminList));
     } catch (e) {}
   };
 
@@ -433,8 +403,8 @@ export default function App() {
     setAdminProjects(updatedAdminList);
     setProjects(updatedDevList);
     try {
-      localStorage.setItem('dahej_admin_projects', JSON.stringify(updatedAdminList));
-      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(updatedDevList));
+      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedAdminList));
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
     } catch (e) {}
   };
 
@@ -447,8 +417,8 @@ export default function App() {
     setAdminProjects(updatedProjectsList);
     setProjects(updatedDevList);
     try {
-      localStorage.setItem('dahej_admin_projects', JSON.stringify(updatedProjectsList));
-      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(updatedDevList));
+      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedProjectsList));
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
     } catch (e) {}
 
     // Dynamic sync of developers active workloads & availability
@@ -496,28 +466,28 @@ export default function App() {
   // Freelancer profile update (strictly enforces immutable fields & persists to localStorage, authSession & developer directory)
   const handleUpdateFreelancerProfile = (updatedFields) => {
     const authUser = (authSession && authSession.user) || null;
-    const authId = (authUser && (authUser.id || authUser.freelancerId)) || 'DEV-101';
+    const authId = (authUser && (authUser.id || authUser.freelancerId)) || '';
     
     const matchedDev = developers.find(d => 
       (d.id && d.id.toLowerCase() === authId.toLowerCase()) ||
       (authUser && authUser.email && d.email && d.email.toLowerCase() === authUser.email.toLowerCase())
-    ) || initialDevelopers.find(d => 
+    ) || (initialDevelopers || []).find(d => 
       (d.id && d.id.toLowerCase() === authId.toLowerCase()) ||
       (authUser && authUser.email && d.email && d.email.toLowerCase() === authUser.email.toLowerCase())
     ) || {
       id: authId,
-      name: 'Rahul Patel',
-      email: 'rahul.patel@dahejsupport.com',
-      mobile: '+91 98765 43210',
-      joiningDate: '15 Jun 2025',
-      referenceName: 'Amit Patel (Dahej Support Core)',
+      name: (authUser && (authUser.fullName || authUser.name)) || 'Developer',
+      email: (authUser && authUser.email) || '',
+      mobile: (authUser && authUser.mobile) || '',
+      joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      referenceName: (authUser && authUser.referenceName) || 'Reference Verification',
       referenceId: 'REF-00125'
     };
 
     // Only accept allowed editable fields: fullName / name, mobile, email, avatar
-    const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedDev.name || 'Rahul Patel').trim();
-    const sanitizedEmail = (updatedFields.email || matchedDev.email || 'rahul.patel@dahejsupport.com').trim();
-    const sanitizedMobile = (updatedFields.mobile || matchedDev.mobile || '+91 98765 43210').trim();
+    const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedDev.name || 'Developer').trim();
+    const sanitizedEmail = (updatedFields.email || matchedDev.email || '').trim();
+    const sanitizedMobile = (updatedFields.mobile || matchedDev.mobile || '').trim();
     const updatedAvatar = updatedFields.avatar || matchedDev.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
 
     const newProfile = {
@@ -528,11 +498,11 @@ export default function App() {
       // Permanent immutable fields strictly preserved
       freelancerId: authId,
       id: authId,
-      joiningDate: matchedDev.joiningDate || '15 Jun 2025',
+      joiningDate: matchedDev.joiningDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: matchedDev.experienceAtJoining !== undefined ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: matchedDev.experienceReferenceDate || '2025-06-15',
-      referenceName: matchedDev.referenceName || 'Amit Patel (Dahej Support Core)',
-      referenceId: matchedDev.referenceId || `REF-00${authId.replace(/[^0-9]/g, '') || '101'}`,
+      referenceName: matchedDev.referenceName || 'Reference Verification',
+      referenceId: matchedDev.referenceId || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '101'}` : 'REF-001'),
       program: 'The HIT Support Developer Program',
       roleTitle: 'The HIT Support Developer Program',
       avatar: updatedAvatar,
@@ -586,28 +556,28 @@ export default function App() {
   // Tester profile update (strictly enforces immutable fields & persists to localStorage, authSession & tester directory)
   const handleUpdateTesterProfile = (updatedFields) => {
     const authUser = (authSession && authSession.user) || null;
-    const authId = (authUser && (authUser.id || authUser.testerId)) || 'TST-201';
+    const authId = (authUser && (authUser.id || authUser.testerId)) || '';
     
     const matchedTester = testers.find(t => 
       (t.id && t.id.toLowerCase() === authId.toLowerCase()) ||
       (authUser && authUser.email && t.email && t.email.toLowerCase() === authUser.email.toLowerCase())
-    ) || initialTesters.find(t => 
+    ) || (initialTesters || []).find(t => 
       (t.id && t.id.toLowerCase() === authId.toLowerCase()) ||
       (authUser && authUser.email && t.email && t.email.toLowerCase() === authUser.email.toLowerCase())
     ) || {
       id: authId,
-      name: 'Sneha Reddy',
-      email: 'sneha.qa@dahejsupport.com',
-      mobile: '+91 98765 11223',
-      joiningDate: '10 Feb 2025',
-      referenceName: 'Amit Patel (Dahej Support Core)',
+      name: (authUser && (authUser.fullName || authUser.name)) || 'QA Tester',
+      email: (authUser && authUser.email) || '',
+      mobile: (authUser && authUser.mobile) || '',
+      joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      referenceName: (authUser && authUser.referenceName) || 'Reference Verification',
       referenceId: 'REF-00125'
     };
 
     // Only accept allowed editable fields: fullName / name, mobile, email, avatar
-    const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedTester.name || 'Sneha Reddy').trim();
-    const sanitizedEmail = (updatedFields.email || matchedTester.email || 'sneha.qa@dahejsupport.com').trim();
-    const sanitizedMobile = (updatedFields.mobile || matchedTester.mobile || '+91 98765 11223').trim();
+    const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedTester.name || 'QA Tester').trim();
+    const sanitizedEmail = (updatedFields.email || matchedTester.email || '').trim();
+    const sanitizedMobile = (updatedFields.mobile || matchedTester.mobile || '').trim();
     const updatedAvatar = updatedFields.avatar || matchedTester.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160';
 
     const newProfile = {
@@ -618,11 +588,11 @@ export default function App() {
       // Permanent immutable fields strictly preserved
       testerId: authId,
       id: authId,
-      joiningDate: matchedTester.joiningDate || '10 Feb 2025',
+      joiningDate: matchedTester.joiningDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: matchedTester.experienceAtJoining !== undefined ? matchedTester.experienceAtJoining : (matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: matchedTester.experienceReferenceDate || matchedTester.joiningDate || '2025-02-10',
-      referenceName: matchedTester.referenceName || 'Amit Patel (Dahej Support Core)',
-      referenceId: matchedTester.referenceId || `REF-00${authId.replace(/[^0-9]/g, '') || '125'}`,
+      referenceName: matchedTester.referenceName || 'Reference Verification',
+      referenceId: matchedTester.referenceId || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '125'}` : 'REF-002'),
       program: 'The HIT Support Tester Program',
       roleTitle: 'The HIT Support Tester Program',
       avatar: updatedAvatar,
@@ -1041,27 +1011,15 @@ export default function App() {
 
     const testerHeader = getTesterHeaderInfo();
     const authTesterUser = (authSession && authSession.user) || null;
-    const authTesterId = (authTesterUser && (authTesterUser.id || authTesterUser.testerId)) || 'TST-201';
+    const authTesterId = (authTesterUser && (authTesterUser.id || authTesterUser.testerId)) || '';
 
     const matchedTester = testers.find(t => 
       (t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) ||
       (authTesterUser && authTesterUser.email && t.email && t.email.toLowerCase() === authTesterUser.email.toLowerCase())
-    ) || initialTesters.find(t => 
+    ) || (initialTesters || []).find(t => 
       (t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) ||
       (authTesterUser && authTesterUser.email && t.email && t.email.toLowerCase() === authTesterUser.email.toLowerCase())
-    ) || {
-      id: 'TST-201',
-      name: 'Sneha Reddy',
-      email: 'sneha.qa@dahejsupport.com',
-      mobile: '+91 98765 11223',
-      specialization: 'Lead QA Engineer',
-      role: 'Lead QA Engineer',
-      joiningDate: '10 Feb 2025',
-      experienceAtJoining: 3,
-      experienceReferenceDate: '2025-02-10',
-      referenceName: 'Amit Patel (Dahej Support Core)',
-      referenceId: 'REF-00125'
-    };
+    ) || null;
 
     // Check if this specific tester has saved custom edits in localStorage
     const savedCustomTesterProfile = (() => {
@@ -1075,19 +1033,19 @@ export default function App() {
     const currentLoggedInTester = {
       id: authTesterId,
       testerId: authTesterId,
-      fullName: (savedCustomTesterProfile && (savedCustomTesterProfile.fullName || savedCustomTesterProfile.name)) || (authTesterUser && (authTesterUser.fullName || authTesterUser.name)) || (matchedTester && (matchedTester.fullName || matchedTester.name)) || 'Sneha Reddy',
-      name: (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'Sneha Reddy',
-      email: (savedCustomTesterProfile && savedCustomTesterProfile.email) || (authTesterUser && authTesterUser.email) || (matchedTester && matchedTester.email) || 'sneha.qa@dahejsupport.com',
-      mobile: (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || (matchedTester && matchedTester.mobile) || '+91 98765 11223',
-      joiningDate: (matchedTester && matchedTester.joiningDate) || '10 Feb 2025',
-      experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
+      fullName: (savedCustomTesterProfile && (savedCustomTesterProfile.fullName || savedCustomTesterProfile.name)) || (authTesterUser && (authTesterUser.fullName || authTesterUser.name)) || (matchedTester && (matchedTester.fullName || matchedTester.name)) || 'QA Tester',
+      name: (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester',
+      email: (savedCustomTesterProfile && savedCustomTesterProfile.email) || (authTesterUser && authTesterUser.email) || (matchedTester && matchedTester.email) || '',
+      mobile: (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || (matchedTester && matchedTester.mobile) || '',
+      joiningDate: (matchedTester && matchedTester.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester && matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: (matchedTester && matchedTester.experienceReferenceDate) || (matchedTester && matchedTester.joiningDate) || '2025-02-10',
-      referenceName: (matchedTester && matchedTester.referenceName) || 'Amit Patel (Dahej Support Core)',
-      referenceId: (matchedTester && matchedTester.referenceId) || `REF-00${authTesterId.replace(/[^0-9]/g, '') || '125'}`,
+      referenceName: (matchedTester && matchedTester.referenceName) || 'Reference Verification',
+      referenceId: (matchedTester && matchedTester.referenceId) || (authTesterId ? `REF-00${authTesterId.replace(/[^0-9]/g, '') || '125'}` : 'REF-002'),
       program: 'The HIT Support Tester Program',
       roleTitle: 'The HIT Support Tester Program',
       avatar: (matchedTester && matchedTester.avatar) || (authTesterUser && authTesterUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
-      verified: matchedTester.verified !== false
+      verified: matchedTester ? matchedTester.verified !== false : true
     };
 
     // Strictly fetch ONLY projects assigned to the authenticated tester
@@ -1219,8 +1177,8 @@ export default function App() {
 
     const adminHeader = getAdminHeaderInfo();
     const currentAdminProject = adminProjects.find(p => p.id === selectedAdminProjectId) || adminProjects[0];
-    const currentDeveloper = developers.find(d => d.id === selectedDeveloperId) || developers[0];
-    const currentTester = testers.find(t => t.id === selectedTesterId) || testers[0];
+    const currentDeveloper = developers.find(d => d.id === selectedDeveloperId) || developers[0] || null;
+    const currentTester = testers.find(t => t.id === selectedTesterId) || testers[0] || null;
 
     return (
       <AdminLayout
@@ -1421,15 +1379,15 @@ export default function App() {
     const currentLoggedInFreelancer = {
       freelancerId: authId,
       id: authId,
-      fullName: (savedCustomProfile && (savedCustomProfile.fullName || savedCustomProfile.name)) || (authUser && (authUser.fullName || authUser.name)) || (matchedDev && matchedDev.name) || 'Rahul Patel',
-      name: (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Rahul Patel',
-      email: (savedCustomProfile && savedCustomProfile.email) || (authUser && authUser.email) || (matchedDev && matchedDev.email) || 'rahul.patel@dahejsupport.com',
-      mobile: (savedCustomProfile && savedCustomProfile.mobile) || (authUser && authUser.mobile) || (matchedDev && matchedDev.mobile) || '+91 98765 43210',
-      joiningDate: (matchedDev && matchedDev.joiningDate) || '15 Jun 2025',
+      fullName: (savedCustomProfile && (savedCustomProfile.fullName || savedCustomProfile.name)) || (authUser && (authUser.fullName || authUser.name)) || (matchedDev && matchedDev.name) || 'Developer',
+      name: (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer',
+      email: (savedCustomProfile && savedCustomProfile.email) || (authUser && authUser.email) || (matchedDev && matchedDev.email) || '',
+      mobile: (savedCustomProfile && savedCustomProfile.mobile) || (authUser && authUser.mobile) || (matchedDev && matchedDev.mobile) || '',
+      joiningDate: (matchedDev && matchedDev.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedDev && matchedDev.experienceAtJoining !== undefined) ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: (matchedDev && matchedDev.experienceReferenceDate) || '2025-06-15',
-      referenceName: (matchedDev && matchedDev.referenceName) || 'Amit Patel (Dahej Support Core)',
-      referenceId: (matchedDev && matchedDev.referenceId) || `REF-00${authId.replace(/[^0-9]/g, '') || '101'}`,
+      referenceName: (matchedDev && matchedDev.referenceName) || 'Reference Verification',
+      referenceId: (matchedDev && matchedDev.referenceId) || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '101'}` : 'REF-001'),
       program: 'The HIT Support Developer Program',
       roleTitle: 'The HIT Support Developer Program',
       avatar: (matchedDev && matchedDev.avatar) || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'

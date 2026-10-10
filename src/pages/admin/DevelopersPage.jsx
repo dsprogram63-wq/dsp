@@ -615,12 +615,18 @@ export default function DevelopersPage({
         <div className="portal-card">
           <EmptyState
             icon={Users}
-            title="No developers found"
-            description="No developers match your search or status filter."
-            actionLabel="Reset Filters"
+            title={totalDevs === 0 ? "No Developers Registered Yet" : "No Developers Found"}
+            description={totalDevs === 0 
+              ? "Real developers who register via the referral application form will appear in the Pending queue above for admin review and approval."
+              : "No developers match your search or status filter."}
+            actionLabel={totalDevs === 0 ? "Open Application Form" : "Reset Filters"}
             onAction={() => {
-              setSelectedFilter('All');
-              setSearchQuery('');
+              if (totalDevs === 0 && onNavigate) {
+                onNavigate('apply');
+              } else {
+                setSelectedFilter('All');
+                setSearchQuery('');
+              }
             }}
           />
         </div>

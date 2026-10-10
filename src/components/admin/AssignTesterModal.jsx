@@ -42,10 +42,10 @@ export default function AssignTesterModal({
   const currentTester = (testers || initialTesters).find(
     t => t.id === project?.testerId || t.name === project?.tester
   ) || {
-    id: project?.testerId || 'TST-CURRENT',
-    name: project?.tester || 'Sneha Reddy',
-    specialization: project?.testerSpecialization || 'Lead QA Engineer',
-    experience: '4.5 Years',
+    id: project?.testerId || '',
+    name: project?.tester || 'Unassigned',
+    specialization: project?.testerSpecialization || 'QA Tester',
+    experience: '—',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
     activeTestingProjects: 0,
     availability: 'Available'

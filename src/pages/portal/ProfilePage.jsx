@@ -25,20 +25,20 @@ export default function ProfilePage({
   profile: propProfile, 
   onUpdateProfile 
 }) {
-  const currentProfile = propProfile || initialProfile;
+  const currentProfile = propProfile || {};
   const fileInputRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: currentProfile.fullName || currentProfile.name || 'Rahul Patel',
-    freelancerId: currentProfile.freelancerId || currentProfile.id || 'DEV-101',
-    joiningDate: currentProfile.joiningDate || '15 Jun 2025',
-    mobile: currentProfile.mobile || '+91 98765 43210',
-    email: currentProfile.email || 'rahul.patel@dahejsupport.com',
-    experienceAtJoining: currentProfile.experienceAtJoining || 2,
-    experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '2025-06-15',
-    referenceName: currentProfile.referenceName || 'Amit Patel (Dahej Support Core)',
-    referenceId: currentProfile.referenceId || 'REF-00125',
+    fullName: currentProfile.fullName || currentProfile.name || '',
+    freelancerId: currentProfile.freelancerId || currentProfile.id || '',
+    joiningDate: currentProfile.joiningDate || '',
+    mobile: currentProfile.mobile || '',
+    email: currentProfile.email || '',
+    experienceAtJoining: currentProfile.experienceAtJoining || 0,
+    experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '',
+    referenceName: currentProfile.referenceName || '',
+    referenceId: currentProfile.referenceId || '',
     program: 'The HIT Support Developer Program',
     avatar: currentProfile.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
     verified: currentProfile.verified !== false

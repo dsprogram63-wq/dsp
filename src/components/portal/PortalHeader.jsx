@@ -161,7 +161,7 @@ export default function PortalHeader({
               className="header-avatar-img"
             />
             <div className="header-profile-text">
-              <span className="profile-name-str">{profile?.fullName || 'Rahul Sharma'}</span>
+              <span className="profile-name-str">{profile?.fullName || profile?.name || 'Freelancer'}</span>
               <span className="profile-status-str">
                 <span className="status-indicator-green" />
                 Verified Member
@@ -173,9 +173,9 @@ export default function PortalHeader({
           {profileOpen && (
             <div className="header-popover profile-popover">
               <div className="profile-popover-head">
-                <span className="popover-user-name">{profile?.fullName || 'Rahul Sharma'}</span>
-                <span className="popover-user-email">{profile?.email || 'rahul.dev@example.com'}</span>
-                <span className="popover-fl-id">ID: {profile?.freelancerId || 'DS-FL-8902'}</span>
+                <span className="popover-user-name">{profile?.fullName || profile?.name || 'Freelancer'}</span>
+                <span className="popover-user-email">{profile?.email || ''}</span>
+                <span className="popover-fl-id">ID: {profile?.freelancerId || profile?.id || 'DEV-MEMBER'}</span>
               </div>
 
               <ul className="profile-popover-menu">

@@ -15,6 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { initialAdminNotifications, initialAdminProjects, initialDevelopers } from '../../data/adminMockData';
+import { initialTesters } from '../../data/testerMockData';
 
 export default function AdminHeader({
   title = 'Admin Dashboard',

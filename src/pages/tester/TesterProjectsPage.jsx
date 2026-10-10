@@ -182,11 +182,11 @@ export default function TesterProjectsPage({
                       {/* Column 2: Developer (Name primary, ID & Dev Progress secondary) */}
                       <td>
                         <span style={{ fontWeight: 700, color: '#1E293B', display: 'block' }}>
-                          {proj.developer || proj.developerName || 'Rahul Patel'}
+                          {proj.developer || proj.developerName || 'Unassigned'}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                           <span style={{ fontSize: '0.75rem', color: '#64748B', fontFamily: 'monospace', fontWeight: 600 }}>
-                            {proj.developerId || 'DEV-101'}
+                            {proj.developerId || '—'}
                           </span>
                           <span style={{ fontSize: '0.68rem', fontWeight: 700, color: (proj.developerProgress || proj.progress || 0) === 100 ? '#166534' : '#0A3D75', background: (proj.developerProgress || proj.progress || 0) === 100 ? '#DCFCE7' : '#EBF3FA', padding: '1px 5px', borderRadius: '3px' }}>
                             Dev: {proj.developerProgress || proj.progress || 0}%
@@ -215,7 +215,7 @@ export default function TesterProjectsPage({
                                 backgroundColor: getProgressBarColor(status),
                                 borderRadius: '3px' 
                               }} 
-                            />
+                              />
                           </div>
                           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
                             {progressVal}%
@@ -271,7 +271,7 @@ export default function TesterProjectsPage({
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                     <span style={{ color: '#64748B' }}>Developer:</span>
-                    <strong style={{ color: '#1E293B' }}>{proj.developer || proj.developerName || 'Rahul Patel'} ({proj.developerId || 'DEV-101'})</strong>
+                    <strong style={{ color: '#1E293B' }}>{proj.developer || proj.developerName || 'Unassigned'}{proj.developerId ? ` (${proj.developerId})` : ''}</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.825rem' }}>

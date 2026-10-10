@@ -19,6 +19,14 @@ import {
 import './SettingsPage.css';
 
 export default function SettingsPage() {
+  const [authEmail] = useState(() => {
+    try {
+      const sess = JSON.parse(localStorage.getItem('dahej_auth_session') || '{}');
+      return sess.email || 'your registered email';
+    } catch {
+      return 'your registered email';
+    }
+  });
   const [activeTab, setActiveTab] = useState('account');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -300,7 +308,7 @@ export default function SettingsPage() {
                   <Mail size={20} color="#0A3D75" />
                   <div>
                     <h4 style={{ margin: 0, fontSize: '0.94rem', color: '#07223D' }}>
-                      Security OTP Sent to rahul.dev@example.com
+                      Security OTP Sent to {authEmail}
                     </h4>
                     <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748B' }}>
                       Enter the 6-digit confirmation code to confirm password update.

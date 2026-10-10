@@ -23,7 +23,13 @@ export default function TesterHeader({
   onNavigate,
   onOpenProject
 }) {
-  const activeProfile = profile || initialTesterProfile;
+  const activeProfile = profile || {
+    name: 'QA Tester',
+    email: '',
+    id: 'TST-MEMBER',
+    roleTitle: 'QA Specialist',
+    avatar: '/assets/logo-icon.png'
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);

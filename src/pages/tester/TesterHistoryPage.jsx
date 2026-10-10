@@ -1,18 +1,39 @@
 import React from 'react';
-import { History, CheckCircle2, AlertOctagon, User, Eye } from 'lucide-react';
+import { History, User, Eye } from 'lucide-react';
+import EmptyState from '../../components/portal/EmptyState';
+import { getTesterDashboardStatus } from '../../services/testerApiService';
 
 export default function TesterHistoryPage({ 
   projects = [], 
   onOpenProject 
 }) {
-  const historyRecords = [
-    { id: 'DS-LND-3012', name: 'Industrial GIDC Landing Page', developer: 'Rahul Patel', submitted: '28 Aug 2026', testDate: '01 Sep 2026', result: 'Approved', issues: '0 Open', status: 'Completed' },
-    { id: 'DS-WEB-0982', name: 'Machinery Spare Parts Website', developer: 'Rahul Patel', submitted: '18 Aug 2026', testDate: '20 Aug 2026', result: 'Approved', issues: '0 Open', status: 'Completed' },
-    { id: 'DS-REV-4096', name: 'Industrial Chemical Portal', developer: 'Rahul Patel', submitted: '01 Oct 2026', testDate: '01 Oct 2026', result: 'Changes Requested', issues: '3 Defects', status: 'In Revision' },
-    { id: 'DS-APP-1090', name: 'Logistics Driver Tracking App', developer: 'Rahul Patel', submitted: '12 Jul 2026', testDate: '15 Jul 2026', result: 'Approved', issues: '0 Open', status: 'Completed' },
-    { id: 'DS-WEB-0741', name: 'Petrochemical Industry Landing', developer: 'Amit Shah', submitted: '10 Aug 2026', testDate: '12 Aug 2026', result: 'Approved', issues: '0 Open', status: 'Completed' },
-    { id: 'DS-WEB-0620', name: 'Engineering Tools B2B Website', developer: 'Amit Shah', submitted: '26 Jun 2026', testDate: '28 Jun 2026', result: 'Approved', issues: '0 Open', status: 'Completed' }
-  ];
+  const historyRecords = projects.map(p => {
+    const status = getTesterDashboardStatus(p);
+    return {
+      id: p.id,
+      name: p.name,
+      developer: p.developer || p.developerName || 'Unassigned',
+      submitted: p.submittedDate || p.submissionDate || p.assignedDate || '—',
+      testDate: p.testDate || p.testingDate || '—',
+      result: status === 'Approved' || status === 'Completed' ? 'Approved' : (status === 'Revision Required' ? 'Changes Requested' : status),
+      issues: p.issuesFlagged !== undefined ? `${p.issuesFlagged} Defects` : '0 Open',
+      status: status
+    };
+  });
+
+  if (historyRecords.length === 0) {
+    return (
+      <div className="admin-projects-page-container">
+        <div className="portal-card">
+          <EmptyState
+            icon={History}
+            title="No QA Testing History"
+            description="Projects audited and tested by your QA account will appear in this history log."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-projects-page-container">
@@ -56,7 +77,7 @@ export default function TesterHistoryPage({
 
                   <td>
                     <span className={`qa-table-badge ${rec.result === 'Approved' ? 'badge-approved' : 'badge-revision'}`}>
-                      {rec.result === 'Approved' ? '✓ Approved' : '⚠ Changes Requested'}
+                      {rec.result === 'Approved' ? '✓ Approved' : rec.result}
                     </span>
                   </td>
 

@@ -46,10 +46,10 @@ export default function AssignmentModal({
   const currentDev = (developers || initialDevelopers).find(
     d => d.id === project?.developerId || d.name === project?.developer
   ) || {
-    id: project?.developerId || 'DEV-CURRENT',
-    name: project?.developer || 'Rahul Patel',
-    primarySkill: 'Frontend Developer',
-    experience: '4+ Years',
+    id: project?.developerId || '',
+    name: project?.developer || 'Unassigned',
+    primarySkill: 'Developer',
+    experience: '—',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
     activeProjectsCount: 0,
     availability: 'Available'

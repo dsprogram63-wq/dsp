@@ -721,7 +721,7 @@ export default function ReferralApplication({
                   name="fullName"
                   type="text"
                   className={`form-input ${touched.fullName && errors.fullName ? 'is-invalid' : touched.fullName && formData.fullName.trim() ? 'is-valid' : ''}`}
-                  placeholder={selectedRole === 'tester' ? 'e.g. Sneha Reddy' : 'e.g. Rahul Patel'}
+                  placeholder="e.g. John Doe"
                   value={formData.fullName}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -1068,7 +1068,7 @@ export default function ReferralApplication({
                     name="referenceName"
                     type="text"
                     className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : isRefVerified ? 'is-valid' : ''}`}
-                    placeholder={selectedRole === 'tester' ? 'e.g. Sneha Reddy' : 'e.g. Amit Patel'}
+                    placeholder="e.g. Verified Reference Name"
                     value={formData.referenceName}
                     onChange={handleChange}
                     onBlur={handleBlur}

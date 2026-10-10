@@ -132,11 +132,11 @@ export default function SubmittedProjectsPage({
                       </td>
 
                       <td>
-                        <strong style={{ color: '#0F172A' }}>{p.developer}</strong>
+                        <strong style={{ color: '#0F172A' }}>{p.developer || 'Unassigned'}</strong>
                       </td>
 
                       <td>
-                        <strong style={{ color: '#C2410C' }}>{p.tester || 'Sneha Reddy'}</strong>
+                        <strong style={{ color: '#C2410C' }}>{p.tester || 'Unassigned'}</strong>
                       </td>
 
                       <td style={{ color: '#64748B', whiteSpace: 'nowrap' }}>

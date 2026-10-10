@@ -145,14 +145,14 @@ export default function AdminTestingQueuePage({
                     <td className="dev-cell">
                       <div className="dev-info-pill">
                         <User size={13} className="dev-icon" />
-                        <span>{proj.developer}</span>
+                        <span>{proj.developer || 'Unassigned'}</span>
                       </div>
                     </td>
 
                     <td className="dev-cell">
                       <div className="dev-info-pill">
                         <ShieldCheck size={13} className="text-orange" />
-                        <strong>{proj.tester || 'Sneha Reddy'}</strong>
+                        <strong>{proj.tester || 'Unassigned'}</strong>
                       </div>
                     </td>
 

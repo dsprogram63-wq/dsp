@@ -87,8 +87,8 @@ export default function CreateProjectPage({
   const [finalDeliveryDate, setFinalDeliveryDate] = useState('2026-10-30');
 
   // SECTION 4 & 5: DEVELOPER & TESTER ASSIGNMENTS
-  const [selectedDevId, setSelectedDevId] = useState('DEV-101');
-  const [selectedTesterId, setSelectedTesterId] = useState('TST-201');
+  const [selectedDevId, setSelectedDevId] = useState(() => availableDevelopers[0]?.id || '');
+  const [selectedTesterId, setSelectedTesterId] = useState(() => availableTesters[0]?.id || '');
 
   // SECTION 6: DETAILED PROJECT REQUIREMENTS
   const [description, setDescription] = useState('');
@@ -300,8 +300,8 @@ export default function CreateProjectPage({
     if (!name.trim()) errors.push('Project Name is required.');
     if (!projectType) errors.push('Please select a project type.');
     if (!priority) errors.push('Please select a priority.');
-    if (!selectedDevId) errors.push('Please select a developer.');
-    if (!selectedTesterId) errors.push('Please select a tester.');
+    if (availableDevelopers.length > 0 && !selectedDevId) errors.push('Please select a developer.');
+    if (availableTesters.length > 0 && !selectedTesterId) errors.push('Please select a tester.');
     if (!description.trim()) errors.push('Project Description is required.');
     if (!clientReqs.trim()) errors.push('Client Requirement is required.');
     if (totalMilestoneWeight !== 100) errors.push('Milestone percentage must total exactly 100%.');
@@ -335,15 +335,15 @@ export default function CreateProjectPage({
       name: name,
       clientName: clientName,
       client: clientName || 'Corporate Client',
-      developer: dev ? dev.name : 'Rahul Patel',
-      developerId: dev ? dev.id : 'DEV-101',
-      developerEmail: dev ? dev.email : 'rahul.patel@dahejsupport.com',
-      developerSkill: dev ? dev.primarySkill : 'Full Stack Developer',
+      developer: dev ? dev.name : 'Unassigned',
+      developerId: dev ? dev.id : null,
+      developerEmail: dev ? dev.email : '',
+      developerSkill: dev ? dev.primarySkill : 'To Be Assigned',
       developerAvatar: dev ? dev.avatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
-      tester: tester ? tester.name : 'Sneha Reddy',
-      testerId: tester ? tester.id : 'TST-201',
-      testerEmail: tester ? tester.email : 'sneha.reddy@dahejsupport.com',
-      testerSpecialization: tester ? (tester.specialization || tester.role) : 'Lead QA Engineer',
+      tester: tester ? tester.name : 'Unassigned',
+      testerId: tester ? tester.id : null,
+      testerEmail: tester ? tester.email : '',
+      testerSpecialization: tester ? (tester.specialization || tester.role) : 'To Be Assigned',
       testerAvatar: tester ? tester.avatar : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
       projectType: projectType,
       category: projectType,
@@ -474,11 +474,11 @@ export default function CreateProjectPage({
       testingDocuments: [],
       testingActivity: [
         { event: 'Project Created by Master Admin', time: formatDateDisplay(assignedDate), by: 'Admin' },
-        { event: `Developer Assigned: ${dev ? dev.name : 'Rahul Patel'}`, time: formatDateDisplay(assignedDate), by: 'System' },
-        { event: `QA Tester Assigned: ${tester ? tester.name : 'Sneha Reddy'}`, time: formatDateDisplay(assignedDate), by: 'System' }
+        { event: `Developer Assigned: ${dev ? dev.name : 'Unassigned'}`, time: formatDateDisplay(assignedDate), by: 'System' },
+        { event: `QA Tester Assigned: ${tester ? tester.name : 'Unassigned'}`, time: formatDateDisplay(assignedDate), by: 'System' }
       ],
       assignmentHistory: [
-        { developer: dev ? dev.name : 'Rahul Patel', tester: tester ? tester.name : 'Sneha Reddy', assignedDate: formatDateDisplay(assignedDate), status: 'Project Created & Assigned', updated: 'Created by Admin' }
+        { developer: dev ? dev.name : 'Unassigned', tester: tester ? tester.name : 'Unassigned', assignedDate: formatDateDisplay(assignedDate), status: 'Project Created & Assigned', updated: 'Created by Admin' }
       ],
       submissionNotes: ''
     };
@@ -885,72 +885,92 @@ export default function CreateProjectPage({
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label className="field-label">Select Developer *</label>
-            <div className="dev-selection-grid">
-              {availableDevelopers.map((dev) => {
-                const isSelected = selectedDevId === dev.id;
-                const statusClass = dev.status === 'Deactivated' 
-                  ? 'inactive' 
-                  : dev.status === 'On Hold' 
-                    ? 'on-leave' 
-                    : dev.activeProjectsCount > 2 
-                      ? 'busy' 
-                      : dev.activeProjectsCount > 0 
-                        ? 'working' 
-                        : 'available';
-                
-                const displayStatus = dev.status === 'Deactivated'
-                  ? 'Inactive'
-                  : dev.status === 'On Hold'
-                    ? 'On Leave'
-                    : dev.activeProjectsCount > 2
-                      ? 'Busy'
-                      : dev.activeProjectsCount > 0
-                        ? 'Currently Working'
-                        : 'Available';
+            <label className="field-label">Select Developer {availableDevelopers.length > 0 ? '*' : '(Optional)'}</label>
+            {availableDevelopers.length > 0 ? (
+              <div className="dev-selection-grid">
+                {availableDevelopers.map((dev) => {
+                  const isSelected = selectedDevId === dev.id;
+                  const statusClass = dev.status === 'Deactivated' 
+                    ? 'inactive' 
+                    : dev.status === 'On Hold' 
+                      ? 'on-leave' 
+                      : dev.activeProjectsCount > 2 
+                        ? 'busy' 
+                        : dev.activeProjectsCount > 0 
+                          ? 'working' 
+                          : 'available';
+                  
+                  const displayStatus = dev.status === 'Deactivated'
+                    ? 'Inactive'
+                    : dev.status === 'On Hold'
+                      ? 'On Leave'
+                      : dev.activeProjectsCount > 2
+                        ? 'Busy'
+                        : dev.activeProjectsCount > 0
+                          ? 'Currently Working'
+                          : 'Available';
 
-                const formattedCount = dev.activeProjectsCount < 10 ? `0${dev.activeProjectsCount || 0}` : `${dev.activeProjectsCount}`;
+                  const formattedCount = dev.activeProjectsCount < 10 ? `0${dev.activeProjectsCount || 0}` : `${dev.activeProjectsCount}`;
 
-                return (
-                  <div
-                    key={dev.id}
-                    onClick={() => {
-                      if (dev.status !== 'Deactivated') {
-                        setSelectedDevId(dev.id);
-                      }
-                    }}
-                    className={`dev-select-card ${isSelected ? 'selected' : ''}`}
-                  >
-                    <img
-                      src={dev.avatar}
-                      alt={dev.name}
-                      className="dev-card-avatar"
-                    />
-                    <div className="dev-card-info">
-                      <div className="dev-card-name">{dev.name}</div>
-                      <div className="dev-card-skill">{dev.primarySkill}</div>
-                      <div className="dev-card-meta">
-                        <span>Active Projects: <strong>{formattedCount}</strong></span>
-                        <span>•</span>
-                        <span className={`dev-avail-tag ${statusClass}`}>
-                          ● {displayStatus}
-                        </span>
+                  return (
+                    <div
+                      key={dev.id}
+                      onClick={() => {
+                        if (dev.status !== 'Deactivated') {
+                          setSelectedDevId(dev.id);
+                        }
+                      }}
+                      className={`dev-select-card ${isSelected ? 'selected' : ''}`}
+                    >
+                      <img
+                        src={dev.avatar}
+                        alt={dev.name}
+                        className="dev-card-avatar"
+                      />
+                      <div className="dev-card-info">
+                        <div className="dev-card-name">{dev.name}</div>
+                        <div className="dev-card-skill">{dev.primarySkill}</div>
+                        <div className="dev-card-meta">
+                          <span>Active Projects: <strong>{formattedCount}</strong></span>
+                          <span>•</span>
+                          <span className={`dev-avail-tag ${statusClass}`}>
+                            ● {displayStatus}
+                          </span>
+                        </div>
                       </div>
+                      {isSelected && (
+                        <div className="dev-check-icon">
+                          <Check size={12} strokeWidth={3} />
+                          <span>Selected</span>
+                        </div>
+                      )}
                     </div>
-                    {isSelected && (
-                      <div className="dev-check-icon">
-                        <Check size={12} strokeWidth={3} />
-                        <span>Selected</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{
+                padding: '20px',
+                background: '#F8FAFC',
+                borderRadius: '8px',
+                border: '1px dashed #CBD5E1',
+                textAlign: 'center',
+                color: '#64748B',
+                fontSize: '0.88rem'
+              }}>
+                <Users size={24} color="#94A3B8" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
+                <strong style={{ color: '#1E293B', display: 'block' }}>No Developers Registered Yet</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem' }}>
+                  Developers can register via the Referral Application page. You can still create this project and assign a developer later.
+                </p>
+              </div>
+            )}
 
-            <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
-              Selected Developer: <strong style={{ color: '#0A3D75' }}>{currentDev?.name}</strong> ({currentDev?.primarySkill})
-            </div>
+            {availableDevelopers.length > 0 && (
+              <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
+                Selected Developer: <strong style={{ color: '#0A3D75' }}>{currentDev?.name || 'None'}</strong> {currentDev ? `(${currentDev.primarySkill})` : ''}
+              </div>
+            )}
           </div>
         </div>
 
@@ -972,73 +992,93 @@ export default function CreateProjectPage({
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label className="field-label">Select Tester *</label>
-            <div className="dev-selection-grid">
-              {availableTesters.map((t) => {
-                const isSelected = selectedTesterId === t.id;
-                const statusClass = t.status === 'Deactivated' 
-                  ? 'inactive' 
-                  : t.status === 'On Hold' 
-                    ? 'on-leave' 
-                    : (t.activeTestingProjects || 0) > 2 
-                      ? 'busy' 
-                      : (t.activeTestingProjects || 0) > 0 
-                        ? 'testing' 
-                        : 'available';
+            <label className="field-label">Select Tester {availableTesters.length > 0 ? '*' : '(Optional)'}</label>
+            {availableTesters.length > 0 ? (
+              <div className="dev-selection-grid">
+                {availableTesters.map((t) => {
+                  const isSelected = selectedTesterId === t.id;
+                  const statusClass = t.status === 'Deactivated' 
+                    ? 'inactive' 
+                    : t.status === 'On Hold' 
+                      ? 'on-leave' 
+                      : (t.activeTestingProjects || 0) > 2 
+                        ? 'busy' 
+                        : (t.activeTestingProjects || 0) > 0 
+                          ? 'testing' 
+                          : 'available';
 
-                const displayStatus = t.status === 'Deactivated'
-                  ? 'Inactive'
-                  : t.status === 'On Hold'
-                    ? 'On Leave'
-                    : (t.activeTestingProjects || 0) > 2
-                      ? 'Busy'
-                      : (t.activeTestingProjects || 0) > 0
-                        ? 'Currently Testing'
-                        : 'Available';
+                  const displayStatus = t.status === 'Deactivated'
+                    ? 'Inactive'
+                    : t.status === 'On Hold'
+                      ? 'On Leave'
+                      : (t.activeTestingProjects || 0) > 2
+                        ? 'Busy'
+                        : (t.activeTestingProjects || 0) > 0
+                          ? 'Currently Testing'
+                          : 'Available';
 
-                const count = t.activeTestingProjects || 0;
-                const formattedCount = count < 10 ? `0${count}` : `${count}`;
+                  const count = t.activeTestingProjects || 0;
+                  const formattedCount = count < 10 ? `0${count}` : `${count}`;
 
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => {
-                      if (t.status !== 'Deactivated') {
-                        setSelectedTesterId(t.id);
-                      }
-                    }}
-                    className={`dev-select-card ${isSelected ? 'selected tester-selected' : ''}`}
-                  >
-                    <img
-                      src={t.avatar}
-                      alt={t.name}
-                      className="dev-card-avatar"
-                    />
-                    <div className="dev-card-info">
-                      <div className="dev-card-name">{t.name}</div>
-                      <div className="dev-card-skill">{t.specialization || t.role}</div>
-                      <div className="dev-card-meta">
-                        <span>Active Testing Projects: <strong>{formattedCount}</strong></span>
-                        <span>•</span>
-                        <span className={`dev-avail-tag ${statusClass}`}>
-                          ● {displayStatus}
-                        </span>
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        if (t.status !== 'Deactivated') {
+                          setSelectedTesterId(t.id);
+                        }
+                      }}
+                      className={`dev-select-card ${isSelected ? 'selected tester-selected' : ''}`}
+                    >
+                      <img
+                        src={t.avatar}
+                        alt={t.name}
+                        className="dev-card-avatar"
+                      />
+                      <div className="dev-card-info">
+                        <div className="dev-card-name">{t.name}</div>
+                        <div className="dev-card-skill">{t.specialization || t.role}</div>
+                        <div className="dev-card-meta">
+                          <span>Active Testing Projects: <strong>{formattedCount}</strong></span>
+                          <span>•</span>
+                          <span className={`dev-avail-tag ${statusClass}`}>
+                            ● {displayStatus}
+                          </span>
+                        </div>
                       </div>
+                      {isSelected && (
+                        <div className="dev-check-icon tester-check">
+                          <Check size={12} strokeWidth={3} />
+                          <span>Selected</span>
+                        </div>
+                      )}
                     </div>
-                    {isSelected && (
-                      <div className="dev-check-icon tester-check">
-                        <Check size={12} strokeWidth={3} />
-                        <span>Selected</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{
+                padding: '20px',
+                background: '#F8FAFC',
+                borderRadius: '8px',
+                border: '1px dashed #CBD5E1',
+                textAlign: 'center',
+                color: '#64748B',
+                fontSize: '0.88rem'
+              }}>
+                <ShieldCheck size={24} color="#94A3B8" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
+                <strong style={{ color: '#1E293B', display: 'block' }}>No QA Testers Registered Yet</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem' }}>
+                  QA Testers can register via the Referral Application page. You can still create this project and assign a tester later.
+                </p>
+              </div>
+            )}
 
-            <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
-              Selected Tester: <strong style={{ color: '#F3821D' }}>{currentTester?.name}</strong> ({currentTester?.specialization || currentTester?.role})
-            </div>
+            {availableTesters.length > 0 && (
+              <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
+                Selected Tester: <strong style={{ color: '#F3821D' }}>{currentTester?.name || 'None'}</strong> {currentTester ? `(${currentTester.specialization || currentTester.role})` : ''}
+              </div>
+            )}
           </div>
         </div>
 

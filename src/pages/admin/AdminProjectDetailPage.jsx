@@ -171,11 +171,11 @@ export default function AdminProjectDetailPage({
   };
 
   // Find dynamic details for assigned developer
-  const currentDevObj = (developers || initialDevelopers).find(
+  const currentDevObj = (developers || []).find(
     d => d.id === project.developerId || d.name === project.developer
   ) || {
-    id: project.developerId || 'DEV-101',
-    name: project.developer || 'Rahul Patel',
+    id: project.developerId || '—',
+    name: project.developer || 'Unassigned',
     primarySkill: project.developerSkill || 'Frontend Developer',
     avatar: project.developerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
     activeProjectsCount: 0,
@@ -190,11 +190,11 @@ export default function AdminProjectDetailPage({
     : (currentDevObj.availability || 'Available');
 
   // Find dynamic details for assigned tester
-  const currentTesterObj = (testers || initialTesters).find(
-    t => t.id === project.testerId || t.name === (project.tester || 'Sneha Reddy')
+  const currentTesterObj = (testers || []).find(
+    t => t.id === project.testerId || t.name === project.tester
   ) || {
-    id: project.testerId || 'TST-201',
-    name: project.tester || 'Sneha Reddy',
+    id: project.testerId || '—',
+    name: project.tester || 'Unassigned',
     specialization: project.testerSpecialization || 'Lead QA Engineer',
     avatar: project.testerAvatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
     activeTestingProjects: 0,
@@ -213,7 +213,7 @@ export default function AdminProjectDetailPage({
       ...(project.assignmentHistory || []),
       { 
         developer: assignData.developer, 
-        tester: project.tester || 'Sneha Reddy', 
+        tester: project.tester || 'Unassigned', 
         assignedDate: assignData.assignedDate, 
         status: 'Developer Reassigned', 
         updated: assignData.note || `Developer changed to ${assignData.developer}` 
@@ -753,7 +753,7 @@ export default function AdminProjectDetailPage({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', background: '#F8FAFC', padding: '1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
               <div>
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', display: 'block' }}>ASSIGNED QA TESTER</span>
-                <strong style={{ fontSize: '0.92rem', color: '#07223D' }}>{project.tester || 'Sneha Reddy'}</strong>
+                <strong style={{ fontSize: '0.92rem', color: '#07223D' }}>{project.tester || 'Unassigned'}</strong>
                 <span style={{ fontSize: '0.72rem', color: '#F3821D', display: 'block' }}>Lead QA Specialist</span>
               </div>
               <div>
@@ -792,8 +792,8 @@ export default function AdminProjectDetailPage({
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#07223D', fontWeight: 800 }}>Testing Activity Timeline</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {(project.testingActivity || [
-                  { event: 'Project submitted by Developer', time: '02 Oct 2026', by: project.developer },
-                  { event: 'QA Tester Sneha Reddy started testing', time: '03 Oct 2026', by: 'Sneha Reddy' }
+                  { event: 'Project submitted by Developer', time: project.submittedDate || '—', by: project.developer || 'Developer' },
+                  { event: `QA Tester ${project.tester || 'Unassigned'} started testing`, time: project.submittedDate || '—', by: project.tester || 'QA Tester' }
                 ]).map((act, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F3821D', marginTop: '0.3rem', flexShrink: 0 }} />
@@ -1340,7 +1340,7 @@ export default function AdminProjectDetailPage({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <ShieldCheck size={18} color="#C2410C" />
                 <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#9A3412', fontWeight: 800 }}>
-                  Assigned QA Tester: {project.tester || 'Sneha Reddy'}
+                  Assigned QA Tester: {project.tester || 'Unassigned'}
                 </h4>
               </div>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#7C2D12' }}>
@@ -1363,13 +1363,13 @@ export default function AdminProjectDetailPage({
 
           <div className="assignment-timeline">
             {(project.assignmentHistory || [
-              { developer: project.developer, tester: project.tester || 'Sneha Reddy', assignedDate: project.assignedDate, status: 'Project Created & Assigned', updated: 'Initial assignment by Admin' }
+              { developer: project.developer || 'Unassigned', tester: project.tester || 'Unassigned', assignedDate: project.assignedDate, status: 'Project Created & Assigned', updated: 'Initial assignment by Admin' }
             ]).map((h, i) => (
               <div key={i} className="timeline-entry">
                 <div className="timeline-node" />
                 <div className="timeline-body">
                   <div className="timeline-top">
-                    <strong>Developer: {h.developer} • QA Tester: {h.tester || 'Sneha Reddy'}</strong>
+                    <strong>Developer: {h.developer || 'Unassigned'} • QA Tester: {h.tester || 'Unassigned'}</strong>
                     <span className="timeline-date">{h.assignedDate}</span>
                   </div>
                   <div className="timeline-status-tag">{h.status}</div>

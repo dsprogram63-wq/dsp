@@ -32,45 +32,45 @@ export default function FreelancerLogin({
   // View Mode: 'login' | 'forgot'
   const [viewMode, setViewMode] = useState('login');
 
-  // Role-specific default credentials
-  const savedDev = (() => {
+  // Stored developers and testers pools
+  const allStoredDevs = (() => {
     try {
-      const s = localStorage.getItem('dahej_freelancer_profile');
+      const s = localStorage.getItem('dahej_real_v2_developers');
       if (s) return JSON.parse(s);
     } catch (e) {}
-    return null;
+    return initialDevelopers || [];
   })();
 
-  const savedTester = (() => {
+  const allStoredTesters = (() => {
     try {
-      const s = localStorage.getItem('dahej_tester_profile');
+      const s = localStorage.getItem('dahej_real_v2_testers');
       if (s) return JSON.parse(s);
     } catch (e) {}
-    return null;
+    return initialTesters || [];
   })();
 
   const demoAccounts = {
     freelancer: {
-      email: savedDev?.email || 'rahul.patel@dahejsupport.com',
+      email: savedDev?.email || allStoredDevs[0]?.email || '',
       password: 'dev123',
-      name: savedDev?.fullName || savedDev?.name || 'Rahul Patel',
-      id: savedDev?.freelancerId || savedDev?.id || 'DEV-101',
+      name: savedDev?.fullName || savedDev?.name || allStoredDevs[0]?.name || 'Developer',
+      id: savedDev?.freelancerId || savedDev?.id || allStoredDevs[0]?.id || '',
       roleTitle: 'The HIT Support Developer Program',
       dashboardRoute: 'portal/dashboard'
     },
     tester: {
-      email: savedTester?.email || 'sneha.qa@dahejsupport.com',
+      email: savedTester?.email || allStoredTesters[0]?.email || '',
       password: 'tester123',
-      name: savedTester?.fullName || savedTester?.name || 'Sneha Reddy',
-      id: savedTester?.testerId || savedTester?.id || 'TST-201',
+      name: savedTester?.fullName || savedTester?.name || allStoredTesters[0]?.name || 'QA Tester',
+      id: savedTester?.testerId || savedTester?.id || allStoredTesters[0]?.id || '',
       roleTitle: 'The HIT Support Tester Program',
       dashboardRoute: 'tester/dashboard'
     }
   };
 
   // Login Form States
-  const [identifier, setIdentifier] = useState(demoAccounts[defaultRole]?.email || 'rahul.patel@dahejsupport.com');
-  const [password, setPassword] = useState(demoAccounts[defaultRole]?.password || 'dev123');
+  const [identifier, setIdentifier] = useState(() => demoAccounts[defaultRole]?.email || '');
+  const [password, setPassword] = useState(() => demoAccounts[defaultRole]?.email ? (demoAccounts[defaultRole]?.password || 'dev123') : '');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -193,7 +193,7 @@ export default function FreelancerLogin({
     // Load active pool of developers & testers from localStorage
     const allStoredDevs = (() => {
       try {
-        const s = localStorage.getItem('dahej_developers');
+        const s = localStorage.getItem('dahej_real_v2_developers');
         if (s) return JSON.parse(s);
       } catch (e) {}
       return initialDevelopers;
@@ -201,7 +201,7 @@ export default function FreelancerLogin({
 
     const allStoredTesters = (() => {
       try {
-        const s = localStorage.getItem('dahej_testers');
+        const s = localStorage.getItem('dahej_real_v2_testers');
         if (s) return JSON.parse(s);
       } catch (e) {}
       return initialTesters;
@@ -218,7 +218,7 @@ export default function FreelancerLogin({
         matchedUser = {
           name: savedDev.fullName || savedDev.name,
           email: savedDev.email,
-          id: savedDev.freelancerId || savedDev.id || 'DEV-101',
+          id: savedDev.freelancerId || savedDev.id || '',
           roleTitle: savedDev.program || 'The HIT Support Developer Program',
           avatar: savedDev.avatar
         };
@@ -256,7 +256,7 @@ export default function FreelancerLogin({
         matchedUser = {
           name: savedTester.fullName || savedTester.name,
           email: savedTester.email,
-          id: savedTester.testerId || savedTester.id || 'TST-201',
+          id: savedTester.testerId || savedTester.id || '',
           roleTitle: savedTester.program || 'The HIT Support Tester Program',
           avatar: savedTester.avatar
         };
@@ -574,45 +574,57 @@ export default function FreelancerLogin({
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {isFreelancer ? (
-                    initialDevelopers.slice(0, 4).map(d => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => handleSelectSpecificUser('freelancer', d)}
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          border: identifier === d.email ? '1.5px solid #0A3D75' : '1px solid #CBD5E1',
-                          background: identifier === d.email ? '#EBF3FA' : '#FFFFFF',
-                          color: '#0A3D75',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {d.name} ({d.id})
-                      </button>
-                    ))
+                    allStoredDevs.length > 0 ? (
+                      allStoredDevs.slice(0, 4).map(d => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => handleSelectSpecificUser('freelancer', d)}
+                          style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: identifier === d.email ? '1.5px solid #0A3D75' : '1px solid #CBD5E1',
+                            background: identifier === d.email ? '#EBF3FA' : '#FFFFFF',
+                            color: '#0A3D75',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {d.name} ({d.id})
+                        </button>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
+                        No developers registered yet. (Register via Referral Application)
+                      </span>
+                    )
                   ) : (
-                    initialTesters.slice(0, 4).map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectSpecificUser('tester', t)}
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          border: identifier === t.email ? '1.5px solid #F3821D' : '1px solid #CBD5E1',
-                          background: identifier === t.email ? '#FFF7ED' : '#FFFFFF',
-                          color: '#C2410C',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {t.name} ({t.id})
-                      </button>
-                    ))
+                    allStoredTesters.length > 0 ? (
+                      allStoredTesters.slice(0, 4).map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleSelectSpecificUser('tester', t)}
+                          style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: identifier === t.email ? '1.5px solid #F3821D' : '1px solid #CBD5E1',
+                            background: identifier === t.email ? '#FFF7ED' : '#FFFFFF',
+                            color: '#C2410C',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.name} ({t.id})
+                        </button>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
+                        No testers registered yet. (Register via Referral Application)
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -647,7 +659,7 @@ export default function FreelancerLogin({
                     id="identifier"
                     type="email"
                     className="login-input-field"
-                    placeholder={isFreelancer ? "rahul.patel@dahejsupport.com" : "sneha.qa@dahejsupport.com"}
+                    placeholder={isFreelancer ? "e.g. developer@dahejsupport.com" : "e.g. tester@dahejsupport.com"}
                     value={identifier}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
