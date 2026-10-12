@@ -247,7 +247,9 @@ export default function DeveloperDetailPage({
               <span>•</span>
               <span><Calendar size={13} /> Registered {developer.joiningDate}</span>
               <span>•</span>
-              <span>Referrer / ID: <strong>{developer.referenceName || 'Direct Onboarding'}</strong></span>
+              <span>Referrer: <strong>{developer.referenceName || 'Direct Onboarding'}</strong></span>
+              <span>•</span>
+              <span>Referral Code: <strong style={{ color: '#0A3D75', fontFamily: 'monospace', background: '#E8F2FC', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{developer.referralCode || 'DS-REF-8902'}</strong></span>
             </div>
           </div>
         </div>
@@ -259,7 +261,7 @@ export default function DeveloperDetailPage({
           <Clock size={18} color="#D97706" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <strong>Developer Registration Pending:</strong> This developer has registered via reference and is awaiting Admin review and approval.
+              <strong>Developer Registration Pending:</strong> Awaiting Admin review & approval. Referrer: <strong>{developer.referenceName || 'Direct'}</strong> • Code: <strong style={{ color: '#0A3D75', fontFamily: 'monospace', background: '#E8F2FC', padding: '1px 6px', borderRadius: '4px' }}>{developer.referralCode || 'DS-REF-8902'}</strong>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button 

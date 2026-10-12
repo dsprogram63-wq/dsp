@@ -172,6 +172,7 @@ export default function DevelopersPage({
       { label: 'Pending Payouts', key: (d) => d.pendingPayouts || '₹0' },
       { label: 'Rating', key: (d) => d.rating || '—' },
       { label: 'Reference / Referrer', key: (d) => d.referenceName || '—' },
+      { label: 'Referral Code', key: (d) => d.referralCode || '—' },
       { label: 'Registration Date', key: (d) => d.joiningDate || '—' }
     ];
 
@@ -337,9 +338,12 @@ export default function DevelopersPage({
                       <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{dev.mobile}</div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 700, color: '#0A3D75', fontSize: '0.82rem' }}>
+                      <div style={{ fontWeight: 700, color: '#0A3D75', fontSize: '0.82rem' }}>
                         {dev.referenceName || 'Direct Reference'}
-                      </span>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '2px' }}>
+                        Code: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0A3D75', background: '#E8F2FC', padding: '1px 5px', borderRadius: '4px' }}>{dev.referralCode || 'DS-REF-8902'}</span>
+                      </div>
                     </td>
                     <td style={{ color: '#64748B', fontSize: '0.82rem' }}>
                       {dev.joiningDate || 'Recently'}

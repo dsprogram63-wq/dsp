@@ -217,7 +217,9 @@ export default function TesterDetailPage({
               <span>•</span>
               <span><Calendar size={13} /> Registered {t.joiningDate}</span>
               <span>•</span>
-              <span>Referrer / ID: <strong>{t.referenceName || 'Direct Onboarding'}</strong></span>
+              <span>Referrer: <strong>{t.referenceName || 'Direct Onboarding'}</strong></span>
+              <span>•</span>
+              <span>Referral Code: <strong style={{ color: '#F3821D', fontFamily: 'monospace', background: '#FFF7ED', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{t.referralCode || 'DS-TST-201'}</strong></span>
             </div>
           </div>
         </div>
@@ -229,7 +231,7 @@ export default function TesterDetailPage({
           <Clock size={18} color="#D97706" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <strong>Tester Registration Pending:</strong> This QA specialist has registered via reference and is awaiting Admin review and approval.
+              <strong>Tester Registration Pending:</strong> Awaiting Admin review & approval. Referrer: <strong>{t.referenceName || 'Direct'}</strong> • Code: <strong style={{ color: '#F3821D', fontFamily: 'monospace', background: '#FFF7ED', padding: '1px 6px', borderRadius: '4px' }}>{t.referralCode || 'DS-TST-201'}</strong>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button 

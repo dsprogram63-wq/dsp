@@ -167,6 +167,7 @@ export default function TestersPage({
       { label: 'Pending Payouts', key: (t) => t.pendingPayouts || '₹0' },
       { label: 'Rating', key: (t) => t.rating || '—' },
       { label: 'Reference / Referrer', key: (t) => t.referenceName || '—' },
+      { label: 'Referral Code', key: (t) => t.referralCode || '—' },
       { label: 'Registration Date', key: (t) => t.joiningDate || '—' }
     ];
 
@@ -332,9 +333,12 @@ export default function TestersPage({
                       <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{tester.mobile}</div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 700, color: '#0A3D75', fontSize: '0.82rem' }}>
+                      <div style={{ fontWeight: 700, color: '#0A3D75', fontSize: '0.82rem' }}>
                         {tester.referenceName || 'Direct Reference'}
-                      </span>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '2px' }}>
+                        Code: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', padding: '1px 5px', borderRadius: '4px' }}>{tester.referralCode || 'DS-TST-201'}</span>
+                      </div>
                     </td>
                     <td style={{ color: '#64748B', fontSize: '0.82rem' }}>
                       {tester.joiningDate || 'Recently'}
