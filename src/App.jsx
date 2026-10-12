@@ -168,8 +168,15 @@ export default function App() {
       return { page: 'admin', subView: 'dashboard' };
     }
     
+    // ================= LOGIN ROUTES =================
+    if (path.includes('freelancer-login') || path.includes('tester-login') || path === '/login' || path.startsWith('/login')) {
+      const isTester = path.includes('tester') || window.location.search.includes('role=tester') || window.location.search.includes('tester');
+      const defaultRole = isTester ? 'tester' : 'freelancer';
+      return { page: 'login', subView: null, defaultRole };
+    }
+
     // ================= FREELANCER PORTAL ROUTES =================
-    if (path.startsWith('/freelancer') || path.startsWith('/portal')) {
+    if (path.startsWith('/freelancer/') || path === '/freelancer' || path.startsWith('/portal')) {
       if (path.includes('completed-projects')) return { page: 'portal', subView: 'completed-projects' };
       if (path.includes('active-projects')) return { page: 'portal', subView: 'active-projects' };
       if (path.includes('history')) return { page: 'portal', subView: 'history' };
@@ -186,10 +193,6 @@ export default function App() {
       return { page: 'portal', subView: 'dashboard' };
     }
 
-    if (path.includes('login') || path.includes('freelancer-login')) {
-      const defaultRole = path.includes('tester') ? 'tester' : 'freelancer';
-      return { page: 'login', subView: null, defaultRole };
-    }
     if (path.includes('apply')) {
       const defaultRole = (path.includes('tester') || window.location.search.includes('role=tester') || window.location.search.includes('tester')) ? 'tester' : 'developer';
       return { page: 'apply', subView: null, defaultRole };
@@ -205,7 +208,7 @@ export default function App() {
       // Unconditionally wipe all legacy mock storage keys
       const legacyKeys = [
         'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
-        'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile', 'dahej_auth_session'
+        'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile'
       ];
       legacyKeys.forEach(k => {
         try { localStorage.removeItem(k); } catch (e) {}
@@ -271,7 +274,7 @@ export default function App() {
     // Delete legacy keys from localStorage
     const legacyKeys = [
       'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
-      'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile', 'dahej_auth_session'
+      'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile'
     ];
     legacyKeys.forEach(k => {
       try { localStorage.removeItem(k); } catch (e) {}
@@ -999,7 +1002,7 @@ export default function App() {
   // ==================== TESTER PANEL VIEW ====================
   if (routeState.page === 'tester') {
     // If not authenticated as tester or admin, prompt with Tester login
-    if (authSession && authSession.role !== 'tester' && authSession.role !== 'admin') {
+    if (!authSession || (authSession.role !== 'tester' && authSession.role !== 'admin')) {
       return (
         <FreelancerLogin 
           onNavigate={navigateTo} 
@@ -1344,7 +1347,7 @@ export default function App() {
   // ==================== FREELANCER PORTAL VIEW ====================
   if (routeState.page === 'portal') {
     // If not authenticated as freelancer or admin, prompt with Freelancer login
-    if (authSession && authSession.role !== 'freelancer' && authSession.role !== 'admin') {
+    if (!authSession || (authSession.role !== 'freelancer' && authSession.role !== 'admin')) {
       return (
         <FreelancerLogin 
           onNavigate={navigateTo} 
