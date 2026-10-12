@@ -62,7 +62,7 @@ export default function ProjectReviewPage({
   const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
   const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
   const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
-  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
+  const isRevision = !isTesterFinalized && !isAdminApproved && Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
 
   // 1. Developer is submitted ONLY when developer has finished work and submitted
   const isDevSubmitted = Boolean(

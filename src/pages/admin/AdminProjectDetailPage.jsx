@@ -235,7 +235,17 @@ export default function AdminProjectDetailPage({
     Boolean(project.adminApprovedAt)
   );
 
-  const isRevision = Boolean(
+  const isFinalizedOrApproved = Boolean(
+    project.testerFinalized ||
+    project.qaFinalized ||
+    project.adminApproved ||
+    statusLower === 'finalized' ||
+    statusLower === 'approved' ||
+    statusLower === 'completed' ||
+    testingStatusLower === 'tester approved'
+  );
+
+  const isRevision = !isFinalizedOrApproved && Boolean(
     testingStatusLower === 'changes requested' || 
     statusLower === 'revision required' || 
     project.adminRejected

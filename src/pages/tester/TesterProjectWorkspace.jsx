@@ -135,9 +135,28 @@ export default function TesterProjectWorkspace({
 
   // Derive exact single lifecycle state
   const currentStatus = getTesterDashboardStatus(project);
-  const isFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
-  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
-  const isRevision = Boolean(project.adminRejected || project.status === 'Changes Requested' || project.testingStatus === 'Changes Requested' || currentStatus === 'Revision Required');
+  const isFinalized = Boolean(
+    project.testerFinalized || 
+    project.qaFinalized || 
+    project.testingStatus === 'Tester Approved' || 
+    project.testingStatus === 'Finalized' || 
+    project.status === 'Finalized' || 
+    currentStatus === 'Finalized'
+  );
+  const isAdminApproved = Boolean(
+    project.adminApproved || 
+    project.status === 'Approved' || 
+    project.status === 'Completed' || 
+    currentStatus === 'Approved' || 
+    currentStatus === 'Completed'
+  );
+  const isRevision = !isFinalized && !isAdminApproved && Boolean(
+    project.adminRejected || 
+    project.status === 'Changes Requested' || 
+    project.status === 'Revision Required' || 
+    project.testingStatus === 'Changes Requested' || 
+    currentStatus === 'Revision Required'
+  );
   const isDevSubmitted = Boolean(project.developerSubmitted || project.freelancerSubmitted || project.status === 'Submitted' || project.status === 'Under Review' || isFinalized || isAdminApproved);
   const isQAStarted = Boolean(project.testerStarted || project.qaStarted || project.testingProgress > 0 || project.status === 'Under Review');
 
@@ -353,6 +372,13 @@ export default function TesterProjectWorkspace({
       testerFinalized: true,
       testerFinalizedAt: new Date().toISOString(),
       adminApproved: false,
+      adminRejected: false,
+      adminRejectedAt: null,
+      adminRejectionComment: null,
+      adminRejectionDocument: null,
+      adminFeedback: null,
+      revisionReason: null,
+      revisionTask: null,
       testingActivity: [
         { event: `QA Testing Finalized by ${project.tester || 'QA Tester'} — Sent to Admin for Final Review`, time: 'Just now', by: project.tester || 'QA Tester' },
         ...(project.testingActivity || [])

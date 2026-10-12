@@ -7,10 +7,18 @@ export default function TesterRevisionRequiredPage({
   onOpenProject 
 }) {
   const revisionProjects = projects.filter(p => 
-    p.status === 'Revision Required' || 
-    p.status === 'Changes Requested' ||
-    p.testingStatus === 'Changes Requested' ||
-    p.adminRejected === true
+    !p.testerFinalized &&
+    !p.qaFinalized &&
+    p.status !== 'Finalized' &&
+    p.status !== 'Approved' &&
+    p.status !== 'Completed' &&
+    p.testingStatus !== 'Tester Approved' &&
+    (
+      p.status === 'Revision Required' || 
+      p.status === 'Changes Requested' ||
+      p.testingStatus === 'Changes Requested' ||
+      p.adminRejected === true
+    )
   );
 
   return (

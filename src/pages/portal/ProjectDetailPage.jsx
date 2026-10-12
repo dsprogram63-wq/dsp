@@ -357,8 +357,20 @@ export default function ProjectDetailPage({
   const hasLiveLink = Boolean(liveProjectLink && liveProjectLink.trim().length > 0);
   const hasDriveLink = Boolean(driveProjectLink && driveProjectLink.trim().length > 0);
 
-  // Check if QA tester or Admin has requested changes / rework
-  const hasReworkRequested = Boolean(
+  // Check if QA tester or Admin has requested changes / rework (Only when not finalized or approved)
+  const isFinalizedOrApproved = Boolean(
+    project.testerFinalized ||
+    project.qaFinalized ||
+    project.adminApproved ||
+    project.status === 'Finalized' ||
+    project.status === 'Approved' ||
+    project.status === 'Completed' ||
+    currentStatus === 'Finalized' ||
+    currentStatus === 'Approved' ||
+    currentStatus === 'Completed'
+  );
+
+  const hasReworkRequested = !isFinalizedOrApproved && Boolean(
     project.adminRejected === true || 
     project.status === 'Revision Required' || 
     project.status === 'Changes Requested' || 

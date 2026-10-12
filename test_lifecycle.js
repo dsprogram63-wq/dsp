@@ -232,14 +232,45 @@ const adminRejectedProject = {
   adminRejectionComment: 'Homepage banner needs to be redesigned. Mobile navigation is still incorrect.',
   adminRejectionDocument: { name: 'Revision_Specifications.pdf', size: '1.2 MB' },
   testerFinalized: false,
-  status: 'Changes Requested'
+  qaFinalized: false,
+  developerSubmitted: false,
+  freelancerSubmitted: false,
+  status: 'Changes Requested',
+  testingStatus: 'Changes Requested'
 };
 assert(getFreelancerProjectStatus(adminRejectedProject) === 'Revision Required', 'Developer sees Revision Required');
 assert(getAdminProjectStatus(adminRejectedProject) === 'Changes Requested', 'Admin sees Changes Requested');
 
 console.log('\n--- TEST 9: Developer Resubmits -> QA Finalizes -> Admin Approves ---');
+// 1. Post-Revision QA Finalization overrides prior admin rejection
+const reFinalizedProject = {
+  ...adminRejectedProject,
+  status: 'Finalized',
+  testingStatus: 'Tester Approved',
+  testingProgress: 100,
+  testerFinalized: true,
+  qaFinalized: true,
+  adminRejected: false
+};
+assert(getFreelancerProjectStatus(reFinalizedProject) === 'Finalized', 'Developer sees Finalized after rework is QA finalized');
+assert(getTesterDashboardStatus(reFinalizedProject) === 'Finalized', 'Tester sees Finalized after rework is QA finalized');
+assert(getAdminProjectStatus(reFinalizedProject) === 'Pending Approval', 'Admin sees Pending Approval after rework is QA finalized');
+
+const reFinalizedWithLingeringFlag = {
+  ...adminRejectedProject,
+  status: 'Finalized',
+  testingStatus: 'Tester Approved',
+  testerFinalized: true,
+  qaFinalized: true,
+  adminRejected: true // Even if lingering flag exists, finalization strictly takes precedence!
+};
+assert(getFreelancerProjectStatus(reFinalizedWithLingeringFlag) === 'Finalized', 'Developer sees Finalized even if lingering adminRejected flag exists');
+assert(getTesterDashboardStatus(reFinalizedWithLingeringFlag) === 'Finalized', 'Tester sees Finalized even if lingering adminRejected flag exists');
+assert(getAdminProjectStatus(reFinalizedWithLingeringFlag) === 'Pending Approval', 'Admin sees Pending Approval even if lingering adminRejected flag exists');
+
+// 2. Admin Approves Finalized Project
 const adminApprovedProject = {
-  ...testerFinalizedProject,
+  ...reFinalizedProject,
   adminApproved: true,
   adminApprovedAt: new Date().toISOString(),
   adminRejected: false,

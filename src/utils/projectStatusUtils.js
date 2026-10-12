@@ -197,12 +197,7 @@ export function getFreelancerProjectStatus(p) {
     return 'Approved';
   }
 
-  // 2. Check Admin Rejection / Changes Requested
-  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
-    return 'Revision Required';
-  }
-
-  // 3. Check QA Finalization (QA tester passed all checklist items and clicked Finalize)
+  // 2. Check QA Finalization (QA tester passed all checklist items and clicked Finalize)
   const isQAFinalized = Boolean(
     p.qaFinalized === true || 
     p.testerFinalized === true ||
@@ -213,6 +208,11 @@ export function getFreelancerProjectStatus(p) {
 
   if (isQAFinalized) {
     return 'Finalized';
+  }
+
+  // 3. Check Admin Rejection / Changes Requested (Only if not finalized)
+  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
+    return 'Revision Required';
   }
 
   // 4. Check QA Review Underway
@@ -295,12 +295,7 @@ export function getTesterDashboardStatus(p) {
     return 'Approved';
   }
 
-  // 2. Check Admin Rejection
-  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
-    return 'Revision Required';
-  }
-
-  // 3. Check Tester Finalization
+  // 2. Check Tester Finalization (Checked before rejection so finalized projects are Finalized)
   const isFinalized = Boolean(
     p.testerFinalized === true ||
     p.qaFinalized === true ||
@@ -311,6 +306,11 @@ export function getTesterDashboardStatus(p) {
 
   if (isFinalized) {
     return 'Finalized';
+  }
+
+  // 3. Check Admin Rejection (Only if not finalized)
+  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
+    return 'Revision Required';
   }
 
   // 4. Check QA Started
@@ -365,12 +365,14 @@ export function getAdminProjectStatus(p) {
     return 'Approved';
   }
 
-  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
-    return 'Changes Requested';
-  }
-
+  // 2. Check QA Finalized (Checked before rejection so finalized projects move to Pending Approval)
   if (p.testerFinalized === true || p.qaFinalized === true || s === 'finalized' || ts === 'finalized' || ts === 'tester approved') {
     return 'Pending Approval';
+  }
+
+  // 3. Check Admin Rejection
+  if (p.adminRejected === true || s === 'changes requested' || s === 'revision required' || ts === 'changes requested') {
+    return 'Changes Requested';
   }
 
   if (p.testerStarted === true || p.qaStarted === true || s === 'under review' || ts === 'in testing' || ts === 'under review') {
