@@ -449,6 +449,26 @@ assert(hetviVisibleProjs.length === 1, 'Hetvi tester dashboard has exactly 1 pro
 const otherTesterVisibleProjs = getAuthenticatedTesterProjects(otherTesterAuth, [projectAssignedToPatelHet]);
 assert(otherTesterVisibleProjs.length === 0, 'Other tester dashboard has 0 projects (Completely isolated)');
 
+console.log('\n--- TEST 15: Finalized Project Reassignment Locking ---');
+function canReassignRoles(project) {
+  const isFinalizedOrLocked = Boolean(
+    project.testerFinalized ||
+    project.qaFinalized ||
+    project.testingStatus === 'Tester Approved' ||
+    project.testingStatus === 'Finalized' ||
+    project.status === 'Finalized' ||
+    project.status === 'Approved' ||
+    project.status === 'Completed' ||
+    project.adminApproved
+  );
+  return !isFinalizedOrLocked;
+}
+
+assert(canReassignRoles(sampleAdminProject) === true, 'Pending project allows developer and tester reassignment');
+assert(canReassignRoles(devStartedProject) === true, 'Active project allows developer and tester reassignment');
+assert(canReassignRoles(testerFinalizedProject) === false, 'Finalized project STRICTLY PREVENTS developer and tester reassignment');
+assert(canReassignRoles(adminApprovedProject) === false, 'Approved project STRICTLY PREVENTS developer and tester reassignment');
+
 console.log('================================================================');
 console.log(`🎉 TEST SUMMARY: ${passedTests}/${totalTests} TESTS PASSED!`);
 console.log('================================================================');

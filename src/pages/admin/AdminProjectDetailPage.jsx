@@ -208,7 +208,22 @@ export default function AdminProjectDetailPage({
     ? (currentTesterActiveCount > 0 ? 'Busy' : 'Available')
     : (currentTesterObj.availability || 'Available');
 
+  const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
+  const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
+
+  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.testingStatus === 'Finalized' || project.status === 'Finalized');
+  const isTesterApproved = Boolean(project.testingStatus === 'Tester Approved' || isTesterFinalized);
+  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
+  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
+  const isFinalizedOrLocked = Boolean(isTesterFinalized || isTesterApproved || isAdminApproved || project.status === 'Finalized' || project.status === 'Approved' || project.status === 'Completed');
+
   const handleAssignDeveloper = (assignData) => {
+    if (isFinalizedOrLocked) {
+      showToast('Cannot reassign developer: Project is already finalized or completed.');
+      setIsAssignDevModalOpen(false);
+      return;
+    }
+
     const updatedHistory = [
       ...(project.assignmentHistory || []),
       { 
@@ -234,6 +249,12 @@ export default function AdminProjectDetailPage({
   };
 
   const handleAssignTester = (testerData) => {
+    if (isFinalizedOrLocked) {
+      showToast('Cannot change QA tester: Project is already finalized or completed.');
+      setIsAssignTesterModalOpen(false);
+      return;
+    }
+
     const updatedHistory = [
       ...(project.assignmentHistory || []),
       { 
@@ -256,14 +277,6 @@ export default function AdminProjectDetailPage({
     });
     showToast(`QA Tester changed to ${testerData.tester}`);
   };
-
-  const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
-  const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
-
-  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
-  const isTesterApproved = Boolean(project.testingStatus === 'Tester Approved' || isTesterFinalized);
-  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
-  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
 
   // 1. Developer is submitted ONLY when developer has completed milestone work and formally submitted
   const isDevSubmitted = Boolean(
@@ -411,24 +424,29 @@ export default function AdminProjectDetailPage({
         </button>
 
         <div className="admin-detail-header-actions">
-          <button
-            type="button"
-            className="btn btn-navy-action"
-            onClick={() => setIsAssignDevModalOpen(true)}
-          >
-            <UserCheck size={15} />
-            <span>Reassign Developer</span>
-          </button>
+          {/* Reassign Developer & Change QA Tester: Available ONLY before project is finalized */}
+          {!isFinalizedOrLocked && (
+            <>
+              <button
+                type="button"
+                className="btn btn-navy-action"
+                onClick={() => setIsAssignDevModalOpen(true)}
+              >
+                <UserCheck size={15} />
+                <span>Reassign Developer</span>
+              </button>
 
-          <button
-            type="button"
-            className="btn btn-navy-action"
-            style={{ background: '#FFF7ED', color: '#C2410C', borderColor: '#FDBA74' }}
-            onClick={() => setIsAssignTesterModalOpen(true)}
-          >
-            <ShieldCheck size={15} />
-            <span>Change QA Tester</span>
-          </button>
+              <button
+                type="button"
+                className="btn btn-navy-action"
+                style={{ background: '#FFF7ED', color: '#C2410C', borderColor: '#FDBA74' }}
+                onClick={() => setIsAssignTesterModalOpen(true)}
+              >
+                <ShieldCheck size={15} />
+                <span>Change QA Tester</span>
+              </button>
+            </>
+          )}
 
           {/* Action Buttons: Unlock ONLY when BOTH Developer AND QA Tester have submitted their sides */}
           {!isAdminApproved && isBothSubmitted && (
@@ -675,13 +693,15 @@ export default function AdminProjectDetailPage({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B' }}>
               <span>Availability: <strong style={{ color: currentDevAvailability === 'Available' ? '#16A34A' : '#D97706' }}>{currentDevAvailability}</strong></span>
-              <button 
-                type="button" 
-                onClick={() => setIsAssignDevModalOpen(true)}
-                style={{ background: 'none', border: 'none', color: '#0A3D75', fontWeight: 700, cursor: 'pointer' }}
-              >
-                Change Developer →
-              </button>
+              {!isFinalizedOrLocked && (
+                <button 
+                  type="button" 
+                  onClick={() => setIsAssignDevModalOpen(true)}
+                  style={{ background: 'none', border: 'none', color: '#0A3D75', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Change Developer →
+                </button>
+              )}
             </div>
           </div>
 
@@ -719,13 +739,15 @@ export default function AdminProjectDetailPage({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B' }}>
               <span>QA Testing: <strong style={{ color: isTesterApproved ? '#16A34A' : '#C2410C' }}>{project.testingProgress || 0}% Verified</strong></span>
-              <button 
-                type="button" 
-                onClick={() => setIsAssignTesterModalOpen(true)}
-                style={{ background: 'none', border: 'none', color: '#F3821D', fontWeight: 700, cursor: 'pointer' }}
-              >
-                Change Tester →
-              </button>
+              {!isFinalizedOrLocked && (
+                <button 
+                  type="button" 
+                  onClick={() => setIsAssignTesterModalOpen(true)}
+                  style={{ background: 'none', border: 'none', color: '#F3821D', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Change Tester →
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1575,21 +1597,25 @@ export default function AdminProjectDetailPage({
       )}
 
       {/* Modals */}
-      <AssignmentModal
-        isOpen={isAssignDevModalOpen}
-        project={project}
-        developers={developers}
-        onClose={() => setIsAssignDevModalOpen(false)}
-        onAssign={handleAssignDeveloper}
-      />
+      {!isFinalizedOrLocked && (
+        <>
+          <AssignmentModal
+            isOpen={isAssignDevModalOpen}
+            project={project}
+            developers={developers}
+            onClose={() => setIsAssignDevModalOpen(false)}
+            onAssign={handleAssignDeveloper}
+          />
 
-      <AssignTesterModal
-        isOpen={isAssignTesterModalOpen}
-        project={project}
-        testers={testers}
-        onClose={() => setIsAssignTesterModalOpen(false)}
-        onAssignTester={handleAssignTester}
-      />
+          <AssignTesterModal
+            isOpen={isAssignTesterModalOpen}
+            project={project}
+            testers={testers}
+            onClose={() => setIsAssignTesterModalOpen(false)}
+            onAssignTester={handleAssignTester}
+          />
+        </>
+      )}
 
       <RevisionModal
         isOpen={isRevisionModalOpen}

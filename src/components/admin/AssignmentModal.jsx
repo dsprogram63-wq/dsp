@@ -91,7 +91,18 @@ export default function AssignmentModal({
     }
   }, [isOpen, project?.developer, project?.developerId]);
 
-  if (!isOpen || !project) return null;
+  const isProjectLocked = Boolean(
+    project?.testerFinalized || 
+    project?.qaFinalized || 
+    project?.testingStatus === 'Tester Approved' || 
+    project?.testingStatus === 'Finalized' ||
+    project?.status === 'Finalized' || 
+    project?.status === 'Approved' || 
+    project?.status === 'Completed' || 
+    project?.adminApproved
+  );
+
+  if (!isOpen || !project || isProjectLocked) return null;
 
   const selectedCandidate = (developers || initialDevelopers).find(d => d.id === selectedDevId);
 
