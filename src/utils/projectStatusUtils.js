@@ -533,3 +533,72 @@ export function areAllQATasksPassed(tasks) {
   if (!tasks || !Array.isArray(tasks) || tasks.length === 0) return false;
   return tasks.every(t => (t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.testingStatus === 'Passed' || t.status === 'Passed' || t.status === 'Pass'));
 }
+
+/**
+ * Sanitize transaction ID so empty or placeholder '-' / '—' are treated as empty
+ */
+export function sanitizeTxnId(val) {
+  if (!val || typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  if (
+    trimmed === '' ||
+    trimmed === '-' ||
+    trimmed === '—' ||
+    trimmed === '--' ||
+    trimmed.toLowerCase() === 'pending' ||
+    trimmed.toLowerCase() === 'n/a' ||
+    trimmed.toLowerCase() === 'none'
+  ) {
+    return '';
+  }
+  return trimmed;
+}
+
+/**
+ * Validates whether a transaction ID is non-empty, non-placeholder, and valid (>= 3 chars)
+ */
+export function isValidTxnId(val) {
+  if (!val || typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  if (
+    trimmed === '' ||
+    trimmed === '-' ||
+    trimmed === '—' ||
+    trimmed === '--' ||
+    trimmed.toLowerCase() === 'pending' ||
+    trimmed.toLowerCase() === 'n/a' ||
+    trimmed.toLowerCase() === 'none'
+  ) {
+    return false;
+  }
+  return trimmed.length >= 3;
+}
+
+/**
+ * Compulsory validation when settling payments
+ * If paid amount > 0 for Client, Developer, or Tester, Transaction ID is mandatory!
+ */
+export function validateSettlementPayments({
+  clientPaid = 0,
+  clientTxnId = '',
+  devPaid = 0,
+  devTxnId = '',
+  testerPaid = 0,
+  testerTxnId = ''
+} = {}) {
+  const errors = {};
+  if (clientPaid > 0 && !isValidTxnId(clientTxnId)) {
+    errors.clientTxnId = 'Transaction ID / UTR No. is compulsory when collecting client payment.';
+  }
+  if (devPaid > 0 && !isValidTxnId(devTxnId)) {
+    errors.devTxnId = 'Developer Transaction ID / UTR No. is compulsory when disbursing developer payment.';
+  }
+  if (testerPaid > 0 && !isValidTxnId(testerTxnId)) {
+    errors.testerTxnId = 'Tester Transaction ID / UTR No. is compulsory when disbursing tester payment.';
+  }
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+}
+

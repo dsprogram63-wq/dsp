@@ -14,7 +14,10 @@ import {
   calculateProjectProgressFromTasks, 
   calculateQAProgressFromTasks, 
   areAllTasksCompleted, 
-  areAllQATasksPassed 
+  areAllQATasksPassed,
+  sanitizeTxnId,
+  isValidTxnId,
+  validateSettlementPayments
 } from './src/utils/projectStatusUtils.js';
 
 import { 
@@ -475,8 +478,63 @@ assert(canReassignRoles(adminApprovedProject) === false, 'Approved project STRIC
 assert(canReassignRoles({ ...sampleAdminProject, status: 'finalized' }) === false, 'Lowercase finalized project prevents reassignment');
 assert(canReassignRoles({ ...sampleAdminProject, developerProgress: 100, testingProgress: 100 }) === false, 'Project with 100% Dev and QA progress prevents reassignment');
 
+console.log('\n--- TEST 16: Compulsory Payment Settlement Transaction ID Validation ---');
+// 1. Sanitization: Placeholder dashes or empty should be sanitized to ''
+assert(sanitizeTxnId('-') === '', 'Sanitize "-" produces empty string');
+assert(sanitizeTxnId('—') === '', 'Sanitize "—" (em-dash) produces empty string');
+assert(sanitizeTxnId('--') === '', 'Sanitize "--" produces empty string');
+assert(sanitizeTxnId('Pending') === '', 'Sanitize "Pending" produces empty string');
+assert(sanitizeTxnId('N/A') === '', 'Sanitize "N/A" produces empty string');
+assert(sanitizeTxnId('   ') === '', 'Sanitize whitespace produces empty string');
+assert(sanitizeTxnId('TXN-DEV-9910') === 'TXN-DEV-9910', 'Sanitize valid ID preserves exact ID');
+assert(sanitizeTxnId('  UPI-123456  ') === 'UPI-123456', 'Sanitize trims whitespace from valid ID');
+
+// 2. Validity: Transaction ID must be non-empty and at least 3 characters
+assert(isValidTxnId('') === false, 'Empty string is INVALID txn ID');
+assert(isValidTxnId('-') === false, '"-" is INVALID txn ID');
+assert(isValidTxnId('—') === false, '"—" is INVALID txn ID');
+assert(isValidTxnId('  -  ') === false, 'Whitespace dash is INVALID txn ID');
+assert(isValidTxnId('Pending') === false, '"Pending" is INVALID txn ID');
+assert(isValidTxnId('ab') === false, 'Length < 3 is INVALID txn ID');
+assert(isValidTxnId('TXN-DEV-10188') === true, '"TXN-DEV-10188" is VALID txn ID');
+assert(isValidTxnId('UPI-49201948') === true, '"UPI-49201948" is VALID txn ID');
+assert(isValidTxnId('UTR123456') === true, '"UTR123456" is VALID txn ID');
+
+// 3. Compulsory Settlement Validation
+// Case A: No payments settled (all 0) -> Valid even without txn IDs
+const resNoPayments = validateSettlementPayments({ clientPaid: 0, devPaid: 0, testerPaid: 0 });
+assert(resNoPayments.isValid === true, 'When all paid amounts are 0, txn ID is not compulsory');
+
+// Case B: Dev paid > 0 with placeholder "-" -> MUST FAIL
+const resDevInvalidDash = validateSettlementPayments({ devPaid: 25000, devTxnId: '-' });
+assert(resDevInvalidDash.isValid === false, 'Disbursing ₹25,000 to Dev with "-" MUST FAIL validation');
+assert(Boolean(resDevInvalidDash.errors.devTxnId) === true, 'Error message present for Developer Txn ID');
+
+// Case C: Tester paid > 0 with empty txn ID -> MUST FAIL
+const resTesterInvalidEmpty = validateSettlementPayments({ testerPaid: 5000, testerTxnId: '' });
+assert(resTesterInvalidEmpty.isValid === false, 'Disbursing ₹5,000 to Tester with empty txn MUST FAIL validation');
+assert(Boolean(resTesterInvalidEmpty.errors.testerTxnId) === true, 'Error message present for Tester Txn ID');
+
+// Case D: Client collected > 0 with "—" -> MUST FAIL
+const resClientInvalidEmDash = validateSettlementPayments({ clientPaid: 20000, clientTxnId: '—' });
+assert(resClientInvalidEmDash.isValid === false, 'Collecting ₹20,000 from Client with "—" MUST FAIL validation');
+assert(Boolean(resClientInvalidEmDash.errors.clientTxnId) === true, 'Error message present for Client Txn ID');
+
+// Case E: All payments settled with genuine Transaction IDs -> MUST PASS
+const resAllValid = validateSettlementPayments({
+  clientPaid: 50000,
+  clientTxnId: 'TXN-CLI-882910',
+  devPaid: 25000,
+  devTxnId: 'UPI-DEV-991823',
+  testerPaid: 5000,
+  testerTxnId: 'TXN-TST-771923'
+});
+assert(resAllValid.isValid === true, 'All payments settled with genuine Txn IDs MUST PASS validation');
+assert(Object.keys(resAllValid.errors).length === 0, 'No errors when genuine Txn IDs are provided');
+
 console.log('================================================================');
 console.log(`🎉 TEST SUMMARY: ${passedTests}/${totalTests} TESTS PASSED!`);
 console.log('================================================================');
+
 
 

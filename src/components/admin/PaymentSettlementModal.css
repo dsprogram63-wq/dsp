@@ -451,3 +451,72 @@
   font-weight: 800;
   white-space: nowrap;
 }
+
+/* Compulsory Transaction ID & Validation Styles */
+.badge-compulsory {
+  background: #FEE2E2;
+  color: #DC2626;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-left: 4px;
+  border: 1px solid #FECACA;
+}
+
+.btn-quick-id-gen {
+  background: none;
+  border: none;
+  color: #0A3D75;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: all 0.15s ease;
+}
+
+.btn-quick-id-gen:hover {
+  color: #F3821D;
+  text-decoration: none;
+}
+
+.input-field-error {
+  border-color: #EF4444 !important;
+  background-color: #FEF2F2 !important;
+}
+
+.input-field-error:focus {
+  border-color: #DC2626 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18) !important;
+}
+
+.field-error-text {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #DC2626;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+.payment-validation-banner {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 12px 24px 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #991B1B;
+  font-size: 0.84rem;
+  font-weight: 700;
+  animation: modalFadeIn 0.2s ease-out;
+}
+

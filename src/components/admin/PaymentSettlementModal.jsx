@@ -17,6 +17,42 @@ import {
 } from 'lucide-react';
 import './PaymentSettlementModal.css';
 
+// Sanitize transaction IDs so placeholders like '-' or '—' are treated as empty
+export const sanitizeTxnId = (val) => {
+  if (!val || typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  if (
+    trimmed === '' ||
+    trimmed === '-' ||
+    trimmed === '—' ||
+    trimmed === '--' ||
+    trimmed.toLowerCase() === 'pending' ||
+    trimmed.toLowerCase() === 'n/a' ||
+    trimmed.toLowerCase() === 'none'
+  ) {
+    return '';
+  }
+  return trimmed;
+};
+
+// Check if a transaction ID is valid (must be non-empty, non-dash, at least 3 chars)
+export const isValidTxnId = (val) => {
+  if (!val || typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  if (
+    trimmed === '' ||
+    trimmed === '-' ||
+    trimmed === '—' ||
+    trimmed === '--' ||
+    trimmed.toLowerCase() === 'pending' ||
+    trimmed.toLowerCase() === 'n/a' ||
+    trimmed.toLowerCase() === 'none'
+  ) {
+    return false;
+  }
+  return trimmed.length >= 3;
+};
+
 export default function PaymentSettlementModal({ 
   isOpen, 
   project, 
@@ -57,25 +93,32 @@ export default function PaymentSettlementModal({
   const [testerPaymentMode, setTesterPaymentMode] = useState('UPI Transfer');
   const [testerPaymentDate, setTesterPaymentDate] = useState('');
 
+  // Form Validation Errors State
+  const [validationErrors, setValidationErrors] = useState({});
+
   // Reset when project changes
   useEffect(() => {
     if (project) {
       setCollectedInput((project.collectedClientAmountNum !== undefined ? project.collectedClientAmountNum : (project.paidAmountNum || 0)).toString());
       setDevPaidInput((project.developerPaymentPaidNum || (project.developerPaymentStatus === 'Paid' ? (project.developerPaymentNum || 0) : 0)).toString());
       setTesterPaidInput((project.testerPaymentPaidNum || (project.testerPaymentStatus === 'Paid' ? (project.testerPaymentNum || 0) : 0)).toString());
+      setValidationErrors({});
 
-      const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
       const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-      setClientTxnId(project.clientTransactionId || project.clientTxnId || (project.clientPaymentStatus === 'Paid' || project.clientPaymentStatus === 'Full Payment Received' ? `TXN-CLI-${numId}99` : ''));
+      // Clean existing transaction IDs to ensure '-' or '—' are not pre-filled
+      const existingClientTxn = sanitizeTxnId(project.clientTransactionId || project.clientTxnId);
+      setClientTxnId(existingClientTxn);
       setClientPaymentMode(project.clientPaymentMode || 'Bank Transfer');
       setClientPaymentDate(project.clientPaymentDate || today);
 
-      setDevTxnId(project.developerTransactionId || project.developerPaymentTxnId || project.devTxnId || project.transactionId || (project.developerPaymentStatus === 'Paid' ? `TXN-DEV-${numId}88` : ''));
+      const existingDevTxn = sanitizeTxnId(project.developerTransactionId || project.developerPaymentTxnId || project.devTxnId || project.transactionId || project.payoutTransactionId);
+      setDevTxnId(existingDevTxn);
       setDevPaymentMode(project.developerPaymentMode || 'UPI Transfer');
       setDevPaymentDate(project.developerPaymentDate || today);
 
-      setTesterTxnId(project.testerTransactionId || project.testerPaymentTxnId || project.testerTxnId || (project.testerPaymentStatus === 'Paid' ? `TXN-TST-${numId}77` : ''));
+      const existingTesterTxn = sanitizeTxnId(project.testerTransactionId || project.testerPaymentTxnId || project.testerTxnId);
+      setTesterTxnId(existingTesterTxn);
       setTesterPaymentMode(project.testerPaymentMode || 'UPI Transfer');
       setTesterPaymentDate(project.testerPaymentDate || today);
     }
@@ -96,43 +139,78 @@ export default function PaymentSettlementModal({
   // Quick Action Handlers
   const handleCollectFullClient = () => {
     setCollectedInput(totalClientPriceNum.toString());
-    if (!clientTxnId) {
+    if (!isValidTxnId(clientTxnId)) {
       const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
       setClientTxnId(`TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    }
+    if (validationErrors.clientTxnId) {
+      setValidationErrors(prev => ({ ...prev, clientTxnId: undefined }));
     }
   };
 
   const handlePayFullDeveloper = () => {
     setDevPaidInput(developerPaymentNum.toString());
-    if (!devTxnId) {
+    if (!isValidTxnId(devTxnId)) {
       const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
       setDevTxnId(`TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    }
+    if (validationErrors.devTxnId) {
+      setValidationErrors(prev => ({ ...prev, devTxnId: undefined }));
     }
   };
 
   const handlePayFullTester = () => {
     setTesterPaidInput(testerPaymentNum.toString());
-    if (!testerTxnId) {
+    if (!isValidTxnId(testerTxnId)) {
       const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
       setTesterTxnId(`TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    }
+    if (validationErrors.testerTxnId) {
+      setValidationErrors(prev => ({ ...prev, testerTxnId: undefined }));
     }
   };
 
   const handleSettleAllInFull = () => {
     const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
     setCollectedInput(totalClientPriceNum.toString());
-    if (!clientTxnId) setClientTxnId(`TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    if (!isValidTxnId(clientTxnId)) setClientTxnId(`TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
 
     setDevPaidInput(developerPaymentNum.toString());
-    if (!devTxnId) setDevTxnId(`TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    if (!isValidTxnId(devTxnId)) setDevTxnId(`TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
 
     setTesterPaidInput(testerPaymentNum.toString());
-    if (!testerTxnId) setTesterTxnId(`TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+    if (!isValidTxnId(testerTxnId)) setTesterTxnId(`TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+
+    setValidationErrors({});
   };
 
-  // Submit Handler
+  // Submit Handler with Compulsory Transaction ID Validation
   const handleFormSubmit = (e) => {
     e.preventDefault();
+
+    const errors = {};
+
+    // 1. Transaction ID is compulsory when Client Payment is collected/settled (> 0)
+    if (currCollectedNum > 0 && !isValidTxnId(clientTxnId)) {
+      errors.clientTxnId = 'Transaction ID / UTR No. is compulsory when collecting client payment.';
+    }
+
+    // 2. Transaction ID is compulsory when Developer Payment is disbursed/settled (> 0)
+    if (currDevPaidNum > 0 && !isValidTxnId(devTxnId)) {
+      errors.devTxnId = 'Developer Transaction ID / UTR No. is compulsory when disbursing developer payment.';
+    }
+
+    // 3. Transaction ID is compulsory when Tester Payment is disbursed/settled (> 0)
+    if (currTesterPaidNum > 0 && !isValidTxnId(testerTxnId)) {
+      errors.testerTxnId = 'Tester Transaction ID / UTR No. is compulsory when disbursing tester payment.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
 
     let newClientPaymentStatus = 'Pending';
     if (clientRemaining === 0 && totalClientPriceNum > 0) {
@@ -155,10 +233,9 @@ export default function PaymentSettlementModal({
       newTesterPaymentStatus = 'Partial';
     }
 
-    const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
-    const finalClientTxn = clientTxnId.trim() || (currCollectedNum > 0 ? `TXN-CLI-${numId}99` : '—');
-    const finalDevTxn = devTxnId.trim() || (currDevPaidNum > 0 ? `TXN-DEV-${numId}88` : '—');
-    const finalTesterTxn = testerTxnId.trim() || (currTesterPaidNum > 0 ? `TXN-TST-${numId}77` : '—');
+    const finalClientTxn = currCollectedNum > 0 ? clientTxnId.trim() : '—';
+    const finalDevTxn = currDevPaidNum > 0 ? devTxnId.trim() : '—';
+    const finalTesterTxn = currTesterPaidNum > 0 ? testerTxnId.trim() : '—';
 
     const isAllSettled = (clientRemaining === 0 && devRemaining === 0 && testerRemaining === 0 && totalClientPriceNum > 0);
     const isPaymentDisbursed = (currDevPaidNum > 0 || currTesterPaidNum > 0 || newDevPaymentStatus === 'Paid' || newTesterPaymentStatus === 'Paid');
@@ -284,6 +361,16 @@ export default function PaymentSettlementModal({
           </div>
         )}
 
+        {/* Validation Error Alert Banner */}
+        {Object.keys(validationErrors).length > 0 && (
+          <div className="payment-validation-banner">
+            <AlertCircle size={18} color="#DC2626" />
+            <div style={{ flex: 1 }}>
+              <strong>Transaction ID Compulsory:</strong> Please enter a valid Transaction ID / UTR number for each settled payment before saving.
+            </div>
+          </div>
+        )}
+
         {/* Form Body */}
         <form onSubmit={handleFormSubmit} className="payment-modal-form">
           <div className="payment-cards-grid">
@@ -339,7 +426,12 @@ export default function PaymentSettlementModal({
                     min="0"
                     max={totalClientPriceNum}
                     value={collectedInput}
-                    onChange={(e) => setCollectedInput(e.target.value)}
+                    onChange={(e) => {
+                      setCollectedInput(e.target.value);
+                      if (Number(e.target.value || 0) === 0 && validationErrors.clientTxnId) {
+                        setValidationErrors(prev => ({ ...prev, clientTxnId: undefined }));
+                      }
+                    }}
                     className="modal-portal-input"
                     placeholder="Enter collected amount"
                   />
@@ -348,18 +440,45 @@ export default function PaymentSettlementModal({
                 {/* Client Transaction ID & Payment Details */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px', marginTop: '8px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Hash size={12} color="#0A3D75" />
-                      <span>Client Transaction ID / UTR No.</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Hash size={12} color="#0A3D75" />
+                        <span>Client Transaction ID / UTR No.</span>
+                        {currCollectedNum > 0 && <span className="badge-compulsory">* Compulsory</span>}
+                      </label>
+                      {currCollectedNum > 0 && !clientTxnId && (
+                        <button
+                          type="button"
+                          className="btn-quick-id-gen"
+                          onClick={() => {
+                            const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                            setClientTxnId(`TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                            if (validationErrors.clientTxnId) setValidationErrors(prev => ({ ...prev, clientTxnId: undefined }));
+                          }}
+                        >
+                          + Auto Gen
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={clientTxnId}
-                      onChange={(e) => setClientTxnId(e.target.value)}
+                      onChange={(e) => {
+                        setClientTxnId(e.target.value);
+                        if (validationErrors.clientTxnId && isValidTxnId(e.target.value)) {
+                          setValidationErrors(prev => ({ ...prev, clientTxnId: undefined }));
+                        }
+                      }}
                       placeholder="e.g. TXN-CLI-882910 or Cheque/NEFT Ref"
-                      className="modal-portal-input"
+                      className={`modal-portal-input ${validationErrors.clientTxnId ? 'input-field-error' : ''}`}
                       style={{ padding: '8px 12px', fontSize: '0.84rem', fontFamily: 'monospace' }}
                     />
+                    {validationErrors.clientTxnId && (
+                      <span className="field-error-text">
+                        <AlertCircle size={12} />
+                        {validationErrors.clientTxnId}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -437,7 +556,12 @@ export default function PaymentSettlementModal({
                     min="0"
                     max={developerPaymentNum}
                     value={devPaidInput}
-                    onChange={(e) => setDevPaidInput(e.target.value)}
+                    onChange={(e) => {
+                      setDevPaidInput(e.target.value);
+                      if (Number(e.target.value || 0) === 0 && validationErrors.devTxnId) {
+                        setValidationErrors(prev => ({ ...prev, devTxnId: undefined }));
+                      }
+                    }}
                     className="modal-portal-input"
                     placeholder="Enter paid amount to developer"
                   />
@@ -446,18 +570,45 @@ export default function PaymentSettlementModal({
                 {/* Developer Transaction ID & Payment Details */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px', marginTop: '8px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Hash size={12} color="#0A3D75" />
-                      <span>Developer Transaction ID / UTR No. *</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Hash size={12} color="#0A3D75" />
+                        <span>Developer Transaction ID / UTR No.</span>
+                        {currDevPaidNum > 0 && <span className="badge-compulsory">* Compulsory</span>}
+                      </label>
+                      {currDevPaidNum > 0 && !devTxnId && (
+                        <button
+                          type="button"
+                          className="btn-quick-id-gen"
+                          onClick={() => {
+                            const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                            setDevTxnId(`TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                            if (validationErrors.devTxnId) setValidationErrors(prev => ({ ...prev, devTxnId: undefined }));
+                          }}
+                        >
+                          + Auto Gen
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={devTxnId}
-                      onChange={(e) => setDevTxnId(e.target.value)}
+                      onChange={(e) => {
+                        setDevTxnId(e.target.value);
+                        if (validationErrors.devTxnId && isValidTxnId(e.target.value)) {
+                          setValidationErrors(prev => ({ ...prev, devTxnId: undefined }));
+                        }
+                      }}
                       placeholder="e.g. TXN-DEV-918230 or UPI/Bank Ref"
-                      className="modal-portal-input"
+                      className={`modal-portal-input ${validationErrors.devTxnId ? 'input-field-error' : ''}`}
                       style={{ padding: '8px 12px', fontSize: '0.84rem', fontFamily: 'monospace' }}
                     />
+                    {validationErrors.devTxnId && (
+                      <span className="field-error-text">
+                        <AlertCircle size={12} />
+                        {validationErrors.devTxnId}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -534,7 +685,12 @@ export default function PaymentSettlementModal({
                     min="0"
                     max={testerPaymentNum}
                     value={testerPaidInput}
-                    onChange={(e) => setTesterPaidInput(e.target.value)}
+                    onChange={(e) => {
+                      setTesterPaidInput(e.target.value);
+                      if (Number(e.target.value || 0) === 0 && validationErrors.testerTxnId) {
+                        setValidationErrors(prev => ({ ...prev, testerTxnId: undefined }));
+                      }
+                    }}
                     className="modal-portal-input"
                     placeholder="Enter paid amount to tester"
                   />
@@ -543,18 +699,45 @@ export default function PaymentSettlementModal({
                 {/* Tester Transaction ID & Payment Details */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px', marginTop: '8px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Hash size={12} color="#0A3D75" />
-                      <span>Tester Transaction ID / UTR No. *</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Hash size={12} color="#0A3D75" />
+                        <span>Tester Transaction ID / UTR No.</span>
+                        {currTesterPaidNum > 0 && <span className="badge-compulsory">* Compulsory</span>}
+                      </label>
+                      {currTesterPaidNum > 0 && !testerTxnId && (
+                        <button
+                          type="button"
+                          className="btn-quick-id-gen"
+                          onClick={() => {
+                            const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                            setTesterTxnId(`TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                            if (validationErrors.testerTxnId) setValidationErrors(prev => ({ ...prev, testerTxnId: undefined }));
+                          }}
+                        >
+                          + Auto Gen
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={testerTxnId}
-                      onChange={(e) => setTesterTxnId(e.target.value)}
+                      onChange={(e) => {
+                        setTesterTxnId(e.target.value);
+                        if (validationErrors.testerTxnId && isValidTxnId(e.target.value)) {
+                          setValidationErrors(prev => ({ ...prev, testerTxnId: undefined }));
+                        }
+                      }}
                       placeholder="e.g. TXN-TST-771923 or UPI/Bank Ref"
-                      className="modal-portal-input"
+                      className={`modal-portal-input ${validationErrors.testerTxnId ? 'input-field-error' : ''}`}
                       style={{ padding: '8px 12px', fontSize: '0.84rem', fontFamily: 'monospace' }}
                     />
+                    {validationErrors.testerTxnId && (
+                      <span className="field-error-text">
+                        <AlertCircle size={12} />
+                        {validationErrors.testerTxnId}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
