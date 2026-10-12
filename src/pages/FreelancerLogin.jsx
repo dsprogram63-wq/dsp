@@ -799,7 +799,7 @@ export default function FreelancerLogin({
                   <span>Continue with OTP Verification</span>
                 </button>
               ) : (
-                <button type="submit" className="btn btn-submit-login" style={{ backgroundColor: '#F3821D' }}>
+                <button type="submit" className="btn btn-submit-login btn-otp-verify">
                   <CheckCircle2 size={17} />
                   <span>Login to {isFreelancer ? 'Freelancer' : 'Tester'} Workspace</span>
                 </button>

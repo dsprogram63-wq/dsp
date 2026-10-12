@@ -502,23 +502,47 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--color-primary-navy);
-  color: var(--color-white);
-  padding: 12px;
+  background-color: #0A3D75 !important;
+  color: #FFFFFF !important;
+  padding: 12px 20px;
   font-size: 0.95rem;
   font-weight: 700;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-sm, 6px);
   border: none;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-fast, 150ms ease);
+  box-shadow: 0 2px 6px rgba(10, 61, 117, 0.25);
 }
 
 .btn-submit-login:hover {
-  background-color: var(--color-primary-dark);
+  background-color: #07223D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(10, 61, 117, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-submit-login:active {
+  transform: translateY(0);
 }
 
 .btn-submit-login.btn-tester-theme {
-  background-color: #0A3D75;
+  background-color: #0A3D75 !important;
+}
+
+.btn-submit-login.btn-tester-theme:hover {
+  background-color: #07223D !important;
+  color: #FFFFFF !important;
+}
+
+.btn-submit-login.btn-otp-verify {
+  background-color: #F3821D !important;
+  box-shadow: 0 2px 8px rgba(243, 130, 29, 0.35);
+}
+
+.btn-submit-login.btn-otp-verify:hover {
+  background-color: #E06500 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(243, 130, 29, 0.5);
 }
 
 .btn-submit-reset {
