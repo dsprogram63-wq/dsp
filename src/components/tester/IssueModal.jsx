@@ -58,8 +58,13 @@ export default function IssueModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.description.trim()) {
-      alert('Please fill in both the Issue Title and Detailed Bug Description.');
+    if (
+      !formData.title.trim() || 
+      !formData.description.trim() || 
+      !formData.expectedResult.trim() || 
+      !formData.actualResult.trim()
+    ) {
+      alert('Please fill in all mandatory fields: Issue Title, Detailed Bug Description, Expected Result, and Actual Result.');
       return;
     }
 
@@ -71,8 +76,10 @@ export default function IssueModal({
       severity: formData.severity,
       category: formData.category,
       task: formData.relatedTask,
-      expected: formData.expectedResult || 'Expected standard functional behavior according to client specifications.',
-      actual: formData.actualResult || formData.description,
+      expected: formData.expectedResult.trim(),
+      expectedResult: formData.expectedResult.trim(),
+      actual: formData.actualResult.trim(),
+      actualResult: formData.actualResult.trim(),
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Open',
       attachment: formData.hasAttachment ? formData.attachmentName : null,
@@ -178,23 +185,25 @@ export default function IssueModal({
           {/* Expected vs Actual Result Grid */}
           <div className="form-row-qa">
             <div className="form-group-qa">
-              <label>Expected Result</label>
+              <label>Expected Result <span className="req">*</span></label>
               <textarea 
                 rows={2} 
                 className="textarea-qa small"
                 placeholder="What should happen per specifications..."
                 value={formData.expectedResult}
                 onChange={(e) => setFormData({ ...formData, expectedResult: e.target.value })}
+                required
               />
             </div>
             <div className="form-group-qa">
-              <label>Actual Result</label>
+              <label>Actual Result <span className="req">*</span></label>
               <textarea 
                 rows={2} 
                 className="textarea-qa small"
                 placeholder="What actually happens during testing..."
                 value={formData.actualResult}
                 onChange={(e) => setFormData({ ...formData, actualResult: e.target.value })}
+                required
               />
             </div>
           </div>
