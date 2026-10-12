@@ -211,11 +211,82 @@ export default function AdminProjectDetailPage({
   const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
   const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
 
-  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.testingStatus === 'Finalized' || project.status === 'Finalized');
-  const isTesterApproved = Boolean(project.testingStatus === 'Tester Approved' || isTesterFinalized);
-  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
-  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
-  const isFinalizedOrLocked = Boolean(isTesterFinalized || isTesterApproved || isAdminApproved || project.status === 'Finalized' || project.status === 'Approved' || project.status === 'Completed');
+  const statusLower = (project.status || '').toLowerCase().trim();
+  const testingStatusLower = (project.testingStatus || '').toLowerCase().trim();
+
+  const isTesterFinalized = Boolean(
+    project.testerFinalized || 
+    project.qaFinalized || 
+    testingStatusLower === 'tester approved' || 
+    testingStatusLower === 'finalized' || 
+    statusLower === 'finalized' ||
+    Boolean(project.testerFinalizedAt)
+  );
+
+  const isTesterApproved = Boolean(
+    testingStatusLower === 'tester approved' || 
+    isTesterFinalized
+  );
+
+  const isAdminApproved = Boolean(
+    project.adminApproved || 
+    statusLower === 'approved' || 
+    statusLower === 'completed' || 
+    Boolean(project.adminApprovedAt)
+  );
+
+  const isRevision = Boolean(
+    testingStatusLower === 'changes requested' || 
+    statusLower === 'revision required' || 
+    project.adminRejected
+  );
+
+  // 1. Developer is submitted ONLY when developer has completed milestone work and formally submitted
+  const isDevSubmitted = Boolean(
+    !isRevision && (
+      project.developerSubmitted === true ||
+      project.freelancerSubmitted === true ||
+      (project.developerSubmission || '').toLowerCase() === 'submitted' ||
+      Boolean(project.developerSubmittedAt || project.freelancerSubmittedAt) ||
+      statusLower === 'submitted' ||
+      statusLower === 'finalized' ||
+      (Boolean(project.submittedDate && project.submittedDate !== '—') && (project.developerProgress === 100 || project.progress === 100)) ||
+      (project.developerProgress === 100) ||
+      (project.progress === 100) ||
+      (completedCount > 0 && completedCount === totalCount)
+    )
+  );
+
+  // 2. QA Tester is submitted ONLY when QA has finished testing and finalized / approved checklist
+  const isTesterSubmitted = Boolean(
+    !isRevision && (
+      project.testerFinalized === true ||
+      project.qaFinalized === true ||
+      testingStatusLower === 'tester approved' ||
+      testingStatusLower === 'finalized' ||
+      statusLower === 'finalized' ||
+      Boolean(project.testerFinalizedAt) ||
+      (project.testingProgress === 100 && testingStatusLower !== 'in testing' && testingStatusLower !== 'changes requested')
+    )
+  );
+
+  // 3. Both Developer and QA Tester must have submitted / done work
+  const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
+
+  // 4. Strict Project Locked / Finalized check: Once developer & tester are done, or project is finalized/approved/completed
+  const isFinalizedOrLocked = Boolean(
+    isBothSubmitted ||
+    isTesterFinalized ||
+    isTesterApproved ||
+    isAdminApproved ||
+    isTesterSubmitted ||
+    statusLower === 'finalized' ||
+    statusLower === 'approved' ||
+    statusLower === 'completed' ||
+    testingStatusLower === 'tester approved' ||
+    testingStatusLower === 'finalized' ||
+    (project.developerProgress === 100 && project.testingProgress === 100)
+  );
 
   const handleAssignDeveloper = (assignData) => {
     if (isFinalizedOrLocked) {
@@ -277,39 +348,6 @@ export default function AdminProjectDetailPage({
     });
     showToast(`QA Tester changed to ${testerData.tester}`);
   };
-
-  // 1. Developer is submitted ONLY when developer has completed milestone work and formally submitted
-  const isDevSubmitted = Boolean(
-    !isRevision && (
-      project.developerSubmitted === true ||
-      project.freelancerSubmitted === true ||
-      project.developerSubmission === 'Submitted' ||
-      Boolean(project.developerSubmittedAt || project.freelancerSubmittedAt) ||
-      project.status === 'Submitted' ||
-      project.status === 'Finalized' ||
-      (Boolean(project.submittedDate && project.submittedDate !== '—') && (project.developerProgress === 100 || project.progress === 100))
-    ) && (
-      project.developerSubmitted ||
-      project.freelancerSubmitted ||
-      project.developerProgress === 100 ||
-      project.progress === 100 ||
-      (completedCount > 0 && completedCount === totalCount)
-    )
-  );
-
-  // 2. QA Tester is submitted ONLY when QA has finished testing and finalized / approved checklist
-  const isTesterSubmitted = Boolean(
-    !isRevision && (
-      project.testerFinalized === true ||
-      project.qaFinalized === true ||
-      project.testingStatus === 'Tester Approved' ||
-      project.status === 'Finalized' ||
-      Boolean(project.testerFinalizedAt)
-    )
-  );
-
-  // 3. Both Developer and QA Tester must have submitted before Admin approval / rejection buttons appear
-  const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
 
   const handleApproveProject = () => {
     const timeStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });

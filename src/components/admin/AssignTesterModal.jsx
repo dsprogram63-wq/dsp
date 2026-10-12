@@ -87,15 +87,21 @@ export default function AssignTesterModal({
     }
   }, [isOpen, project?.tester, project?.testerId]);
 
+  const statusLower = (project?.status || '').toLowerCase().trim();
+  const testingStatusLower = (project?.testingStatus || '').toLowerCase().trim();
+
   const isProjectLocked = Boolean(
     project?.testerFinalized || 
     project?.qaFinalized || 
-    project?.testingStatus === 'Tester Approved' || 
-    project?.testingStatus === 'Finalized' ||
-    project?.status === 'Finalized' || 
-    project?.status === 'Approved' || 
-    project?.status === 'Completed' || 
-    project?.adminApproved
+    testingStatusLower === 'tester approved' || 
+    testingStatusLower === 'finalized' ||
+    statusLower === 'finalized' || 
+    statusLower === 'approved' || 
+    statusLower === 'completed' || 
+    project?.adminApproved ||
+    Boolean(project?.adminApprovedAt) ||
+    Boolean(project?.testerFinalizedAt) ||
+    (project?.developerProgress === 100 && project?.testingProgress === 100)
   );
 
   if (!isOpen || !project || isProjectLocked) return null;

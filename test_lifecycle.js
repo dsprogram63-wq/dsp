@@ -451,15 +451,19 @@ assert(otherTesterVisibleProjs.length === 0, 'Other tester dashboard has 0 proje
 
 console.log('\n--- TEST 15: Finalized Project Reassignment Locking ---');
 function canReassignRoles(project) {
+  const statusLower = (project.status || '').toLowerCase().trim();
+  const testingStatusLower = (project.testingStatus || '').toLowerCase().trim();
+
   const isFinalizedOrLocked = Boolean(
     project.testerFinalized ||
     project.qaFinalized ||
-    project.testingStatus === 'Tester Approved' ||
-    project.testingStatus === 'Finalized' ||
-    project.status === 'Finalized' ||
-    project.status === 'Approved' ||
-    project.status === 'Completed' ||
-    project.adminApproved
+    testingStatusLower === 'tester approved' ||
+    testingStatusLower === 'finalized' ||
+    statusLower === 'finalized' ||
+    statusLower === 'approved' ||
+    statusLower === 'completed' ||
+    project.adminApproved ||
+    (project.developerProgress === 100 && project.testingProgress === 100)
   );
   return !isFinalizedOrLocked;
 }
@@ -468,6 +472,8 @@ assert(canReassignRoles(sampleAdminProject) === true, 'Pending project allows de
 assert(canReassignRoles(devStartedProject) === true, 'Active project allows developer and tester reassignment');
 assert(canReassignRoles(testerFinalizedProject) === false, 'Finalized project STRICTLY PREVENTS developer and tester reassignment');
 assert(canReassignRoles(adminApprovedProject) === false, 'Approved project STRICTLY PREVENTS developer and tester reassignment');
+assert(canReassignRoles({ ...sampleAdminProject, status: 'finalized' }) === false, 'Lowercase finalized project prevents reassignment');
+assert(canReassignRoles({ ...sampleAdminProject, developerProgress: 100, testingProgress: 100 }) === false, 'Project with 100% Dev and QA progress prevents reassignment');
 
 console.log('================================================================');
 console.log(`🎉 TEST SUMMARY: ${passedTests}/${totalTests} TESTS PASSED!`);
