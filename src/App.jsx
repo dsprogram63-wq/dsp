@@ -461,9 +461,14 @@ export default function App() {
     }));
   };
 
-  // Admin developer update
+  // Admin developer update (auto-cleans applicationMessage upon approval)
   const handleUpdateDeveloper = (updatedDev) => {
-    setDevelopers(prev => prev.map(d => d.id === updatedDev.id ? updatedDev : d));
+    const isApproved = updatedDev.status === 'Active' || updatedDev.status === 'Approved';
+    const sanitizedDev = {
+      ...updatedDev,
+      ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
+    };
+    setDevelopers(prev => prev.map(d => d.id === sanitizedDev.id ? sanitizedDev : d));
   };
 
   // Freelancer profile update (strictly enforces immutable fields & persists to localStorage, authSession & developer directory)
@@ -647,9 +652,14 @@ export default function App() {
     }));
   };
 
-  // Admin tester update
+  // Admin tester update (auto-cleans applicationMessage upon approval)
   const handleUpdateTester = (updatedTester) => {
-    setTesters(prev => prev.map(t => t.id === updatedTester.id ? updatedTester : t));
+    const isApproved = updatedTester.status === 'Active' || updatedTester.status === 'Approved';
+    const sanitizedTester = {
+      ...updatedTester,
+      ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
+    };
+    setTesters(prev => prev.map(t => t.id === sanitizedTester.id ? sanitizedTester : t));
   };
 
   // Admin create project (dynamically updates developer/tester assigned state)
@@ -717,6 +727,8 @@ export default function App() {
       avatar: newDevData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
       referenceName: newDevData.referenceName || 'Reference Verification',
       referralCode: newDevData.referralCode || 'DS-REF-8902',
+      applicationMessage: (newDevData.aboutSelf || '').trim(),
+      aboutSelf: (newDevData.aboutSelf || '').trim(),
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Pending',
       availability: 'Pending Approval',
@@ -753,6 +765,8 @@ export default function App() {
       avatar: newTesterData.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
       referenceName: newTesterData.referenceName || 'Reference Verification',
       referralCode: newTesterData.referralCode || 'DS-TST-201',
+      applicationMessage: (newTesterData.aboutSelf || '').trim(),
+      aboutSelf: (newTesterData.aboutSelf || '').trim(),
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Pending',
       availability: 'Pending Approval',

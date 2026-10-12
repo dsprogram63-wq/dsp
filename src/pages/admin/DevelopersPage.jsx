@@ -109,7 +109,8 @@ export default function DevelopersPage({
     const updated = {
       ...dev,
       status: newStatus,
-      availability: newAvailability
+      availability: newAvailability,
+      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateDeveloper) {
@@ -296,6 +297,7 @@ export default function DevelopersPage({
               <thead>
                 <tr>
                   <th>Developer</th>
+                  <th>Application Message</th>
                   <th>Contact Details</th>
                   <th>Referrer / Reference</th>
                   <th>Registered On</th>
@@ -331,6 +333,25 @@ export default function DevelopersPage({
                             {dev.id}
                           </span>
                         </div>
+                      </div>
+                    </td>
+                    <td style={{ maxWidth: '240px' }}>
+                      <div style={{
+                        fontSize: '0.78rem',
+                        color: '#334155',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        lineHeight: '1.45',
+                        fontStyle: 'italic',
+                        maxHeight: '62px',
+                        overflowY: 'auto'
+                      }}>
+                        "{dev.applicationMessage || dev.aboutSelf || 'Applied via referral. No custom note provided.'}"
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#B45309', marginTop: '3px', fontWeight: 600 }}>
+                        Auto-deletes upon approval
                       </div>
                     </td>
                     <td>

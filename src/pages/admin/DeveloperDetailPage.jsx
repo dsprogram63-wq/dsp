@@ -20,7 +20,8 @@ import {
   Check,
   X,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
@@ -75,7 +76,8 @@ export default function DeveloperDetailPage({
     const updated = {
       ...developer,
       status: newStatus,
-      availability: newAvailability
+      availability: newAvailability,
+      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateDeveloper) {
@@ -283,6 +285,67 @@ export default function DeveloperDetailPage({
                 <span>Reject</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Application Message Box (Visible before approval only; deleted once approved) */}
+      {developer.status === 'Pending' && (
+        <div className="portal-card" style={{ marginBottom: '20px', borderLeft: '4px solid #F3821D', padding: '18px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: '#FFF7ED',
+                color: '#EA580C',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <MessageSquare size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>
+                  Application Message & Candidate Introduction
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                  Message typed by {developer.name} while applying for Developer Program
+                </span>
+              </div>
+            </div>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '3px 10px',
+              borderRadius: '20px',
+              background: '#FFFBEB',
+              color: '#B45309',
+              border: '1px solid #FDE68A'
+            }}>
+              Auto-cleared after approval
+            </span>
+          </div>
+
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            padding: '14px 18px',
+            fontSize: '0.9rem',
+            lineHeight: '1.6',
+            color: '#1E293B',
+            fontStyle: 'italic',
+            whiteSpace: 'pre-wrap'
+          }}>
+            "{developer.applicationMessage || developer.aboutSelf || 'Applied via referral program. No additional note provided by applicant.'}"
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#64748B', flexWrap: 'wrap', gap: '8px' }}>
+            <span>Portfolio / Showcase URL: {developer.portfolioUrl ? <a href={developer.portfolioUrl} target="_blank" rel="noreferrer" style={{ color: '#0A3D75', fontWeight: 700 }}>{developer.portfolioUrl}</a> : <span style={{ color: '#94A3B8' }}>Not provided</span>}</span>
+            <span>Character count: {(developer.applicationMessage || developer.aboutSelf || '').length} characters</span>
           </div>
         </div>
       )}

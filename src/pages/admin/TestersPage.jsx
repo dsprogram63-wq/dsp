@@ -104,7 +104,8 @@ export default function TestersPage({
     const updated = {
       ...tester,
       status: newStatus,
-      availability: newAvailability
+      availability: newAvailability,
+      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateTester) {
@@ -291,6 +292,7 @@ export default function TestersPage({
               <thead>
                 <tr>
                   <th>Tester</th>
+                  <th>Application Message</th>
                   <th>Contact Details</th>
                   <th>Referrer / Reference</th>
                   <th>Registered On</th>
@@ -326,6 +328,25 @@ export default function TestersPage({
                             {tester.id}
                           </span>
                         </div>
+                      </div>
+                    </td>
+                    <td style={{ maxWidth: '240px' }}>
+                      <div style={{
+                        fontSize: '0.78rem',
+                        color: '#334155',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        lineHeight: '1.45',
+                        fontStyle: 'italic',
+                        maxHeight: '62px',
+                        overflowY: 'auto'
+                      }}>
+                        "{tester.applicationMessage || tester.aboutSelf || 'Applied via referral. No custom note provided.'}"
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#B45309', marginTop: '3px', fontWeight: 600 }}>
+                        Auto-deletes upon approval
                       </div>
                     </td>
                     <td>

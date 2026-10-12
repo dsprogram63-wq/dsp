@@ -15,7 +15,8 @@ import {
   History,
   Check,
   X,
-  XCircle
+  XCircle,
+  MessageSquare
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
@@ -67,7 +68,8 @@ export default function TesterDetailPage({
     const updated = {
       ...t,
       status: newStatus,
-      availability: newAvailability
+      availability: newAvailability,
+      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateTester) {
@@ -253,6 +255,67 @@ export default function TesterDetailPage({
                 <span>Reject</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Application Message Box (Visible before approval only; deleted once approved) */}
+      {t.status === 'Pending' && (
+        <div className="portal-card" style={{ marginBottom: '20px', borderLeft: '4px solid #F3821D', padding: '18px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: '#FFF7ED',
+                color: '#EA580C',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <MessageSquare size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>
+                  Application Message & QA Experience Note
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                  Message typed by {t.name} while applying for QA Tester Program
+                </span>
+              </div>
+            </div>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '3px 10px',
+              borderRadius: '20px',
+              background: '#FFFBEB',
+              color: '#B45309',
+              border: '1px solid #FDE68A'
+            }}>
+              Auto-cleared after approval
+            </span>
+          </div>
+
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            padding: '14px 18px',
+            fontSize: '0.9rem',
+            lineHeight: '1.6',
+            color: '#1E293B',
+            fontStyle: 'italic',
+            whiteSpace: 'pre-wrap'
+          }}>
+            "{t.applicationMessage || t.aboutSelf || 'Applied via referral program. No additional note provided by applicant.'}"
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#64748B', flexWrap: 'wrap', gap: '8px' }}>
+            <span>Tools & Specialization: <strong style={{ color: '#0F172A' }}>{t.testingTools || t.specialization || 'Manual & Automated QA'}</strong></span>
+            <span>Character count: {(t.applicationMessage || t.aboutSelf || '').length} characters</span>
           </div>
         </div>
       )}
