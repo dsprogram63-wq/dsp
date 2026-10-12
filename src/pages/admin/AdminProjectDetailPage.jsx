@@ -224,6 +224,7 @@ export default function AdminProjectDetailPage({
       ...project,
       developer: assignData.developer,
       developerId: assignData.developerId,
+      developerEmail: assignData.developerEmail || project.developerEmail || '',
       developerSkill: assignData.developerSkill,
       developerAvatar: assignData.developerAvatar,
       assignedDate: assignData.assignedDate,
@@ -248,6 +249,7 @@ export default function AdminProjectDetailPage({
       ...project,
       tester: testerData.tester,
       testerId: testerData.testerId,
+      testerEmail: testerData.testerEmail || project.testerEmail || '',
       testerSpecialization: testerData.testerSpecialization,
       testerAvatar: testerData.testerAvatar,
       assignmentHistory: updatedHistory

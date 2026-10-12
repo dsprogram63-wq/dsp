@@ -1028,39 +1028,43 @@ export default function App() {
 
     const testerHeader = getTesterHeaderInfo();
     const authTesterUser = (authSession && authSession.user) || null;
-    const authTesterId = (authTesterUser && (authTesterUser.id || authTesterUser.testerId)) || '';
+    const authTesterId = (authTesterUser && (authTesterUser.id || authTesterUser.testerId)) ? String(authTesterUser.id || authTesterUser.testerId).trim() : '';
 
-    const matchedTester = testers.find(t => 
-      (t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) ||
-      (authTesterUser && authTesterUser.email && t.email && t.email.toLowerCase() === authTesterUser.email.toLowerCase())
-    ) || (initialTesters || []).find(t => 
-      (t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) ||
-      (authTesterUser && authTesterUser.email && t.email && t.email.toLowerCase() === authTesterUser.email.toLowerCase())
-    ) || null;
+    const matchedTester = (authTesterId ? testers.find(t => t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) : null) ||
+      (authTesterUser && authTesterUser.email ? testers.find(t => t.email && t.email.toLowerCase().trim() === authTesterUser.email.toLowerCase().trim()) : null) ||
+      (authTesterUser && authTesterUser.name ? testers.find(t => t.name && t.name.toLowerCase().trim() === authTesterUser.name.toLowerCase().trim()) : null) ||
+      null;
+
+    const finalTesterId = (matchedTester && matchedTester.id) || authTesterId || '';
+    const finalTesterEmail = (matchedTester && matchedTester.email) || (authTesterUser && authTesterUser.email) || '';
 
     // Check if this specific tester has saved custom edits in localStorage
     const savedCustomTesterProfile = (() => {
       try {
-        const saved = localStorage.getItem(`dahej_tester_profile_${authTesterId}`);
-        if (saved) return JSON.parse(saved);
+        if (finalTesterId) {
+          const saved = localStorage.getItem(`dahej_tester_profile_${finalTesterId}`);
+          if (saved) return JSON.parse(saved);
+        }
       } catch (e) {}
       return null;
     })();
 
+    const finalTesterName = (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester';
+
     const currentLoggedInTester = {
-      id: authTesterId,
-      testerId: authTesterId,
-      fullName: (savedCustomTesterProfile && (savedCustomTesterProfile.fullName || savedCustomTesterProfile.name)) || (authTesterUser && (authTesterUser.fullName || authTesterUser.name)) || (matchedTester && (matchedTester.fullName || matchedTester.name)) || 'QA Tester',
-      name: (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester',
-      email: (savedCustomTesterProfile && savedCustomTesterProfile.email) || (authTesterUser && authTesterUser.email) || (matchedTester && matchedTester.email) || '',
+      id: finalTesterId,
+      testerId: finalTesterId,
+      fullName: finalTesterName,
+      name: finalTesterName,
+      email: finalTesterEmail,
       mobile: (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || (matchedTester && matchedTester.mobile) || '',
       joiningDate: (matchedTester && matchedTester.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester && matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: (matchedTester && matchedTester.experienceReferenceDate) || (matchedTester && matchedTester.joiningDate) || '2025-02-10',
       referenceName: (matchedTester && matchedTester.referenceName) || 'Reference Verification',
-      referenceId: (matchedTester && matchedTester.referenceId) || (authTesterId ? `REF-00${authTesterId.replace(/[^0-9]/g, '') || '125'}` : 'REF-002'),
+      referenceId: (matchedTester && matchedTester.referenceId) || (finalTesterId ? `REF-00${finalTesterId.replace(/[^0-9]/g, '') || '02'}` : 'REF-002'),
       program: 'The HIT Support Tester Program',
-      roleTitle: 'The HIT Support Tester Program',
+      roleTitle: (matchedTester && (matchedTester.specialization || matchedTester.role)) || 'The HIT Support Tester Program',
       avatar: (matchedTester && matchedTester.avatar) || (authTesterUser && authTesterUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
       verified: matchedTester ? matchedTester.verified !== false : true
     };
@@ -1373,40 +1377,44 @@ export default function App() {
 
     const { title: portalTitle } = getPortalHeaderInfo();
     const authUser = (authSession && authSession.user) || null;
-    const authId = authUser ? (authUser.id || authUser.freelancerId || 'DEV-101') : 'DEV-101';
+    const authId = (authUser && (authUser.id || authUser.freelancerId)) ? String(authUser.id || authUser.freelancerId).trim() : '';
 
     // Find developer record from developers directory
-    const matchedDev = developers.find(d => 
-      (d.id && d.id.toLowerCase() === authId.toLowerCase()) ||
-      (authUser && authUser.email && d.email && d.email.toLowerCase() === authUser.email.toLowerCase())
-    ) || initialDevelopers.find(d => 
-      (d.id && d.id.toLowerCase() === authId.toLowerCase()) ||
-      (authUser && authUser.email && d.email && d.email.toLowerCase() === authUser.email.toLowerCase())
-    ) || null;
+    const matchedDev = (authId ? developers.find(d => d.id && d.id.toLowerCase() === authId.toLowerCase()) : null) ||
+      (authUser && authUser.email ? developers.find(d => d.email && d.email.toLowerCase().trim() === authUser.email.toLowerCase().trim()) : null) ||
+      (authUser && authUser.name ? developers.find(d => d.name && d.name.toLowerCase().trim() === authUser.name.toLowerCase().trim()) : null) ||
+      null;
+
+    const finalDevId = (matchedDev && matchedDev.id) || authId || '';
+    const finalDevEmail = (matchedDev && matchedDev.email) || (authUser && authUser.email) || '';
 
     // Check if this specific developer has saved custom edits in localStorage
     const savedCustomProfile = (() => {
       try {
-        const saved = localStorage.getItem(`dahej_profile_${authId}`);
-        if (saved) return JSON.parse(saved);
+        if (finalDevId) {
+          const saved = localStorage.getItem(`dahej_profile_${finalDevId}`);
+          if (saved) return JSON.parse(saved);
+        }
       } catch (e) {}
       return null;
     })();
 
+    const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer';
+
     const currentLoggedInFreelancer = {
-      freelancerId: authId,
-      id: authId,
-      fullName: (savedCustomProfile && (savedCustomProfile.fullName || savedCustomProfile.name)) || (authUser && (authUser.fullName || authUser.name)) || (matchedDev && matchedDev.name) || 'Developer',
-      name: (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer',
-      email: (savedCustomProfile && savedCustomProfile.email) || (authUser && authUser.email) || (matchedDev && matchedDev.email) || '',
+      freelancerId: finalDevId,
+      id: finalDevId,
+      fullName: finalDevName,
+      name: finalDevName,
+      email: finalDevEmail,
       mobile: (savedCustomProfile && savedCustomProfile.mobile) || (authUser && authUser.mobile) || (matchedDev && matchedDev.mobile) || '',
       joiningDate: (matchedDev && matchedDev.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedDev && matchedDev.experienceAtJoining !== undefined) ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: (matchedDev && matchedDev.experienceReferenceDate) || '2025-06-15',
       referenceName: (matchedDev && matchedDev.referenceName) || 'Reference Verification',
-      referenceId: (matchedDev && matchedDev.referenceId) || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '101'}` : 'REF-001'),
+      referenceId: (matchedDev && matchedDev.referenceId) || (finalDevId ? `REF-00${finalDevId.replace(/[^0-9]/g, '') || '01'}` : 'REF-001'),
       program: 'The HIT Support Developer Program',
-      roleTitle: 'The HIT Support Developer Program',
+      roleTitle: (matchedDev && matchedDev.primarySkill) || 'The HIT Support Developer Program',
       avatar: (matchedDev && matchedDev.avatar) || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
     };
 

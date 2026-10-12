@@ -102,6 +102,7 @@ export default function AssignmentModal({
     onAssign({
       developer: selectedCandidate.name,
       developerId: selectedCandidate.id,
+      developerEmail: selectedCandidate.email || '',
       developerSkill: selectedCandidate.primarySkill,
       developerAvatar: selectedCandidate.avatar,
       assignedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),

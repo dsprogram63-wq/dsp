@@ -209,29 +209,49 @@ export function toFreelancerSafeProject(rawProject) {
 }
 
 /**
- * Checks whether a project record is owned by the authenticated freelancer.
+ * Checks whether a project record is strictly assigned to the authenticated freelancer.
+ * Ensures airtight multi-tenant account isolation:
+ * - If project has a specific developerId assigned, authUser MUST match that exact developerId.
+ * - If project has no developerId (or legacy string), authUser MUST match exact developerEmail or exact developer name.
+ * - Under NO circumstance does another developer (e.g. Saheb vs Patel Het) see an unassigned or foreign project.
  */
 export function isProjectAssignedToFreelancer(project, authUser) {
   if (!project || !authUser) return false;
 
-  const authId = (authUser.id || authUser.freelancerId || '').toLowerCase().trim();
-  const authEmail = (authUser.email || '').toLowerCase().trim();
-  const authName = (authUser.name || authUser.fullName || '').toLowerCase().trim();
+  const authId = String(authUser.id || authUser.freelancerId || '').toLowerCase().trim();
+  const authEmail = String(authUser.email || '').toLowerCase().trim();
+  const authName = String(authUser.name || authUser.fullName || '').toLowerCase().trim();
 
-  const devId = (project.developerId || '').toLowerCase().trim();
-  const devEmail = (project.developerEmail || '').toLowerCase().trim();
-  const devName = (project.developer || '').toLowerCase().trim();
+  const devId = String(project.developerId || '').toLowerCase().trim();
+  const devEmail = String(project.developerEmail || '').toLowerCase().trim();
+  const devName = String(project.developer || project.developerName || '').toLowerCase().trim();
 
-  // Primary check: Direct ID match
-  if (authId && devId && (authId === devId || authId.replace(/[^0-9]/g, '') === devId.replace(/[^0-9]/g, ''))) {
-    return true;
+  // If the project developer is unassigned or empty, no freelancer owns it
+  if ((!devId || devId === '—' || devId === 'unassigned') && (!devName || devName === 'unassigned' || devName === '—')) {
+    return false;
   }
-  // Secondary check: Email match
+
+  // 1. Primary check: Specific developerId assigned to this project
+  if (devId && devId !== '—' && devId !== 'unassigned') {
+    // If authUser has an assigned ID (not empty and not a generic guest token)
+    if (authId && authId !== 'dev-demo') {
+      return authId === devId;
+    }
+    // If authUser has no ID or is resolving by email/name, verify exact match
+    if (authEmail && devEmail && authEmail === devEmail) {
+      return true;
+    }
+    if (authName && devName && devName !== 'unassigned' && devName !== '—' && authName === devName) {
+      return true;
+    }
+    return false;
+  }
+
+  // 2. Fallback check: Project without explicit developerId (match by exact email or exact name)
   if (authEmail && devEmail && authEmail === devEmail) {
     return true;
   }
-  // Tertiary check: Full name match
-  if (authName && devName && (authName === devName || devName.includes(authName) || authName.includes(devName))) {
+  if (authName && devName && devName !== 'unassigned' && devName !== '—' && authName === devName) {
     return true;
   }
 

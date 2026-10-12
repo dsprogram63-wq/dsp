@@ -224,142 +224,127 @@ export default function FreelancerLogin({
     })();
 
     if (selectedRole === 'freelancer') {
-      if (savedDev && (
-        (savedDev.email && savedDev.email.toLowerCase() === idLower) ||
-        (savedDev.freelancerId && savedDev.freelancerId.toLowerCase() === idLower) ||
-        (savedDev.id && savedDev.id.toLowerCase() === idLower) ||
-        (savedDev.fullName && savedDev.fullName.toLowerCase() === idLower) ||
-        (savedDev.name && savedDev.name.toLowerCase() === idLower)
+      const dev = allStoredDevs.find(d => 
+        (d.email && d.email.toLowerCase().trim() === idLower) || 
+        (d.id && d.id.toLowerCase().trim() === idLower) || 
+        (d.name && d.name.toLowerCase().trim() === idLower) ||
+        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
+      );
+
+      if (dev) {
+        if (dev.status === 'Pending') {
+          setLoginSuccess(false);
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved by an Admin in the Developer Directory, platform access will be unlocked.`
+          });
+          return;
+        }
+        if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
+          setLoginSuccess(false);
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
+          });
+          return;
+        }
+
+        let devCustom = null;
+        try {
+          const cust = localStorage.getItem(`dahej_profile_${dev.id}`);
+          if (cust) devCustom = JSON.parse(cust);
+        } catch (e) {}
+
+        matchedUser = {
+          name: (devCustom && (devCustom.name || devCustom.fullName)) || dev.name,
+          email: (devCustom && devCustom.email) || dev.email,
+          id: dev.id,
+          roleTitle: dev.primarySkill || 'Full Stack Developer',
+          avatar: (devCustom && devCustom.avatar) || dev.avatar
+        };
+      } else if (savedDev && (
+        (savedDev.email && savedDev.email.toLowerCase().trim() === idLower) ||
+        (savedDev.freelancerId && savedDev.freelancerId.toLowerCase().trim() === idLower) ||
+        (savedDev.id && savedDev.id.toLowerCase().trim() === idLower) ||
+        (savedDev.fullName && savedDev.fullName.toLowerCase().trim() === idLower) ||
+        (savedDev.name && savedDev.name.toLowerCase().trim() === idLower)
       )) {
         matchedUser = {
           name: savedDev.fullName || savedDev.name,
           email: savedDev.email,
-          id: savedDev.freelancerId || savedDev.id || '',
+          id: savedDev.freelancerId || savedDev.id || 'DEV-DEMO',
           roleTitle: savedDev.program || 'The HIT Support Developer Program',
           avatar: savedDev.avatar
         };
       } else {
-        const dev = allStoredDevs.find(d => 
-          (d.email && d.email.toLowerCase() === idLower) || 
-          (d.id && d.id.toLowerCase() === idLower) || 
-          (d.name && d.name.toLowerCase() === idLower)
-        );
-        if (dev) {
-          if (dev.status === 'Pending') {
-            setLoginSuccess(false);
-            setNoticeMessage({
-              type: 'warning',
-              text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved by an Admin in the Developer Directory, platform access will be unlocked.`
-            });
-            return;
-          }
-          if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
-            setLoginSuccess(false);
-            setNoticeMessage({
-              type: 'warning',
-              text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
-            });
-            return;
-          }
-          matchedUser = {
-            name: dev.name,
-            email: dev.email,
-            id: dev.id,
-            roleTitle: dev.primarySkill || 'Full Stack Developer',
-            avatar: dev.avatar
-          };
-        } else {
-          matchedUser = {
-            name: demoAccounts.freelancer.name,
-            email: identifier,
-            id: demoAccounts.freelancer.id,
-            roleTitle: demoAccounts.freelancer.roleTitle
-          };
-        }
+        matchedUser = {
+          name: demoAccounts.freelancer.name,
+          email: identifier,
+          id: 'DEV-DEMO',
+          roleTitle: demoAccounts.freelancer.roleTitle
+        };
       }
     } else {
-      if (savedTester && (
-        (savedTester.email && savedTester.email.toLowerCase() === idLower) ||
-        (savedTester.testerId && savedTester.testerId.toLowerCase() === idLower) ||
-        (savedTester.id && savedTester.id.toLowerCase() === idLower) ||
-        (savedTester.fullName && savedTester.fullName.toLowerCase() === idLower) ||
-        (savedTester.name && savedTester.name.toLowerCase() === idLower)
+      const tester = allStoredTesters.find(t => 
+        (t.email && t.email.toLowerCase().trim() === idLower) || 
+        (t.id && t.id.toLowerCase().trim() === idLower) || 
+        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
+        (t.name && t.name.toLowerCase().trim() === idLower) ||
+        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
+      );
+
+      if (tester) {
+        if (tester.status === 'Pending') {
+          setLoginSuccess(false);
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: QA Tester account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved by an Admin in the QA Tester Directory, access will be unlocked.`
+          });
+          return;
+        }
+        if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
+          setLoginSuccess(false);
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: This tester account is currently ${tester.status}. Please contact platform administration.`
+          });
+          return;
+        }
+
+        let testerCustom = null;
+        try {
+          const cust = localStorage.getItem(`dahej_tester_profile_${tester.id}`);
+          if (cust) testerCustom = JSON.parse(cust);
+        } catch (e) {}
+
+        matchedUser = {
+          name: (testerCustom && (testerCustom.name || testerCustom.fullName)) || tester.name,
+          email: (testerCustom && testerCustom.email) || tester.email,
+          id: tester.id,
+          roleTitle: tester.specialization || tester.role || 'QA Specialist',
+          avatar: (testerCustom && testerCustom.avatar) || tester.avatar
+        };
+      } else if (savedTester && (
+        (savedTester.email && savedTester.email.toLowerCase().trim() === idLower) ||
+        (savedTester.testerId && savedTester.testerId.toLowerCase().trim() === idLower) ||
+        (savedTester.id && savedTester.id.toLowerCase().trim() === idLower) ||
+        (savedTester.fullName && savedTester.fullName.toLowerCase().trim() === idLower) ||
+        (savedTester.name && savedTester.name.toLowerCase().trim() === idLower)
       )) {
         matchedUser = {
           name: savedTester.fullName || savedTester.name,
           email: savedTester.email,
-          id: savedTester.testerId || savedTester.id || '',
+          id: savedTester.testerId || savedTester.id || 'TST-DEMO',
           roleTitle: savedTester.program || 'The HIT Support Tester Program',
           avatar: savedTester.avatar
         };
       } else {
-        let foundCustom = null;
-        for (const t of allStoredTesters) {
-          try {
-            const cust = localStorage.getItem(`dahej_tester_profile_${t.id}`);
-            if (cust) {
-              const parsed = JSON.parse(cust);
-              if (
-                (parsed.email && parsed.email.toLowerCase() === idLower) ||
-                (parsed.testerId && parsed.testerId.toLowerCase() === idLower) ||
-                (parsed.id && parsed.id.toLowerCase() === idLower) ||
-                (parsed.name && parsed.name.toLowerCase() === idLower) ||
-                (parsed.fullName && parsed.fullName.toLowerCase() === idLower)
-              ) {
-                foundCustom = {
-                  name: parsed.fullName || parsed.name,
-                  email: parsed.email,
-                  id: parsed.testerId || parsed.id || t.id,
-                  roleTitle: parsed.program || t.specialization || t.role,
-                  avatar: parsed.avatar || t.avatar
-                };
-                break;
-              }
-            }
-          } catch (err) {}
-        }
-
-        if (foundCustom) {
-          matchedUser = foundCustom;
-        } else {
-          const tester = allStoredTesters.find(t => 
-            (t.email && t.email.toLowerCase() === idLower) || 
-            (t.id && t.id.toLowerCase() === idLower) || 
-            (t.name && t.name.toLowerCase() === idLower)
-          );
-          if (tester) {
-            if (tester.status === 'Pending') {
-              setLoginSuccess(false);
-              setNoticeMessage({
-                type: 'warning',
-                text: `Access Denied: QA Tester account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved by an Admin in the QA Tester Directory, access will be unlocked.`
-              });
-              return;
-            }
-            if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
-              setLoginSuccess(false);
-              setNoticeMessage({
-                type: 'warning',
-                text: `Access Denied: This tester account is currently ${tester.status}. Please contact platform administration.`
-              });
-              return;
-            }
-            matchedUser = {
-              name: tester.name,
-              email: tester.email,
-              id: tester.id,
-              roleTitle: tester.specialization || tester.role,
-              avatar: tester.avatar
-            };
-          } else {
-            matchedUser = {
-              name: demoAccounts.tester.name,
-              email: identifier,
-              id: demoAccounts.tester.id,
-              roleTitle: demoAccounts.tester.roleTitle
-            };
-          }
-        }
+        matchedUser = {
+          name: demoAccounts.tester.name,
+          email: identifier,
+          id: 'TST-DEMO',
+          roleTitle: demoAccounts.tester.roleTitle
+        };
       }
     }
 

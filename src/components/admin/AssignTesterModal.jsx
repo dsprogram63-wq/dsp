@@ -98,6 +98,7 @@ export default function AssignTesterModal({
     onAssignTester({
       tester: selectedCandidate.name,
       testerId: selectedCandidate.id,
+      testerEmail: selectedCandidate.email || '',
       testerSpecialization: selectedCandidate.specialization || selectedCandidate.role || 'QA Specialist',
       testerAvatar: selectedCandidate.avatar,
       note: testingNote || `QA responsibility transferred to ${selectedCandidate.name}`

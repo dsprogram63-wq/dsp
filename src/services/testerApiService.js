@@ -346,29 +346,49 @@ export function computeTesterEarningsStats(assignedProjects) {
 }
 
 /**
- * Checks whether a project record is owned by/assigned to the authenticated tester.
+ * Checks whether a project record is strictly assigned to the authenticated QA tester.
+ * Ensures airtight multi-tenant account isolation:
+ * - If project has a specific testerId assigned, authUser MUST match that exact testerId.
+ * - If project has no testerId (or legacy string), authUser MUST match exact testerEmail or exact tester name.
+ * - Under NO circumstance does another tester see an unassigned or foreign project.
  */
 export function isProjectAssignedToTester(project, authUser) {
   if (!project || !authUser) return false;
 
-  const authId = (authUser.id || authUser.testerId || '').toLowerCase().trim();
-  const authEmail = (authUser.email || '').toLowerCase().trim();
-  const authName = (authUser.name || authUser.fullName || '').toLowerCase().trim();
+  const authId = String(authUser.id || authUser.testerId || '').toLowerCase().trim();
+  const authEmail = String(authUser.email || '').toLowerCase().trim();
+  const authName = String(authUser.name || authUser.fullName || '').toLowerCase().trim();
 
-  const testerId = (project.testerId || '').toLowerCase().trim();
-  const testerEmail = (project.testerEmail || '').toLowerCase().trim();
-  const testerName = (project.tester || '').toLowerCase().trim();
+  const testerId = String(project.testerId || '').toLowerCase().trim();
+  const testerEmail = String(project.testerEmail || '').toLowerCase().trim();
+  const testerName = String(project.tester || project.testerName || '').toLowerCase().trim();
 
-  // Primary check: Direct ID match
-  if (authId && testerId && (authId === testerId || authId.replace(/[^0-9]/g, '') === testerId.replace(/[^0-9]/g, ''))) {
-    return true;
+  // If the project tester is unassigned or empty, no tester owns it
+  if ((!testerId || testerId === '—' || testerId === 'unassigned') && (!testerName || testerName === 'unassigned' || testerName === '—')) {
+    return false;
   }
-  // Secondary check: Email match
+
+  // 1. Primary check: Specific testerId assigned to this project
+  if (testerId && testerId !== '—' && testerId !== 'unassigned') {
+    // If authUser has an assigned ID (not empty and not a generic guest token)
+    if (authId && authId !== 'tst-demo') {
+      return authId === testerId;
+    }
+    // If authUser has no ID or is resolving by email/name, verify exact match
+    if (authEmail && testerEmail && authEmail === testerEmail) {
+      return true;
+    }
+    if (authName && testerName && testerName !== 'unassigned' && testerName !== '—' && authName === testerName) {
+      return true;
+    }
+    return false;
+  }
+
+  // 2. Fallback check: Project without explicit testerId (match by exact email or exact name)
   if (authEmail && testerEmail && authEmail === testerEmail) {
     return true;
   }
-  // Tertiary check: Name match
-  if (authName && testerName && (authName === testerName || testerName.includes(authName) || authName.includes(testerName))) {
+  if (authName && testerName && testerName !== 'unassigned' && testerName !== '—' && authName === testerName) {
     return true;
   }
 

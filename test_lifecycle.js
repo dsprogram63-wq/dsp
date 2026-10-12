@@ -19,12 +19,14 @@ import {
 
 import { 
   toFreelancerSafeProject, 
-  isProjectAssignedToFreelancer 
+  isProjectAssignedToFreelancer,
+  getAuthenticatedFreelancerProjects
 } from './src/services/freelancerApiService.js';
 
 import { 
   toTesterSafeProject, 
-  isProjectAssignedToTester 
+  isProjectAssignedToTester,
+  getAuthenticatedTesterProjects
 } from './src/services/testerApiService.js';
 
 console.log('================================================================');
@@ -383,6 +385,69 @@ const unassignedDevUser = { id: 'DEV-999', name: 'Other Developer' };
 const unassignedTesterUser = { id: 'TST-999', name: 'Other Tester' };
 assert(!isProjectAssignedToFreelancer(projectWithBinaryDoc, unassignedDevUser), 'Unassigned developer cannot access Project A documents');
 assert(!isProjectAssignedToTester(projectWithBinaryDoc, unassignedTesterUser), 'Unassigned tester cannot access Project A documents');
+
+console.log('\n--- TEST 14: Strict Multi-Tenant Assignment Isolation (Patel Het vs Saheb) ---');
+const projectAssignedToPatelHet = {
+  id: 'DS-WEB-6883',
+  name: 'Framing Site',
+  developer: 'Patel Het',
+  developerId: 'DEV-452',
+  developerEmail: 'patelhet@dahejsupport.com',
+  tester: 'Hetvi',
+  testerId: 'TST-781',
+  testerEmail: 'hetvi@dahejsupport.com',
+  status: 'Active',
+  tasks: [{ id: 't-1', name: 'Site structure', status: 'In Progress', progress: 0 }]
+};
+
+const patelHetAuth = {
+  id: 'DEV-452',
+  freelancerId: 'DEV-452',
+  name: 'Patel Het',
+  email: 'patelhet@dahejsupport.com'
+};
+
+const sahebAuth = {
+  id: 'DEV-892',
+  freelancerId: 'DEV-892',
+  name: 'Saheb',
+  email: 'saheb@dahejsupport.com'
+};
+
+const hetviAuth = {
+  id: 'TST-781',
+  testerId: 'TST-781',
+  name: 'Hetvi',
+  email: 'hetvi@dahejsupport.com'
+};
+
+const otherTesterAuth = {
+  id: 'TST-999',
+  testerId: 'TST-999',
+  name: 'Sneha',
+  email: 'sneha@dahejsupport.com'
+};
+
+// 1. Verify developer assignment isolation
+assert(isProjectAssignedToFreelancer(projectAssignedToPatelHet, patelHetAuth) === true, 'Patel Het can access project assigned to Patel Het');
+assert(isProjectAssignedToFreelancer(projectAssignedToPatelHet, sahebAuth) === false, 'Saheb CANNOT access project assigned to Patel Het');
+
+const patelHetVisibleProjs = getAuthenticatedFreelancerProjects(patelHetAuth, [projectAssignedToPatelHet]);
+assert(patelHetVisibleProjs.length === 1, 'Patel Het dashboard has exactly 1 project');
+assert(patelHetVisibleProjs[0].id === 'DS-WEB-6883', 'Patel Het sees Framing Site');
+
+const sahebVisibleProjs = getAuthenticatedFreelancerProjects(sahebAuth, [projectAssignedToPatelHet]);
+assert(sahebVisibleProjs.length === 0, 'Saheb dashboard has 0 projects (Completely isolated)');
+
+// 2. Verify tester assignment isolation
+assert(isProjectAssignedToTester(projectAssignedToPatelHet, hetviAuth) === true, 'Hetvi can access QA project assigned to Hetvi');
+assert(isProjectAssignedToTester(projectAssignedToPatelHet, otherTesterAuth) === false, 'Other tester CANNOT access QA project assigned to Hetvi');
+
+const hetviVisibleProjs = getAuthenticatedTesterProjects(hetviAuth, [projectAssignedToPatelHet]);
+assert(hetviVisibleProjs.length === 1, 'Hetvi tester dashboard has exactly 1 project');
+
+const otherTesterVisibleProjs = getAuthenticatedTesterProjects(otherTesterAuth, [projectAssignedToPatelHet]);
+assert(otherTesterVisibleProjs.length === 0, 'Other tester dashboard has 0 projects (Completely isolated)');
 
 console.log('================================================================');
 console.log(`🎉 TEST SUMMARY: ${passedTests}/${totalTests} TESTS PASSED!`);
