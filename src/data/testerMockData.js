@@ -1,8 +1,55 @@
-// Clean Base Mock Data for Dahej Support Tester Panel & QA System
+// Persistent Baseline Data for Dahej Support Tester Panel & QA System
 
-export const initialTesterProfile = null;
+export const initialTesterProfile = {
+  name: 'Hetvi',
+  email: 'hetvi@dahejsupport.com',
+  id: 'TST-781',
+  role: 'Dedicated QA Specialist',
+  avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160'
+};
 
-export const initialTesters = [];
+export const initialTesters = [
+  {
+    id: 'TST-781',
+    testerId: 'TST-781',
+    name: 'Hetvi',
+    fullName: 'Hetvi',
+    email: 'hetvi@dahejsupport.com',
+    mobile: '+91 97234 87654',
+    role: 'QA / Software Tester',
+    specialization: 'Web & Functional QA Testing',
+    testingTools: 'Postman, Cypress, Jira',
+    experience: '3+ Years',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
+    referenceName: 'Reference Verification',
+    referralCode: 'DS-TST-201',
+    joiningDate: '10 Oct 2026',
+    status: 'Active',
+    availability: 'Busy',
+    activeTestingProjects: 1,
+    completedTesting: 0,
+    approvedCount: 0,
+    returnedCount: 0,
+    issuesRaised: 0,
+    totalPayouts: '₹0',
+    totalPayoutsNum: 0,
+    pendingPayouts: '₹5,000',
+    pendingPayoutsNum: 5000,
+    rating: 5.0,
+    currentProjects: [
+      {
+        id: 'DS-WEB-6883',
+        name: 'Framing Site',
+        clientName: 'Framing Site Client',
+        status: 'Active',
+        testingStatus: 'Pending',
+        progress: 20
+      }
+    ],
+    testingHistory: [],
+    earningsHistory: []
+  }
+];
 
 export const defaultTestingChecklist = [
   { id: 'chk-1', number: '01', title: 'Homepage Layout & Hero Functionality', category: 'UI / Layout', status: 'Pending', notes: '' },

@@ -35,16 +35,22 @@ export default function FreelancerLogin({
   // Stored developers and testers pools
   const allStoredDevs = (() => {
     try {
-      const s = localStorage.getItem('dahej_real_v2_developers');
-      if (s) return JSON.parse(s);
+      const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
     return initialDevelopers || [];
   })();
 
   const allStoredTesters = (() => {
     try {
-      const s = localStorage.getItem('dahej_real_v2_testers');
-      if (s) return JSON.parse(s);
+      const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
     return initialTesters || [];
   })();
@@ -209,16 +215,22 @@ export default function FreelancerLogin({
     // Load active pool of developers & testers from localStorage
     const allStoredDevs = (() => {
       try {
-        const s = localStorage.getItem('dahej_real_v2_developers');
-        if (s) return JSON.parse(s);
+        const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+        if (s) {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
       } catch (e) {}
       return initialDevelopers;
     })();
 
     const allStoredTesters = (() => {
       try {
-        const s = localStorage.getItem('dahej_real_v2_testers');
-        if (s) return JSON.parse(s);
+        const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+        if (s) {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
       } catch (e) {}
       return initialTesters;
     })();

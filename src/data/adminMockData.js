@@ -1,4 +1,4 @@
-// Clean Base Mock Data for Dahej Support Admin Panel
+// Persistent Baseline Data for Dahej Support Admin Panel
 
 export const initialAdminProfile = {
   name: 'Keval Patel',
@@ -9,13 +9,201 @@ export const initialAdminProfile = {
   location: 'Bharuch / Dahej, Gujarat'
 };
 
-export const initialDevelopers = [];
+export const initialDevelopers = [
+  {
+    id: 'DEV-452',
+    developerId: 'DEV-452',
+    freelancerId: 'DEV-452',
+    name: 'Patel Het',
+    fullName: 'Patel Het',
+    email: 'patelhet@dahejsupport.com',
+    mobile: '+91 98765 43210',
+    primarySkill: 'Frontend Developer',
+    experience: '3+ Years',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
+    referenceName: 'Reference Verification',
+    referralCode: 'DS-REF-8902',
+    joiningDate: '10 Oct 2026',
+    status: 'Active',
+    availability: 'Busy',
+    activeProjectsCount: 1,
+    completedProjectsCount: 0,
+    revisionProjectsCount: 0,
+    currentProgress: 20,
+    totalEarnings: '₹0',
+    totalEarningsNum: 0,
+    pendingPayouts: '₹25,000',
+    pendingPayoutsNum: 25000,
+    rating: 5.0,
+    currentProjects: [
+      {
+        id: 'DS-WEB-6883',
+        name: 'Framing Site',
+        clientName: 'Framing Site Client',
+        status: 'Active',
+        progress: 20,
+        assignedDate: '12 Oct 2026',
+        submissionDate: '20 Oct 2026'
+      }
+    ],
+    projectHistory: [],
+    earningsHistory: []
+  },
+  {
+    id: 'DEV-892',
+    developerId: 'DEV-892',
+    freelancerId: 'DEV-892',
+    name: 'Saheb',
+    fullName: 'Saheb',
+    email: 'saheb@dahejsupport.com',
+    mobile: '+91 98251 12345',
+    primarySkill: 'Backend & API Developer',
+    experience: '4+ Years',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=160',
+    referenceName: 'Reference Verification',
+    referralCode: 'DS-REF-4512',
+    joiningDate: '11 Oct 2026',
+    status: 'Active',
+    availability: 'Available',
+    activeProjectsCount: 0,
+    completedProjectsCount: 0,
+    revisionProjectsCount: 0,
+    currentProgress: 0,
+    totalEarnings: '₹0',
+    totalEarningsNum: 0,
+    pendingPayouts: '₹0',
+    pendingPayoutsNum: 0,
+    rating: 5.0,
+    currentProjects: [],
+    projectHistory: [],
+    earningsHistory: []
+  }
+];
 
-// All admin project records initialized empty for clean system testing
-export const initialAdminProjects = [];
+export const initialAdminProjects = [
+  {
+    id: 'DS-WEB-6883',
+    name: 'Framing Site',
+    clientName: 'Framing Site Client',
+    client: 'Framing Site Client',
+    developer: 'Patel Het',
+    developerId: 'DEV-452',
+    developerEmail: 'patelhet@dahejsupport.com',
+    developerSkill: 'Frontend Developer',
+    developerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
+    tester: 'Hetvi',
+    testerId: 'TST-781',
+    testerEmail: 'hetvi@dahejsupport.com',
+    testerSpecialization: 'Web & Functional QA Testing',
+    testerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
+    projectType: 'Web Development',
+    category: 'Web Development',
+    priority: 'High',
+    totalAmount: '₹50,000',
+    totalAmountNum: 50000,
+    totalClientPrice: '₹50,000',
+    totalClientPriceNum: 50000,
+    clientTotalAmount: 50000,
+    paidAmount: '₹20,000',
+    paidAmountNum: 20000,
+    collectedClientAmount: '₹20,000',
+    collectedClientAmountNum: 20000,
+    clientPaidAmount: 20000,
+    remainingAmount: '₹30,000',
+    remainingAmountNum: 30000,
+    remainingClientAmount: '₹30,000',
+    remainingClientAmountNum: 30000,
+    clientRemainingAmount: 30000,
+    freelancerPayout: '₹25,000',
+    freelancerPayoutNum: 25000,
+    developerPayment: '₹25,000',
+    developerPaymentNum: 25000,
+    developerAssignedAmount: 25000,
+    developerPaymentPaid: '₹0',
+    developerPaymentPaidNum: 0,
+    developerPaidAmount: 0,
+    developerPaymentRemaining: '₹25,000',
+    developerPaymentRemainingNum: 25000,
+    developerRemainingAmount: 25000,
+    developerPaymentStatus: 'Pending',
+    testerPayout: '₹5,000',
+    testerPayoutNum: 5000,
+    testerPayment: '₹5,000',
+    testerPaymentNum: 5000,
+    testerAssignedAmount: 5000,
+    testerPaymentPaid: '₹0',
+    testerPaymentPaidNum: 0,
+    testerPaidAmount: 0,
+    testerPaymentRemaining: '₹5,000',
+    testerPaymentRemainingNum: 5000,
+    testerRemainingAmount: 5000,
+    testerPaymentStatus: 'Pending',
+    assignedDate: '12 Oct 2026',
+    submissionDate: '20 Oct 2026',
+    testingSubmissionDate: '24 Oct 2026',
+    deadline: '28 Oct 2026',
+    deadlineDate: '28 Oct 2026',
+    finalDeliveryDate: '30 Oct 2026',
+    assignedDateIso: '2026-10-12',
+    submissionDateIso: '2026-10-20',
+    testingSubmissionDateIso: '2026-10-24',
+    deadlineDateIso: '2026-10-28',
+    finalDeliveryDateIso: '2026-10-30',
+    developerStarted: true,
+    developerStartedAt: '2026-10-12T10:00:00.000Z',
+    developerSubmitted: false,
+    developerSubmittedAt: null,
+    testerStarted: false,
+    testerStartedAt: null,
+    testerFinalized: false,
+    testerFinalizedAt: null,
+    adminApproved: false,
+    adminApprovedAt: null,
+    adminRejected: false,
+    adminRejectedAt: null,
+    adminRejectionComment: '',
+    adminRejectionDocument: null,
+    progress: 20,
+    freelancerProgress: 20,
+    developerProgress: 20,
+    testingProgress: 0,
+    status: 'In Progress',
+    testingStatus: 'Pending',
+    completedTasksCount: 1,
+    totalTasksCount: 5,
+    description: 'High-performance corporate framing portal with modern layout and responsive design.',
+    clientRequirements: [
+      'Modern, responsive web layout for construction & framing portfolio',
+      'Dynamic project gallery and inquiry lead capture form',
+      'Mobile-optimized touch navigation and speedy asset rendering'
+    ],
+    tasks: [
+      { id: 't-1', number: '01', name: 'Site structure & Layout', desc: 'Setup baseline framing structure, responsive grids and routing', percentage: 20, weight: 20, adminPercentage: 20, status: 'Completed', qaStatus: 'Pending', progress: 100, deadline: '14 Oct 2026' },
+      { id: 't-2', number: '02', name: 'Component Architecture & Navigation', desc: 'Build interactive navigation, header, drawer and footer', percentage: 20, weight: 20, adminPercentage: 20, status: 'In Progress', qaStatus: 'Pending', progress: 0, deadline: '16 Oct 2026' },
+      { id: 't-3', number: '03', name: 'Content & Media Integrations', desc: 'Integrate dynamic media and content sections', percentage: 20, weight: 20, adminPercentage: 20, status: 'Pending', qaStatus: 'Pending', progress: 0, deadline: '18 Oct 2026' },
+      { id: 't-4', number: '04', name: 'Form Validations & Lead Capturing', desc: 'Connect enquiry form inputs with validation and submission feedback', percentage: 20, weight: 20, adminPercentage: 20, status: 'Pending', qaStatus: 'Pending', progress: 0, deadline: '20 Oct 2026' },
+      { id: 't-5', number: '05', name: 'Mobile Responsiveness & QA Polish', desc: 'Optimize touch controls and verify cross-device rendering', percentage: 20, weight: 20, adminPercentage: 20, status: 'Pending', qaStatus: 'Pending', progress: 0, deadline: '22 Oct 2026' }
+    ],
+    milestones: [
+      { id: 'm-1', number: '01', heading: 'Site structure & Layout', description: 'Setup baseline framing structure, responsive grids and routing', percentage: 20, status: 'Completed', progress: 100 },
+      { id: 'm-2', number: '02', heading: 'Component Architecture & Navigation', description: 'Build interactive navigation, header, drawer and footer', percentage: 20, status: 'In Progress', progress: 0 },
+      { id: 'm-3', number: '03', heading: 'Content & Media Integrations', description: 'Integrate dynamic media and content sections', percentage: 20, status: 'Pending', progress: 0 },
+      { id: 'm-4', number: '04', heading: 'Form Validations & Lead Capturing', description: 'Connect enquiry form inputs with validation and submission feedback', percentage: 20, status: 'Pending', progress: 0 },
+      { id: 'm-5', number: '05', heading: 'Mobile Responsiveness & QA Polish', description: 'Optimize touch controls and verify cross-device rendering', percentage: 20, status: 'Pending', progress: 0 }
+    ],
+    documents: [],
+    credentials: [],
+    testingIssues: [],
+    testingNotes: '',
+    testingDocuments: [],
+    testingActivity: [
+      { event: 'Project Created by Master Admin', time: '12 Oct 2026', by: 'Admin' },
+      { event: 'Developer Assigned: Patel Het (DEV-452)', time: '12 Oct 2026', by: 'System' },
+      { event: 'QA Tester Assigned: Hetvi (TST-781)', time: '12 Oct 2026', by: 'System' }
+    ]
+  }
+];
 
 export const initialAdminEarnings = [];
-
 export const initialAdminNotifications = [];
-
 export const initialAdminActivities = [];

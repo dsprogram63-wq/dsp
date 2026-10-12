@@ -202,65 +202,61 @@ export default function App() {
 
   const [routeState, setRouteState] = useState(getInitialState);
   
-  // System Clean Reset: Clears all cached mock entries on startup for a 100% clean real-data system
-  (() => {
-    try {
-      // Unconditionally wipe all legacy mock storage keys
-      const legacyKeys = [
-        'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
-        'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile'
-      ];
-      legacyKeys.forEach(k => {
-        try { localStorage.removeItem(k); } catch (e) {}
-      });
-    } catch (e) {
-      console.error('Failed to reset legacy storage:', e);
-    }
-  })();
-
-  // State for Freelancer Portal (100% clean real-data only)
+  // State for Freelancer Portal (Persistent across sessions & reloads)
   const [projects, setProjects] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_real_v2_freelancer_projects');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_freelancer_projects') || localStorage.getItem('dahej_freelancer_projects');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.error('Failed to parse freelancer projects:', e);
     }
-    return [];
+    return initialProjects;
   });
   const [selectedProjectId, setSelectedProjectId] = useState(routeState.selectedProjectId || null);
 
-  // State for Admin Panel (100% clean real-data only)
+  // State for Admin Panel (Persistent across sessions & reloads)
   const [adminProjects, setAdminProjects] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_real_v2_admin_projects');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.error('Failed to parse admin projects:', e);
     }
-    return [];
+    return initialAdminProjects;
   });
 
-  // State for Developers (100% clean real-data only)
+  // State for Developers (Persistent across sessions & reloads)
   const [developers, setDevelopers] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_real_v2_developers');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.error('Failed to parse developers:', e);
     }
-    return [];
+    return initialDevelopers;
   });
 
-  // State for Testers (100% clean real-data only)
+  // State for Testers (Persistent across sessions & reloads)
   const [testers, setTesters] = useState(() => {
     try {
-      const saved = localStorage.getItem('dahej_real_v2_testers');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.error('Failed to parse testers:', e);
     }
-    return [];
+    return initialTesters;
   });
   const [selectedAdminProjectId, setSelectedAdminProjectId] = useState(routeState.selectedProjectId || null);
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(routeState.selectedDeveloperId || '');
@@ -269,22 +265,13 @@ export default function App() {
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
 
-  // Proactive Real-Time Sanitizer: Clean state sync
-  useEffect(() => {
-    // Delete legacy keys from localStorage
-    const legacyKeys = [
-      'dahej_developers', 'dahej_testers', 'dahej_admin_projects', 'dahej_freelancer_projects',
-      'dahej_profile', 'dahej_freelancer_profile', 'dahej_tester_profile'
-    ];
-    legacyKeys.forEach(k => {
-      try { localStorage.removeItem(k); } catch (e) {}
-    });
-  }, []);
-
-  // Sync real data to LocalStorage
+  // Sync real data to LocalStorage (Dual-key persistence so data is NEVER lost)
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
+      if (adminProjects && adminProjects.length > 0) {
+        localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
+        localStorage.setItem('dahej_admin_projects', JSON.stringify(adminProjects));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -292,7 +279,10 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(projects));
+      if (projects && projects.length > 0) {
+        localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(projects));
+        localStorage.setItem('dahej_freelancer_projects', JSON.stringify(projects));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -300,7 +290,10 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
+      if (developers && developers.length > 0) {
+        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
+        localStorage.setItem('dahej_developers', JSON.stringify(developers));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -308,7 +301,10 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
+      if (testers && testers.length > 0) {
+        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
+        localStorage.setItem('dahej_testers', JSON.stringify(testers));
+      }
     } catch (e) {
       console.error(e);
     }
