@@ -258,10 +258,43 @@ export default function AdminProjectDetailPage({
   const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
   const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
 
-  const isTesterFinalized = project.testerFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized';
-  const isTesterApproved = project.testingStatus === 'Tester Approved' || isTesterFinalized;
-  const isAdminApproved = project.adminApproved || project.status === 'Approved' || project.status === 'Completed';
-  const isRevision = project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected;
+  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
+  const isTesterApproved = Boolean(project.testingStatus === 'Tester Approved' || isTesterFinalized);
+  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
+  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
+
+  // 1. Developer is submitted ONLY when developer has completed milestone work and formally submitted
+  const isDevSubmitted = Boolean(
+    !isRevision && (
+      project.developerSubmitted === true ||
+      project.freelancerSubmitted === true ||
+      project.developerSubmission === 'Submitted' ||
+      Boolean(project.developerSubmittedAt || project.freelancerSubmittedAt) ||
+      project.status === 'Submitted' ||
+      project.status === 'Finalized' ||
+      (Boolean(project.submittedDate && project.submittedDate !== '—') && (project.developerProgress === 100 || project.progress === 100))
+    ) && (
+      project.developerSubmitted ||
+      project.freelancerSubmitted ||
+      project.developerProgress === 100 ||
+      project.progress === 100 ||
+      (completedCount > 0 && completedCount === totalCount)
+    )
+  );
+
+  // 2. QA Tester is submitted ONLY when QA has finished testing and finalized / approved checklist
+  const isTesterSubmitted = Boolean(
+    !isRevision && (
+      project.testerFinalized === true ||
+      project.qaFinalized === true ||
+      project.testingStatus === 'Tester Approved' ||
+      project.status === 'Finalized' ||
+      Boolean(project.testerFinalizedAt)
+    )
+  );
+
+  // 3. Both Developer and QA Tester must have submitted before Admin approval / rejection buttons appear
+  const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
 
   const handleApproveProject = () => {
     const timeStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -333,9 +366,11 @@ export default function AdminProjectDetailPage({
       adminFeedback: revData.adminRejectionComment || revData.revisionReason,
       adminRejectionDocument: revData.adminRejectionDocument,
       revisionReason: revData.revisionReason,
-      revisionTask: revData.revisionTask,
       testerFinalized: false,
       qaFinalized: false,
+      developerSubmitted: false,
+      freelancerSubmitted: false,
+      developerSubmission: 'Revision Required',
       status: 'Changes Requested',
       testingStatus: 'Changes Requested',
       documents: updatedDocs,
@@ -393,7 +428,8 @@ export default function AdminProjectDetailPage({
             <span>Change QA Tester</span>
           </button>
 
-          {!isAdminApproved && (
+          {/* Action Buttons: Unlock ONLY when BOTH Developer AND QA Tester have submitted their sides */}
+          {!isAdminApproved && isBothSubmitted && (
             <>
               <button
                 type="button"
@@ -402,7 +438,7 @@ export default function AdminProjectDetailPage({
                 onClick={() => setIsRevisionModalOpen(true)}
               >
                 <ShieldAlert size={15} />
-                <span>{isRevision ? 'Update Requested Changes' : 'Reject & Request Changes'}</span>
+                <span>Reject & Request Changes</span>
               </button>
 
               <button
@@ -415,6 +451,36 @@ export default function AdminProjectDetailPage({
                 <span>Approve Project</span>
               </button>
             </>
+          )}
+
+          {/* Pending submission indicator when both have not yet submitted */}
+          {!isAdminApproved && !isBothSubmitted && (
+            <div 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '7px', 
+                padding: '6px 14px', 
+                borderRadius: '8px', 
+                background: '#F1F5F9', 
+                border: '1px solid #E2E8F0', 
+                fontSize: '0.8rem', 
+                color: '#475569', 
+                fontWeight: 600 
+              }}
+              title="Admin approval and change request options unlock only after both Developer and QA Tester have submitted their work."
+            >
+              <Clock size={14} color="#64748B" />
+              <span>
+                {isRevision
+                  ? 'Awaiting Developer Revision Submission'
+                  : !isDevSubmitted 
+                    ? 'Awaiting Developer Submission' 
+                    : !isTesterSubmitted 
+                      ? 'Awaiting QA Tester Submission' 
+                      : 'Awaiting Submissions'}
+              </span>
+            </div>
           )}
 
           {isAdminApproved && (

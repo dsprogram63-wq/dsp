@@ -58,6 +58,45 @@ export default function ProjectReviewPage({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
+  const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
+  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
+  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
+  const isRevision = Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
+
+  // 1. Developer is submitted ONLY when developer has finished work and submitted
+  const isDevSubmitted = Boolean(
+    !isRevision && (
+      project.developerSubmitted === true ||
+      project.freelancerSubmitted === true ||
+      project.developerSubmission === 'Submitted' ||
+      Boolean(project.developerSubmittedAt || project.freelancerSubmittedAt) ||
+      project.status === 'Submitted' ||
+      project.status === 'Finalized' ||
+      (Boolean(project.submittedDate && project.submittedDate !== '—') && (project.developerProgress === 100 || project.progress === 100))
+    ) && (
+      project.developerSubmitted ||
+      project.freelancerSubmitted ||
+      project.developerProgress === 100 ||
+      project.progress === 100 ||
+      (completedCount > 0 && completedCount === totalCount)
+    )
+  );
+
+  // 2. QA Tester is submitted ONLY when QA has finished testing and finalized checklist
+  const isTesterSubmitted = Boolean(
+    !isRevision && (
+      project.testerFinalized === true ||
+      project.qaFinalized === true ||
+      project.testingStatus === 'Tester Approved' ||
+      project.status === 'Finalized' ||
+      Boolean(project.testerFinalizedAt)
+    )
+  );
+
+  // 3. Both Developer and QA Tester must have submitted before review decisions unlock
+  const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
+
   const toggleSecret = (id) => {
     setRevealedSecrets(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -91,6 +130,10 @@ export default function ProjectReviewPage({
       revisionReason: revData.revisionReason,
       revisionTask: revData.revisionTask,
       testerFinalized: false,
+      qaFinalized: false,
+      developerSubmitted: false,
+      freelancerSubmitted: false,
+      developerSubmission: 'Revision Required',
       status: 'Changes Requested',
       testingStatus: 'Changes Requested',
       testingActivity: [
@@ -559,23 +602,53 @@ export default function ProjectReviewPage({
         </div>
 
         <div className="review-decision-btns">
-          <button
-            type="button"
-            className="btn btn-navy-action btn-request-revision"
-            onClick={() => setIsRevisionModalOpen(true)}
-          >
-            <ShieldAlert size={16} />
-            <span>Request Revision</span>
-          </button>
+          {isBothSubmitted ? (
+            <>
+              <button
+                type="button"
+                className="btn btn-navy-action btn-request-revision"
+                onClick={() => setIsRevisionModalOpen(true)}
+              >
+                <ShieldAlert size={16} />
+                <span>Request Revision</span>
+              </button>
 
-          <button
-            type="button"
-            className="btn btn-orange-primary btn-approve-project"
-            onClick={() => setIsApproveModalOpen(true)}
-          >
-            <ShieldCheck size={18} />
-            <span>Approve Project</span>
-          </button>
+              <button
+                type="button"
+                className="btn btn-orange-primary btn-approve-project"
+                onClick={() => setIsApproveModalOpen(true)}
+              >
+                <ShieldCheck size={18} />
+                <span>Approve Project</span>
+              </button>
+            </>
+          ) : (
+            <div 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '8px 16px', 
+                borderRadius: '8px', 
+                background: '#F1F5F9', 
+                border: '1px solid #E2E8F0', 
+                fontSize: '0.82rem', 
+                color: '#475569', 
+                fontWeight: 600 
+              }}
+            >
+              <Clock size={16} color="#64748B" />
+              <span>
+                {isRevision 
+                  ? 'Awaiting Developer Revision Submission' 
+                  : !isDevSubmitted 
+                    ? 'Awaiting Developer Submission' 
+                    : !isTesterSubmitted 
+                      ? 'Awaiting QA Tester Submission' 
+                      : 'Awaiting Submissions'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
