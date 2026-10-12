@@ -245,6 +245,22 @@ export default function FreelancerLogin({
           (d.name && d.name.toLowerCase() === idLower)
         );
         if (dev) {
+          if (dev.status === 'Pending') {
+            setLoginSuccess(false);
+            setNoticeMessage({
+              type: 'warning',
+              text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved by an Admin in the Developer Directory, platform access will be unlocked.`
+            });
+            return;
+          }
+          if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
+            setLoginSuccess(false);
+            setNoticeMessage({
+              type: 'warning',
+              text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
+            });
+            return;
+          }
           matchedUser = {
             name: dev.name,
             email: dev.email,
@@ -312,6 +328,22 @@ export default function FreelancerLogin({
             (t.name && t.name.toLowerCase() === idLower)
           );
           if (tester) {
+            if (tester.status === 'Pending') {
+              setLoginSuccess(false);
+              setNoticeMessage({
+                type: 'warning',
+                text: `Access Denied: QA Tester account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved by an Admin in the QA Tester Directory, access will be unlocked.`
+              });
+              return;
+            }
+            if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
+              setLoginSuccess(false);
+              setNoticeMessage({
+                type: 'warning',
+                text: `Access Denied: This tester account is currently ${tester.status}. Please contact platform administration.`
+              });
+              return;
+            }
             matchedUser = {
               name: tester.name,
               email: tester.email,
@@ -347,6 +379,13 @@ export default function FreelancerLogin({
 
   // 1-Click Quick Demo Login for a specific developer or tester
   const handleSelectSpecificUser = (role, userObj) => {
+    if (userObj.status === 'Pending') {
+      setNoticeMessage({
+        type: 'warning',
+        text: `Cannot Login: "${userObj.name}" (${userObj.id}) is PENDING Admin verification. Please approve this profile in the Admin Directory first.`
+      });
+      return;
+    }
     setSelectedRole(role);
     setIdentifier(userObj.email);
     setPassword('dev123');
@@ -590,8 +629,8 @@ export default function FreelancerLogin({
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {isFreelancer ? (
-                    allStoredDevs.length > 0 ? (
-                      allStoredDevs.slice(0, 4).map(d => (
+                    allStoredDevs.filter(d => d.status === 'Active' || d.status === 'Approved').length > 0 ? (
+                      allStoredDevs.filter(d => d.status === 'Active' || d.status === 'Approved').slice(0, 4).map(d => (
                         <button
                           key={d.id}
                           type="button"
@@ -612,12 +651,12 @@ export default function FreelancerLogin({
                       ))
                     ) : (
                       <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                        No developers registered yet. (Register via Referral Application)
+                        No approved developers yet. (Approve registered developers in Developer Directory)
                       </span>
                     )
                   ) : (
-                    allStoredTesters.length > 0 ? (
-                      allStoredTesters.slice(0, 4).map(t => (
+                    allStoredTesters.filter(t => t.status === 'Active' || t.status === 'Approved').length > 0 ? (
+                      allStoredTesters.filter(t => t.status === 'Active' || t.status === 'Approved').slice(0, 4).map(t => (
                         <button
                           key={t.id}
                           type="button"
@@ -638,7 +677,7 @@ export default function FreelancerLogin({
                       ))
                     ) : (
                       <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                        No testers registered yet. (Register via Referral Application)
+                        No approved testers yet. (Approve registered testers in QA Tester Directory)
                       </span>
                     )
                   )}

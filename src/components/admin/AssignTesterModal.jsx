@@ -54,8 +54,12 @@ export default function AssignTesterModal({
   const currentTesterActiveCount = getTesterActiveCount(currentTester);
   const currentTesterAvailability = getTesterAvailability(currentTester);
 
-  // Filter out the currently assigned tester from candidate list
+  // Filter out the currently assigned tester AND only allow Approved & Active testers
   const availableCandidates = (testers || initialTesters).filter(t => {
+    // Only approved and active testers can be assigned
+    if (t.status !== 'Active' && t.status !== 'Approved') {
+      return false;
+    }
     if (t.id === currentTester.id || t.name.toLowerCase() === currentTester.name.toLowerCase()) {
       return false;
     }

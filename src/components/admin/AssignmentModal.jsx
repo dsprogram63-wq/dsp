@@ -58,8 +58,12 @@ export default function AssignmentModal({
   const currentDevActiveCount = getDevActiveCount(currentDev);
   const currentDevAvailability = getDevAvailability(currentDev);
 
-  // Filter out the currently assigned developer from candidate list
+  // Filter out the currently assigned developer AND only allow Approved & Active developers
   const availableCandidates = (developers || initialDevelopers).filter(d => {
+    // Only approved and active developers can be assigned
+    if (d.status !== 'Active' && d.status !== 'Approved') {
+      return false;
+    }
     // Exclude if matches current assigned developer by ID or by Name
     if (d.id === currentDev.id || d.name.toLowerCase() === currentDev.name.toLowerCase()) {
       return false;

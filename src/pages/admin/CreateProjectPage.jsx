@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   PlusCircle, 
   Trash2, 
@@ -86,9 +86,40 @@ export default function CreateProjectPage({
   const [deadlineDate, setDeadlineDate] = useState('2026-10-25');
   const [finalDeliveryDate, setFinalDeliveryDate] = useState('2026-10-30');
 
-  // SECTION 4 & 5: DEVELOPER & TESTER ASSIGNMENTS
-  const [selectedDevId, setSelectedDevId] = useState(() => availableDevelopers[0]?.id || '');
-  const [selectedTesterId, setSelectedTesterId] = useState(() => availableTesters[0]?.id || '');
+  // STRICT AVAILABILITY FILTER: ONLY Approved & Active Developers can be assigned
+  const approvedDevelopers = useMemo(() => {
+    return (availableDevelopers || []).filter(dev => 
+      dev && (dev.status === 'Active' || dev.status === 'Approved') && dev.status !== 'Pending' && dev.status !== 'On Hold' && dev.status !== 'Deactivated' && dev.status !== 'Rejected'
+    );
+  }, [availableDevelopers]);
+
+  // STRICT AVAILABILITY FILTER: ONLY Approved & Active Testers can be assigned
+  const approvedTesters = useMemo(() => {
+    return (availableTesters || []).filter(t => 
+      t && (t.status === 'Active' || t.status === 'Approved') && t.status !== 'Pending' && t.status !== 'On Hold' && t.status !== 'Deactivated' && t.status !== 'Rejected'
+    );
+  }, [availableTesters]);
+
+  // SECTION 4 & 5: DEVELOPER & TESTER ASSIGNMENTS (Strictly from approved pool)
+  const [selectedDevId, setSelectedDevId] = useState(() => approvedDevelopers[0]?.id || '');
+  const [selectedTesterId, setSelectedTesterId] = useState(() => approvedTesters[0]?.id || '');
+
+  // Keep selection strictly synced with approved candidates
+  useEffect(() => {
+    if (selectedDevId && !approvedDevelopers.some(d => d.id === selectedDevId)) {
+      setSelectedDevId(approvedDevelopers[0]?.id || '');
+    } else if (!selectedDevId && approvedDevelopers.length > 0) {
+      setSelectedDevId(approvedDevelopers[0]?.id || '');
+    }
+  }, [approvedDevelopers, selectedDevId]);
+
+  useEffect(() => {
+    if (selectedTesterId && !approvedTesters.some(t => t.id === selectedTesterId)) {
+      setSelectedTesterId(approvedTesters[0]?.id || '');
+    } else if (!selectedTesterId && approvedTesters.length > 0) {
+      setSelectedTesterId(approvedTesters[0]?.id || '');
+    }
+  }, [approvedTesters, selectedTesterId]);
 
   // SECTION 6: DETAILED PROJECT REQUIREMENTS
   const [description, setDescription] = useState('');
@@ -300,8 +331,18 @@ export default function CreateProjectPage({
     if (!name.trim()) errors.push('Project Name is required.');
     if (!projectType) errors.push('Please select a project type.');
     if (!priority) errors.push('Please select a priority.');
-    if (availableDevelopers.length > 0 && !selectedDevId) errors.push('Please select a developer.');
-    if (availableTesters.length > 0 && !selectedTesterId) errors.push('Please select a tester.');
+    if (approvedDevelopers.length === 0) {
+      errors.push('No approved developers available. You must approve a developer from Developer Directory first before creating a project.');
+    } else if (!selectedDevId) {
+      errors.push('Please select an approved developer.');
+    }
+
+    if (approvedTesters.length === 0) {
+      errors.push('No approved QA testers available. You must approve a tester from QA Tester Directory first before creating a project.');
+    } else if (!selectedTesterId) {
+      errors.push('Please select an approved QA tester.');
+    }
+
     if (!description.trim()) errors.push('Project Description is required.');
     if (!clientReqs.trim()) errors.push('Client Requirement is required.');
     if (totalMilestoneWeight !== 100) errors.push('Milestone percentage must total exactly 100%.');
@@ -314,8 +355,8 @@ export default function CreateProjectPage({
 
     setValidationErrors([]);
 
-    const dev = availableDevelopers.find(d => d.id === selectedDevId);
-    const tester = availableTesters.find(t => t.id === selectedTesterId);
+    const dev = approvedDevelopers.find(d => d.id === selectedDevId);
+    const tester = approvedTesters.find(t => t.id === selectedTesterId);
 
     const validCreds = credentials
       .filter(c => c.email || c.password)
@@ -486,8 +527,8 @@ export default function CreateProjectPage({
     onSaveProject(newProject);
   };
 
-  const currentDev = availableDevelopers.find(d => d.id === selectedDevId) || availableDevelopers[0];
-  const currentTester = availableTesters.find(t => t.id === selectedTesterId) || availableTesters[0];
+  const currentDev = approvedDevelopers.find(d => d.id === selectedDevId) || null;
+  const currentTester = approvedTesters.find(t => t.id === selectedTesterId) || null;
 
   return (
     <div className="create-project-container">
@@ -885,41 +926,32 @@ export default function CreateProjectPage({
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label className="field-label">Select Developer {availableDevelopers.length > 0 ? '*' : '(Optional)'}</label>
-            {availableDevelopers.length > 0 ? (
+            <label className="field-label">
+              Select Developer {approvedDevelopers.length > 0 ? '*' : '(Approval Required)'}
+            </label>
+            {approvedDevelopers.length > 0 ? (
               <div className="dev-selection-grid">
-                {availableDevelopers.map((dev) => {
+                {approvedDevelopers.map((dev) => {
                   const isSelected = selectedDevId === dev.id;
-                  const statusClass = dev.status === 'Deactivated' 
-                    ? 'inactive' 
-                    : dev.status === 'On Hold' 
-                      ? 'on-leave' 
-                      : dev.activeProjectsCount > 2 
-                        ? 'busy' 
-                        : dev.activeProjectsCount > 0 
-                          ? 'working' 
-                          : 'available';
+                  const activeCount = dev.activeProjectsCount || 0;
+                  const statusClass = activeCount > 2 
+                    ? 'busy' 
+                    : activeCount > 0 
+                      ? 'working' 
+                      : 'available';
                   
-                  const displayStatus = dev.status === 'Deactivated'
-                    ? 'Inactive'
-                    : dev.status === 'On Hold'
-                      ? 'On Leave'
-                      : dev.activeProjectsCount > 2
-                        ? 'Busy'
-                        : dev.activeProjectsCount > 0
-                          ? 'Currently Working'
-                          : 'Available';
+                  const displayStatus = activeCount > 2
+                    ? 'Busy'
+                    : activeCount > 0
+                      ? 'Currently Working'
+                      : 'Available';
 
-                  const formattedCount = dev.activeProjectsCount < 10 ? `0${dev.activeProjectsCount || 0}` : `${dev.activeProjectsCount}`;
+                  const formattedCount = activeCount < 10 ? `0${activeCount}` : `${activeCount}`;
 
                   return (
                     <div
                       key={dev.id}
-                      onClick={() => {
-                        if (dev.status !== 'Deactivated') {
-                          setSelectedDevId(dev.id);
-                        }
-                      }}
+                      onClick={() => setSelectedDevId(dev.id)}
                       className={`dev-select-card ${isSelected ? 'selected' : ''}`}
                     >
                       <img
@@ -929,7 +961,7 @@ export default function CreateProjectPage({
                       />
                       <div className="dev-card-info">
                         <div className="dev-card-name">{dev.name}</div>
-                        <div className="dev-card-skill">{dev.primarySkill}</div>
+                        <div className="dev-card-skill">{dev.primarySkill || 'Full Stack Developer'}</div>
                         <div className="dev-card-meta">
                           <span>Active Projects: <strong>{formattedCount}</strong></span>
                           <span>•</span>
@@ -949,24 +981,36 @@ export default function CreateProjectPage({
                 })}
               </div>
             ) : (
-              <div style={{
-                padding: '20px',
-                background: '#F8FAFC',
-                borderRadius: '8px',
-                border: '1px dashed #CBD5E1',
-                textAlign: 'center',
-                color: '#64748B',
-                fontSize: '0.88rem'
-              }}>
-                <Users size={24} color="#94A3B8" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                <strong style={{ color: '#1E293B', display: 'block' }}>No Developers Registered Yet</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem' }}>
-                  Developers can register via the Referral Application page. You can still create this project and assign a developer later.
+              <div className="empty-approved-box warning">
+                <Clock size={28} color="#D97706" style={{ marginBottom: '8px' }} />
+                <h4>No Approved Developers Available</h4>
+                <p>
+                  {(availableDevelopers || []).some(d => d.status === 'Pending') ? (
+                    <>
+                      There are <strong>{(availableDevelopers || []).filter(d => d.status === 'Pending').length} registered developer(s)</strong> awaiting Admin approval in the Developer Directory.
+                      Developers must be reviewed & approved before they can be assigned to new projects.
+                    </>
+                  ) : (
+                    <>
+                      No developers are registered on the platform yet. Once developers apply and are approved by Admin, they will appear here.
+                    </>
+                  )}
                 </p>
+                <button
+                  type="button"
+                  className="btn-link-action"
+                  onClick={() => {
+                    window.history.pushState({}, '', '/admin/developers');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                  }}
+                >
+                  <UserCheck size={14} />
+                  <span>Go to Developer Directory to Approve Developers</span>
+                </button>
               </div>
             )}
 
-            {availableDevelopers.length > 0 && (
+            {approvedDevelopers.length > 0 && (
               <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
                 Selected Developer: <strong style={{ color: '#0A3D75' }}>{currentDev?.name || 'None'}</strong> {currentDev ? `(${currentDev.primarySkill})` : ''}
               </div>
@@ -992,42 +1036,32 @@ export default function CreateProjectPage({
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label className="field-label">Select Tester {availableTesters.length > 0 ? '*' : '(Optional)'}</label>
-            {availableTesters.length > 0 ? (
+            <label className="field-label">
+              Select Tester {approvedTesters.length > 0 ? '*' : '(Approval Required)'}
+            </label>
+            {approvedTesters.length > 0 ? (
               <div className="dev-selection-grid">
-                {availableTesters.map((t) => {
+                {approvedTesters.map((t) => {
                   const isSelected = selectedTesterId === t.id;
-                  const statusClass = t.status === 'Deactivated' 
-                    ? 'inactive' 
-                    : t.status === 'On Hold' 
-                      ? 'on-leave' 
-                      : (t.activeTestingProjects || 0) > 2 
-                        ? 'busy' 
-                        : (t.activeTestingProjects || 0) > 0 
-                          ? 'testing' 
-                          : 'available';
-
-                  const displayStatus = t.status === 'Deactivated'
-                    ? 'Inactive'
-                    : t.status === 'On Hold'
-                      ? 'On Leave'
-                      : (t.activeTestingProjects || 0) > 2
-                        ? 'Busy'
-                        : (t.activeTestingProjects || 0) > 0
-                          ? 'Currently Testing'
-                          : 'Available';
-
                   const count = t.activeTestingProjects || 0;
+                  const statusClass = count > 2 
+                    ? 'busy' 
+                    : count > 0 
+                      ? 'testing' 
+                      : 'available';
+
+                  const displayStatus = count > 2
+                    ? 'Busy'
+                    : count > 0
+                      ? 'Currently Testing'
+                      : 'Available';
+
                   const formattedCount = count < 10 ? `0${count}` : `${count}`;
 
                   return (
                     <div
                       key={t.id}
-                      onClick={() => {
-                        if (t.status !== 'Deactivated') {
-                          setSelectedTesterId(t.id);
-                        }
-                      }}
+                      onClick={() => setSelectedTesterId(t.id)}
                       className={`dev-select-card ${isSelected ? 'selected tester-selected' : ''}`}
                     >
                       <img
@@ -1037,7 +1071,7 @@ export default function CreateProjectPage({
                       />
                       <div className="dev-card-info">
                         <div className="dev-card-name">{t.name}</div>
-                        <div className="dev-card-skill">{t.specialization || t.role}</div>
+                        <div className="dev-card-skill">{t.specialization || t.role || 'QA Tester'}</div>
                         <div className="dev-card-meta">
                           <span>Active Testing Projects: <strong>{formattedCount}</strong></span>
                           <span>•</span>
@@ -1057,24 +1091,36 @@ export default function CreateProjectPage({
                 })}
               </div>
             ) : (
-              <div style={{
-                padding: '20px',
-                background: '#F8FAFC',
-                borderRadius: '8px',
-                border: '1px dashed #CBD5E1',
-                textAlign: 'center',
-                color: '#64748B',
-                fontSize: '0.88rem'
-              }}>
-                <ShieldCheck size={24} color="#94A3B8" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                <strong style={{ color: '#1E293B', display: 'block' }}>No QA Testers Registered Yet</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem' }}>
-                  QA Testers can register via the Referral Application page. You can still create this project and assign a tester later.
+              <div className="empty-approved-box warning">
+                <Clock size={28} color="#D97706" style={{ marginBottom: '8px' }} />
+                <h4>No Approved QA Testers Available</h4>
+                <p>
+                  {(availableTesters || []).some(t => t.status === 'Pending') ? (
+                    <>
+                      There are <strong>{(availableTesters || []).filter(t => t.status === 'Pending').length} registered QA tester(s)</strong> awaiting Admin approval in the QA Tester Directory.
+                      Testers must be reviewed & approved by Admin before they can be assigned to new projects.
+                    </>
+                  ) : (
+                    <>
+                      No QA testers are registered on the platform yet. Once testers apply and are approved by Admin, they will appear here.
+                    </>
+                  )}
                 </p>
+                <button
+                  type="button"
+                  className="btn-link-action tester"
+                  onClick={() => {
+                    window.history.pushState({}, '', '/admin/testers');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                  }}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Go to QA Tester Directory to Approve Testers</span>
+                </button>
               </div>
             )}
 
-            {availableTesters.length > 0 && (
+            {approvedTesters.length > 0 && (
               <div style={{ marginTop: '12px', fontSize: '0.825rem', color: '#64748B' }}>
                 Selected Tester: <strong style={{ color: '#F3821D' }}>{currentTester?.name || 'None'}</strong> {currentTester ? `(${currentTester.specialization || currentTester.role})` : ''}
               </div>
