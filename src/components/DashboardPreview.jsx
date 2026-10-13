@@ -25,7 +25,7 @@ export default function DashboardPreview() {
   ];
 
   return (
-    <section className="dashboard-preview-section">
+    <section id="workspace" className="dashboard-preview-section">
       <div className="container">
         <div className="section-header-row">
           <div>

@@ -41,10 +41,10 @@
 
 .nav-link-btn {
   color: #374151;
-  font-size: 0.925rem;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: var(--radius-full);
   transition: all var(--transition-fast);
   background: transparent;
   display: inline-block;
@@ -52,13 +52,13 @@
 
 .nav-link-btn:hover {
   color: var(--color-primary-navy);
-  background-color: #F3F4F6;
+  background-color: #F1F5F9;
 }
 
 .nav-link-btn.active {
   background-color: #E6F0FA;
   color: var(--color-primary-navy);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Right Actions */
@@ -70,39 +70,41 @@
 
 .btn-visit-link {
   color: var(--color-primary-navy);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-white);
+  border: 1px solid rgba(10, 61, 117, 0.18);
+  background-color: #FFFFFF;
   transition: all var(--transition-fast);
 }
 
 .btn-visit-link:hover {
   background-color: var(--color-navy-surface);
   border-color: var(--color-primary-navy);
+  transform: translateY(-1px);
 }
 
 .btn-nav-orange {
   background-color: var(--color-primary-orange);
   color: var(--color-white);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  padding: 9px 20px;
-  border-radius: var(--radius-sm);
+  padding: 9px 22px;
+  border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(243, 130, 29, 0.35);
+  box-shadow: 0 4px 14px rgba(243, 130, 29, 0.35);
   transition: all var(--transition-fast);
 }
 
 .btn-nav-orange:hover {
   background-color: var(--color-orange-hover);
+  box-shadow: 0 6px 18px rgba(243, 130, 29, 0.45);
   transform: translateY(-1px);
 }
 

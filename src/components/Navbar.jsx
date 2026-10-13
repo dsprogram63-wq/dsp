@@ -59,6 +59,24 @@ export default function Navbar({ onNavigate, currentPage = 'home' }) {
                 <li>
                   <button
                     type="button"
+                    onClick={(e) => handleNavClick(e, 'how-it-works')}
+                    className={`nav-link-btn ${activeTab === 'how-it-works' ? 'active' : ''}`}
+                  >
+                    How It Works
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => handleNavClick(e, 'workspace')}
+                    className={`nav-link-btn ${activeTab === 'workspace' ? 'active' : ''}`}
+                  >
+                    Workspace
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
                     onClick={(e) => handleNavClick(e, 'faq')}
                     className={`nav-link-btn ${activeTab === 'faq' ? 'active' : ''}`}
                   >
@@ -133,6 +151,24 @@ export default function Navbar({ onNavigate, currentPage = 'home' }) {
               className="nav-link-btn"
             >
               Home
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              onClick={(e) => handleNavClick(e, 'how-it-works')}
+              className="nav-link-btn"
+            >
+              How It Works
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              onClick={(e) => handleNavClick(e, 'workspace')}
+              className="nav-link-btn"
+            >
+              Workspace
             </button>
           </li>
           <li>

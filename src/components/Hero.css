@@ -1,151 +1,472 @@
-/* Exact Hero Styling matching Screenshot 1 */
-.hero-industrial-wrapper {
-  background: var(--color-navy-gradient);
-  color: var(--color-white);
-  padding-top: 64px;
-  padding-bottom: 0;
+/* ==========================================================================
+   HERO SECTION • CONNECTLY MODERN SAAS AESTHETIC (PRESERVING BRAND COLORS)
+   ========================================================================== */
+
+.hero-connectly-section {
   position: relative;
+  background: linear-gradient(180deg, #F8FAFD 0%, #F1F6FB 50%, #E8F2FC 100%);
+  color: var(--color-text-dark);
+  padding-top: 52px;
+  padding-bottom: 0;
   overflow: hidden;
+  min-height: 820px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-/* Income Highlight Styling */
-.highlight-income-glow {
-  color: #FFAE42;
-  background: linear-gradient(135deg, rgba(243, 130, 29, 0.25) 0%, rgba(255, 174, 66, 0.15) 100%);
-  border: 1px solid rgba(243, 130, 29, 0.45);
-  padding: 2px 10px;
-  border-radius: var(--radius-sm);
-  font-weight: 800;
-  display: inline-block;
-  box-shadow: 0 0 12px rgba(243, 130, 29, 0.25);
-}
-
-/* Background ambient light */
-.hero-industrial-bg-ambient {
+/* Background Soft Ambient Light */
+.hero-connectly-ambient {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 1400px;
+  height: 520px;
+  background: radial-gradient(circle at 50% 25%, rgba(37, 99, 235, 0.09) 0%, rgba(243, 130, 29, 0.04) 45%, transparent 75%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Content Container */
+.hero-content-container {
+  position: relative;
+  z-index: 4;
+  text-align: center;
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 36px;
+}
+
+/* ==========================================================================
+   4 FLOATING 3D APP CARDS (INSPIRED BY CONNECTLY REFERENCE IMAGE)
+   ========================================================================== */
+.hero-floating-decorations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 20%, rgba(243, 130, 29, 0.08) 0%, rgba(10, 61, 117, 0) 70%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.hero-floating-card {
+  position: absolute;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+  will-change: transform;
+}
+
+.hero-floating-card:hover {
+  transform: scale(1.12) translateY(-6px) !important;
+}
+
+/* Card 3D Glass Body */
+.card-glass-body {
+  width: 66px;
+  height: 66px;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  position: relative;
+}
+
+.card-icon-surface {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glossy 3D Highlight Reflection */
+.card-icon-surface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 18px 18px 0 0;
   pointer-events: none;
 }
 
-.hero-main-layout {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  max-width: 920px;
-  margin: 0 auto;
-  padding-bottom: 56px;
+/* Card 1: Top-Left (Developer Track - Vibrant Sapphire Blue) */
+.card-top-left {
+  top: 13%;
+  left: calc(50% - 460px);
+  animation: floatCardTopLeft 6s ease-in-out infinite;
+}
+
+.dev-card-glow {
+  box-shadow: 0 18px 36px -6px rgba(37, 99, 235, 0.38), 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.dev-bg {
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+}
+
+/* Card 2: Top-Right (Git Milestones - Deep Royal Sapphire) */
+.card-top-right {
+  top: 13%;
+  right: calc(50% - 460px);
+  animation: floatCardTopRight 6.8s ease-in-out infinite 0.6s;
+}
+
+.git-card-glow {
+  box-shadow: 0 18px 36px -6px rgba(10, 61, 117, 0.36), 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.git-bg {
+  background: linear-gradient(135deg, #2563EB 0%, #0A3D75 100%);
+}
+
+/* Card 3: Mid-Left (QA Tester Track - Emerald Sapphire) */
+.card-mid-left {
+  top: 42%;
+  left: calc(50% - 490px);
+  animation: floatCardMidLeft 7.2s ease-in-out infinite 1.2s;
+}
+
+.qa-card-glow {
+  box-shadow: 0 18px 36px -6px rgba(16, 185, 129, 0.32), 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.qa-bg {
+  background: linear-gradient(135deg, #10B981 0%, #059669 50%, #065F46 100%);
+}
+
+/* Card 4: Mid-Right (Dual-OTP Security - Rich Indigo/Navy) */
+.card-mid-right {
+  top: 42%;
+  right: calc(50% - 490px);
+  animation: floatCardMidRight 6.4s ease-in-out infinite 1.8s;
+}
+
+.auth-card-glow {
+  box-shadow: 0 18px 36px -6px rgba(30, 64, 175, 0.38), 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.auth-bg {
+  background: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
+}
+
+/* Floating Animations */
+@keyframes floatCardTopLeft {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+
+@keyframes floatCardTopRight {
+  0%, 100% { transform: translateY(0) rotate(3deg); }
+  50% { transform: translateY(-14px) rotate(-1deg); }
+}
+
+@keyframes floatCardMidLeft {
+  0%, 100% { transform: translateY(0) rotate(1deg); }
+  50% { transform: translateY(-11px) rotate(-2deg); }
+}
+
+@keyframes floatCardMidRight {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-13px) rotate(2deg); }
+}
+
+/* ==========================================================================
+   TOP EYEBROW PILL BADGE (CONNECTLY STYLE)
+   ========================================================================== */
+.hero-eyebrow-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
 }
 
 .hero-eyebrow-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
-  background-color: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(10, 61, 117, 0.14);
   border-radius: var(--radius-full);
-  font-size: 0.825rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #E2E8F0;
-  margin-bottom: 24px;
+  padding: 4px 14px 4px 6px;
+  box-shadow: 0 4px 14px rgba(10, 61, 117, 0.06);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.hero-role-pill {
+.hero-eyebrow-pill:hover {
+  background-color: #FFFFFF;
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.pill-status-chip {
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.pill-label-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  letter-spacing: 0.01em;
+}
+
+/* Track Selector Pill Row */
+.hero-track-switcher-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.hero-track-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
+  gap: 7px;
+  padding: 6px 16px;
   border-radius: var(--radius-full);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(10, 61, 117, 0.12);
+  color: #475569;
 }
 
-.hero-role-pill.dev {
-  background: rgba(243, 130, 29, 0.15);
-  border-color: rgba(243, 130, 29, 0.4);
-  color: #FFD8A8;
+.hero-track-btn:hover {
+  background: #FFFFFF;
+  color: var(--color-primary-navy);
+  transform: translateY(-1px);
 }
 
-.hero-role-pill.dev:hover {
-  background: rgba(243, 130, 29, 0.3);
-  transform: translateY(-2px);
-  color: #FFFFFF;
+.hero-track-btn.active-dev {
+  background: rgba(243, 130, 29, 0.12);
+  border-color: rgba(243, 130, 29, 0.45);
+  color: #C25600;
+  box-shadow: 0 2px 8px rgba(243, 130, 29, 0.15);
 }
 
-.hero-role-pill.qa {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #A7F3D0;
+.hero-track-btn.active-qa {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #065F46;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
 }
 
-.hero-role-pill.qa:hover {
-  background: rgba(16, 185, 129, 0.3);
-  transform: translateY(-2px);
-  color: #FFFFFF;
-}
-
-.hero-eyebrow-pill .dot-orange {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--color-primary-orange);
-}
-
-/* Heading Typography */
-.hero-industrial-heading {
-  font-size: clamp(2.6rem, 5vw, 4.2rem);
+/* ==========================================================================
+   MAIN HEADLINE WITH INLINE TOGGLE SWITCH (CONNECTLY SIGNATURE)
+   ========================================================================== */
+.hero-connectly-heading {
+  font-size: clamp(2.2rem, 4.2vw, 3.5rem);
   font-weight: 900;
   line-height: 1.15;
-  letter-spacing: -0.02em;
-  margin-bottom: 12px;
+  letter-spacing: -0.03em;
+  color: #0F172A;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
-.hero-industrial-heading .text-white-bold {
-  color: var(--color-white);
+.heading-line-1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.hero-industrial-heading .text-orange-bold {
-  color: var(--color-primary-orange);
+.heading-line-2 {
+  display: inline-block;
 }
 
-.hero-support-subtitle {
-  font-size: clamp(1.15rem, 2vw, 1.4rem);
+/* Inline Illuminated Toggle Switch */
+.hero-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  width: 58px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  padding: 3px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  outline: none;
+}
+
+.hero-inline-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55);
+}
+
+.hero-inline-toggle-knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+  transform: translateX(0);
+}
+
+.hero-inline-toggle.toggle-dev .hero-inline-toggle-knob {
+  transform: translateX(2px);
+}
+
+.hero-inline-toggle.toggle-qa {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45);
+}
+
+.hero-inline-toggle.toggle-qa .hero-inline-toggle-knob {
+  transform: translateX(26px);
+}
+
+/* Brand Accent Gradient Text */
+.brand-navy-highlight {
+  background: linear-gradient(135deg, #0A3D75 0%, #1D68BD 60%, #F3821D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+}
+
+/* ==========================================================================
+   REFINED SUBTITLE & DESCRIPTION (REFINED SAAS FONT SIZING)
+   ========================================================================== */
+.hero-connectly-sub {
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
   font-weight: 600;
-  color: #E2EAF2;
-  margin-bottom: 18px;
+  color: #1E293B;
+  max-width: 680px;
+  margin: 0 auto 10px auto;
+  line-height: 1.45;
 }
 
-.hero-industrial-desc {
-  font-size: 1.05rem;
-  line-height: 1.65;
-  color: var(--color-text-light);
-  max-width: 780px;
-  margin: 0 auto 36px auto;
+.hero-connectly-desc {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 660px;
+  margin: 0 auto 26px auto;
 }
 
-/* Search / Referral Access Bar (Screenshot 1) */
-.hero-search-card {
-  background-color: var(--color-white);
-  border-radius: var(--radius-md);
-  padding: 6px 8px 6px 18px;
+.highlight-income-glow {
+  color: #C25600;
+  background: rgba(243, 130, 29, 0.12);
+  border: 1px solid rgba(243, 130, 29, 0.35);
+  padding: 1px 8px;
+  border-radius: var(--radius-xs);
+  font-weight: 700;
+  display: inline-block;
+}
+
+/* ==========================================================================
+   PRIMARY GLOWING CTA & ACTIONS (MATCHING CONNECTLY "START CONNECTING")
+   ========================================================================== */
+.hero-actions-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.hero-btn-connectly-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: linear-gradient(135deg, #1D68BD 0%, #0A3D75 100%);
+  color: #FFFFFF;
+  font-size: 0.98rem;
+  font-weight: 700;
+  padding: 13px 34px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 28px -4px rgba(10, 61, 117, 0.42), 0 4px 10px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-btn-connectly-primary:hover {
+  background: linear-gradient(135deg, #2575D6 0%, #0D498A 100%);
+  box-shadow: 0 16px 36px -4px rgba(10, 61, 117, 0.52);
+  transform: translateY(-2px);
+  color: #FFFFFF;
+}
+
+.hero-btn-connectly-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--color-primary-navy);
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 13px 26px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(10, 61, 117, 0.16);
+  box-shadow: 0 4px 14px rgba(10, 61, 117, 0.06);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hero-btn-connectly-secondary:hover {
+  background-color: #FFFFFF;
+  border-color: var(--color-primary-navy);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   SLEEK REFERRAL SEARCH / ENTRY BAR (PILL SHAPED)
+   ========================================================================== */
+.hero-connectly-search-card {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(10, 61, 117, 0.14);
+  border-radius: var(--radius-full);
+  padding: 5px 6px 5px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 680px;
-  margin: 0 auto 24px auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  max-width: 620px;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 8px 24px -2px rgba(10, 61, 117, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.hero-connectly-search-card:focus-within {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 12px 30px -2px rgba(37, 99, 235, 0.16);
 }
 
 .hero-search-icon {
@@ -157,132 +478,103 @@
   width: 100%;
   border: none;
   background: transparent;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--color-text-dark);
   outline: none;
 }
 
 .hero-search-input::placeholder {
-  color: #64748B;
+  color: #94A3B8;
 }
 
-.hero-search-btn {
+.hero-search-submit-btn {
   background-color: var(--color-primary-orange);
-  color: var(--color-white);
-  font-size: 0.925rem;
+  color: #FFFFFF;
+  font-size: 0.88rem;
   font-weight: 700;
-  padding: 11px 22px;
-  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  border-radius: var(--radius-full);
   white-space: nowrap;
-  transition: all var(--transition-fast);
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(243, 130, 29, 0.35);
+  transition: all 0.2s ease;
 }
 
-.hero-search-btn:hover {
+.hero-search-submit-btn:hover {
   background-color: var(--color-orange-hover);
-}
-
-/* Referral Notice Pill Box on Dark Hero */
-.hero-notice-banner-dark {
-  background-color: rgba(7, 29, 51, 0.7);
-  border: 1px solid rgba(243, 130, 29, 0.4);
-  border-radius: var(--radius-md);
-  padding: 14px 20px;
-  max-width: 680px;
-  margin: 0 auto 32px auto;
-  text-align: left;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.hero-notice-badge {
-  background-color: var(--color-primary-orange);
-  color: var(--color-white);
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: var(--radius-xs);
-  text-transform: uppercase;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.hero-notice-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.hero-notice-headline {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--color-white);
-}
-
-.hero-notice-subtext {
-  font-size: 0.85rem;
-  color: #B5CEE4;
-  line-height: 1.45;
-}
-
-/* Hero Action Buttons (Screenshot 1) */
-.hero-buttons-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.hero-btn-orange {
-  background-color: var(--color-primary-orange);
-  color: var(--color-white);
-  font-weight: 700;
-  padding: 13px 28px;
-  font-size: 1rem;
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(243, 130, 29, 0.4);
-}
-
-.hero-btn-orange:hover {
-  background-color: var(--color-orange-hover);
+  box-shadow: 0 5px 16px rgba(243, 130, 29, 0.45);
   transform: translateY(-1px);
 }
 
-.hero-btn-glass {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--color-white);
-  font-weight: 600;
-  padding: 13px 26px;
-  font-size: 1rem;
+/* Notice Pill Card */
+.hero-notice-pill-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(243, 130, 29, 0.3);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 10px 18px;
+  max-width: 660px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
   backdrop-filter: blur(8px);
 }
 
-.hero-btn-glass:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.hero-notice-chip {
+  background-color: var(--color-primary-orange);
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 
-.hero-btn-link {
-  color: #E2E8F0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+.hero-notice-text {
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.45;
+  margin: 0;
 }
 
-.hero-btn-link:hover {
-  color: var(--color-primary-orange);
+/* ==========================================================================
+   CONCENTRIC SPHERICAL DOMES AT THE BOTTOM (SIGNATURE 3D HORIZON)
+   ========================================================================== */
+.hero-concentric-domes-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 540px;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-/* Bottom Stats Strip (Screenshot 1 bottom) */
-.hero-stats-strip {
-  background-color: rgba(5, 22, 39, 0.85);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 24px 0;
+.hero-concentric-domes-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 1440px;
+  transform: translateY(4%);
+}
+
+/* ==========================================================================
+   BOTTOM STATS STRIP
+   ========================================================================== */
+.hero-connectly-stats-strip {
+  position: relative;
+  z-index: 5;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid rgba(10, 61, 117, 0.1);
+  padding: 20px 0;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .hero-stats-grid {
@@ -300,40 +592,73 @@
 }
 
 .hero-stat-number {
-  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
   font-weight: 900;
-  color: var(--color-primary-orange);
+  color: var(--color-primary-navy);
   line-height: 1.1;
 }
 
 .hero-stat-label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: #B5CEE4;
+  color: #64748B;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-@media (max-width: 768px) {
-  .hero-search-card {
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+@media (max-width: 1100px) {
+  .hero-floating-card.card-top-left {
+    left: 20px;
+  }
+  .hero-floating-card.card-top-right {
+    right: 20px;
+  }
+  .hero-floating-card.card-mid-left {
+    left: 24px;
+    top: 48%;
+  }
+  .hero-floating-card.card-mid-right {
+    right: 24px;
+    top: 48%;
+  }
+}
+
+@media (max-width: 860px) {
+  .hero-floating-card {
+    display: none; /* Hide floating cards on smaller screens to avoid overlapping text */
+  }
+
+  .hero-connectly-search-card {
     flex-direction: column;
     padding: 12px;
-    align-items: stretch;
+    border-radius: var(--radius-lg);
   }
-  .hero-search-btn {
+
+  .hero-search-submit-btn {
     width: 100%;
   }
-  .hero-buttons-row {
+
+  .hero-actions-center {
     flex-direction: column;
     width: 100%;
   }
-  .hero-buttons-row .btn,
-  .hero-buttons-row .hero-btn-orange,
-  .hero-buttons-row .hero-btn-glass {
+
+  .hero-btn-connectly-primary,
+  .hero-btn-connectly-secondary {
     width: 100%;
   }
+
   .hero-stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
+
+  .hero-notice-pill-card {
+    flex-direction: column;
+    text-align: center;
+  }
 }
+

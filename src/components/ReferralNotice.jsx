@@ -25,7 +25,7 @@ export default function ReferralNotice() {
   ];
 
   return (
-    <section className="referral-notice-section">
+    <section id="how-it-works" className="referral-notice-section">
       <div className="container">
         <div className="ref-document-card">
           {/* Header Row */}
