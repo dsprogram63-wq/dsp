@@ -120,15 +120,9 @@ export default function Hero({ onNavigate }) {
           </span>
         </h1>
 
-        {/* Refined Subtitle & Description (same text, slightly refined SaaS font sizing) */}
+        {/* Refined Subtitle */}
         <p className="hero-connectly-sub">
           Work on real digital projects through a trusted Developer & Software Tester network.
-        </p>
-
-        <p className="hero-connectly-desc">
-          Build full-stack web applications and conduct rigorous QA testing to earn{' '}
-          <span className="highlight-income-glow">💰 Direct Income</span> from home.{' '}
-          Whether you are a developer or a QA tester — receive structured project assignments, clear test cycles, and grow with us.
         </p>
 
         {/* Central Primary CTA Button (matching Connectly "Start Connecting" glowing pill button) */}
