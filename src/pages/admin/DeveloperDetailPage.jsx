@@ -196,17 +196,6 @@ export default function DeveloperDetailPage({
               </button>
             )}
           </div>
-
-          <button
-            type="button"
-            className="btn btn-orange-primary"
-            onClick={handleOpenAssign}
-            disabled={developer.status === 'Deactivated' || developer.status === 'Pending' || developer.status === 'Rejected'}
-            style={{ opacity: developer.status === 'Deactivated' || developer.status === 'Pending' || developer.status === 'Rejected' ? 0.5 : 1 }}
-          >
-            <PlusCircle size={15} />
-            <span>Assign New Project</span>
-          </button>
         </div>
       </div>
 
