@@ -45,9 +45,16 @@ export default defineConfig(({ mode }) => {
 
                 const { to, subject, htmlContent, textContent, sender, replyTo } = body;
 
+                const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
+                  if (typeof item === 'string') {
+                    return { email: item.trim(), name: item.trim().split('@')[0] };
+                  }
+                  return item;
+                });
+
                 const payload = {
                   sender: sender || { name: senderName, email: senderEmail },
-                  to: Array.isArray(to) ? to : [to],
+                  to: formattedTo,
                   subject,
                   htmlContent: htmlContent || `<p>${textContent || ''}</p>`
                 };

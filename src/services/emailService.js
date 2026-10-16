@@ -304,9 +304,16 @@ export async function sendTransactionalEmail({
     email: senderProfile?.email || SENDER_PROFILES.DEFAULT.email
   };
 
+  const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
+    if (typeof item === 'string') {
+      return { email: item.trim(), name: item.trim().split('@')[0] };
+    }
+    return item;
+  });
+
   const payload = {
     sender,
-    to: Array.isArray(to) ? to : [to],
+    to: formattedTo,
     subject,
     htmlContent,
     replyTo: replyTo || {

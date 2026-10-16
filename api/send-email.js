@@ -47,9 +47,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required email fields (to, subject, content).' });
     }
 
+    const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
+      if (typeof item === 'string') {
+        return { email: item.trim() };
+      }
+      return item;
+    });
+
     const payload = {
       sender: sender || { name: senderName, email: senderEmail },
-      to: Array.isArray(to) ? to : [to],
+      to: formattedTo,
       subject,
       htmlContent: htmlContent || `<p>${textContent || ''}</p>`
     };
