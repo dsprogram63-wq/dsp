@@ -317,9 +317,10 @@ export default function ReferralApplication({
     }
 
     setIsSendingEmailOtp(true);
+    setEmailOtpSent(true); // Open OTP verification box immediately
     setEmailStatusMsg({ 
       type: 'info', 
-      text: `Dispatching verification OTP to ${formData.email.trim()} via Dahej Support mailer...` 
+      text: `Dispatching verification OTP to ${formData.email.trim()}...` 
     });
 
     try {
@@ -334,7 +335,6 @@ export default function ReferralApplication({
         senderProfile
       });
 
-      setEmailOtpSent(true);
       setEmailTimer(60); // 60s cooldown timer for resend
       setEmailOtpCode(''); // Must be entered from real email inbox!
       setEmailStatusMsg({ 
@@ -343,10 +343,12 @@ export default function ReferralApplication({
       });
     } catch (err) {
       console.error('Error sending Brevo OTP:', err);
+      const errMsg = `Failed to send email OTP: ${err.message || 'Please check your connection.'}`;
       setEmailStatusMsg({ 
         type: 'error', 
-        text: `Failed to send email OTP: ${err.message || 'Please check your connection.'}` 
+        text: errMsg 
       });
+      alert(errMsg);
     } finally {
       setIsSendingEmailOtp(false);
     }
@@ -793,6 +795,13 @@ export default function ReferralApplication({
                   <div className="field-error-msg">
                     <AlertCircle size={13} />
                     <span>{errors.email}</span>
+                  </div>
+                )}
+
+                {/* Global Email Status Message (always visible) */}
+                {emailStatusMsg && !emailOtpSent && (
+                  <div style={{ fontSize: '0.8rem', color: emailStatusMsg.type === 'error' ? '#DC2626' : '#0F3E6D', fontWeight: 600, marginTop: '6px' }}>
+                    {emailStatusMsg.text}
                   </div>
                 )}
 

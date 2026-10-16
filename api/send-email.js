@@ -22,12 +22,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY;
-  const senderEmail = process.env.VITE_BREVO_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'work@dsprogram.space';
-  const senderName = process.env.VITE_BREVO_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Dahej Support';
+  const rawKey = process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || '';
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
+  const senderEmail = (process.env.VITE_BREVO_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'work@dsprogram.space').trim().replace(/^["']|["']$/g, '');
+  const senderName = (process.env.VITE_BREVO_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, '');
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'BREVO_API_KEY environment variable is not configured.' });
+    return res.status(500).json({ error: 'VITE_BREVO_API_KEY environment variable is not configured on server. Please verify Vercel settings.' });
   }
 
   try {

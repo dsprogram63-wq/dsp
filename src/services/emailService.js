@@ -294,11 +294,6 @@ export async function sendTransactionalEmail({
   senderProfile = SENDER_PROFILES.DEFAULT,
   replyTo
 }) {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error('Brevo API key is not configured.');
-  }
-
   const sender = {
     name: senderProfile?.name || SENDER_PROFILES.DEFAULT.name,
     email: senderProfile?.email || SENDER_PROFILES.DEFAULT.email
@@ -319,9 +314,12 @@ export async function sendTransactionalEmail({
     payload.textContent = textContent;
   }
 
-  // 1. Try /api/send-email proxy first (prevents browser CORS and client adblocker blocks)
+  let lastError = null;
+
+  // 1. Primary: Try /api/send-email proxy endpoint (serverless function on Vercel or dev middleware)
   try {
-    const proxyRes = await fetch('/api/send-email', {
+    const proxyUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/send-email` : '/api/send-email';
+    const proxyRes = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -337,36 +335,47 @@ export async function sendTransactionalEmail({
           success: true,
           messageId: data.messageId
         };
-      } else if (!proxyRes.ok) {
-        console.warn('Proxy returned error, attempting fallback direct call:', data.error);
+      } else {
+        lastError = data.error || `Server returned error (${proxyRes.status})`;
+        console.warn('Proxy returned error:', lastError);
       }
+    } else {
+      const rawText = await proxyRes.text().catch(() => '');
+      lastError = `Proxy returned status ${proxyRes.status}: ${rawText.slice(0, 100)}`;
     }
   } catch (err) {
-    console.warn('Proxy request failed, falling back to direct Brevo fetch:', err);
+    lastError = err.message || 'Failed to contact /api/send-email';
+    console.warn('Proxy request failed:', lastError);
   }
 
-  // 2. Direct Brevo API fallback (strictly using allowed CORS headers: api-key, content-type)
-  const response = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      'api-key': apiKey,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+  // 2. Direct Brevo API fallback (only if apiKey is configured in client bundle)
+  const clientKey = getApiKey();
+  if (clientKey) {
+    try {
+      const response = await fetch(BREVO_API_URL, {
+        method: 'POST',
+        headers: {
+          'api-key': clientKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
 
-  const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    console.error('Brevo API Error:', data);
-    const errorMsg = data.message || `Failed to send email (Status ${response.status})`;
-    throw new Error(errorMsg);
+      if (response.ok && (data.messageId || response.status === 201)) {
+        return {
+          success: true,
+          messageId: data.messageId
+        };
+      }
+      lastError = data.message || `Brevo direct API error (Status ${response.status})`;
+    } catch (directErr) {
+      lastError = directErr.message || 'Direct Brevo API call failed';
+    }
   }
 
-  return {
-    success: true,
-    messageId: data.messageId
-  };
+  throw new Error(lastError || 'Failed to dispatch email verification OTP.');
 }
 
 /**
