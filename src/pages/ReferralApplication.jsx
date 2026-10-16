@@ -20,6 +20,12 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { uploadAvatar } from '../services/storageService.js';
+import { 
+  sendOtpVerificationEmail, 
+  verifyOtpCode, 
+  clearPendingOtp, 
+  SENDER_PROFILES 
+} from '../services/emailService.js';
 import './ReferralApplication.css';
 
 const DEFAULT_DEV_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
@@ -68,19 +74,13 @@ export default function ReferralApplication({
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
-  // Email OTP Verification States
+  // Email OTP Verification States (Strict Real Email Delivery via Brevo)
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpCode, setEmailOtpCode] = useState('');
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
   const [emailTimer, setEmailTimer] = useState(0);
   const [emailStatusMsg, setEmailStatusMsg] = useState(null);
-
-  // Reference OTP Verification States
-  const [refOtpSent, setRefOtpSent] = useState(false);
-  const [refOtpCode, setRefOtpCode] = useState('');
-  const [isRefVerified, setIsRefVerified] = useState(false);
-  const [refTimer, setRefTimer] = useState(0);
-  const [refStatusMsg, setRefStatusMsg] = useState(null);
 
   const [submitted, setSubmitted] = useState(false);
   const [assignedApplicantId, setAssignedApplicantId] = useState('');
@@ -103,17 +103,6 @@ export default function ReferralApplication({
     }
     return () => clearInterval(interval);
   }, [emailTimer]);
-
-  // Countdown timer for Reference OTP
-  useEffect(() => {
-    let interval = null;
-    if (refTimer > 0) {
-      interval = setInterval(() => {
-        setRefTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [refTimer]);
 
   // =========================================================================
   // FIELD VALIDATION CONSTRAINTS (Strict & Comprehensive)
@@ -279,17 +268,12 @@ export default function ReferralApplication({
     }
 
     // Reset verification if verified field is modified
-    if (name === 'email' && isEmailVerified) {
+    if (name === 'email' && (isEmailVerified || emailOtpSent)) {
+      clearPendingOtp(formData.email);
       setIsEmailVerified(false);
       setEmailOtpSent(false);
       setEmailOtpCode('');
       setEmailStatusMsg(null);
-    }
-    if ((name === 'referralCode' || name === 'referenceName') && isRefVerified) {
-      setIsRefVerified(false);
-      setRefOtpSent(false);
-      setRefOtpCode('');
-      setRefStatusMsg(null);
     }
 
     const newVal = type === 'checkbox' ? checked : sanitizedValue;
@@ -322,8 +306,8 @@ export default function ReferralApplication({
     });
   };
 
-  // Email OTP Handlers with validation check
-  const handleSendEmailOtp = () => {
+  // Email OTP Handlers with Brevo Transactional Email & Real Verification
+  const handleSendEmailOtp = async () => {
     const emailErr = validateField('email', formData.email);
     if (emailErr) {
       setTouched(prev => ({ ...prev, email: true }));
@@ -331,49 +315,66 @@ export default function ReferralApplication({
       alert(emailErr);
       return;
     }
-    setEmailOtpSent(true);
-    setEmailTimer(30);
-    setEmailOtpCode('123456'); // Pre-fill demo OTP for seamless instant verification
-    setEmailStatusMsg({ type: 'info', text: `Verification OTP sent to ${formData.email} (Demo Code: 123456)` });
+
+    setIsSendingEmailOtp(true);
+    setEmailStatusMsg({ 
+      type: 'info', 
+      text: `Dispatching verification OTP to ${formData.email.trim()} via Dahej Support mailer...` 
+    });
+
+    try {
+      const senderProfile = selectedRole === 'tester' 
+        ? SENDER_PROFILES.QA_DESK 
+        : SENDER_PROFILES.DEVELOPER_DESK;
+
+      await sendOtpVerificationEmail({
+        toEmail: formData.email.trim(),
+        toName: formData.fullName.trim() || (selectedRole === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
+        role: selectedRole,
+        senderProfile
+      });
+
+      setEmailOtpSent(true);
+      setEmailTimer(60); // 60s cooldown timer for resend
+      setEmailOtpCode(''); // Must be entered from real email inbox!
+      setEmailStatusMsg({ 
+        type: 'info', 
+        text: `✓ Verification OTP sent to ${formData.email}. Please check your inbox (and Spam folder) for the 6-digit code.` 
+      });
+    } catch (err) {
+      console.error('Error sending Brevo OTP:', err);
+      setEmailStatusMsg({ 
+        type: 'error', 
+        text: `Failed to send email OTP: ${err.message || 'Please check your connection.'}` 
+      });
+    } finally {
+      setIsSendingEmailOtp(false);
+    }
   };
 
   const handleVerifyEmailOtp = () => {
-    if (!emailOtpCode || emailOtpCode.trim().length < 4) {
-      setEmailStatusMsg({ type: 'error', text: 'Please enter the 6-digit OTP sent to your email.' });
-      return;
-    }
-    setIsEmailVerified(true);
-    setEmailStatusMsg({ type: 'success', text: '✓ Email verified successfully!' });
-  };
-
-  // Reference OTP Handlers with validation check
-  const handleSendRefOtp = () => {
-    const codeErr = validateField('referralCode', formData.referralCode);
-    const nameErr = validateField('referenceName', formData.referenceName);
-
-    if (codeErr || nameErr) {
-      setTouched(prev => ({ ...prev, referralCode: true, referenceName: true }));
-      setErrors(prev => ({ ...prev, referralCode: codeErr, referenceName: nameErr }));
-      alert(codeErr || nameErr);
+    const trimmedCode = (emailOtpCode || '').trim();
+    if (!trimmedCode || trimmedCode.length !== 6) {
+      setEmailStatusMsg({ 
+        type: 'error', 
+        text: 'Please enter the complete 6-digit OTP sent to your email.' 
+      });
       return;
     }
 
-    setRefOtpSent(true);
-    setRefTimer(30);
-    setRefOtpCode('123456'); // Pre-fill demo OTP
-    setRefStatusMsg({ 
-      type: 'info', 
-      text: `Reference authorization OTP sent to ${formData.referenceName} for code ${formData.referralCode} (Demo Code: 123456)` 
-    });
-  };
-
-  const handleVerifyRefOtp = () => {
-    if (!refOtpCode || refOtpCode.trim().length < 4) {
-      setRefStatusMsg({ type: 'error', text: 'Please enter the 6-digit authorization OTP from your reference.' });
-      return;
+    const result = verifyOtpCode(formData.email, trimmedCode);
+    if (result.success) {
+      setIsEmailVerified(true);
+      setEmailStatusMsg({ 
+        type: 'success', 
+        text: '✓ Email verified successfully!' 
+      });
+    } else {
+      setEmailStatusMsg({ 
+        type: 'error', 
+        text: result.error || 'Invalid OTP. Please check the code in your email.' 
+      });
     }
-    setIsRefVerified(true);
-    setRefStatusMsg({ type: 'success', text: '✓ Reference authorization verified successfully!' });
   };
 
   // Profile Photo Upload Handlers (Strict 2 MB Limit)
@@ -503,13 +504,9 @@ export default function ReferralApplication({
       return;
     }
 
-    // OTP verification checks
+    // Strict Real Email OTP verification check
     if (!isEmailVerified) {
-      alert('Please verify your Email Address with OTP first.');
-      return;
-    }
-    if (!isRefVerified) {
-      alert('Please verify your Referral Code & Reference Name with the Reference OTP first.');
+      alert('Please verify your Email Address with the 6-digit OTP sent to your email first.');
       return;
     }
     if (!formData.hasValidReference) {
@@ -619,7 +616,7 @@ export default function ReferralApplication({
           </div>
 
           <div className="highlight-peach-box" style={{ marginBottom: '24px', fontSize: '0.9rem' }}>
-            ⚡ <strong>Dual OTP Security Verification:</strong> Both your personal email and your authorized reference will be verified via OTP prior to review and Admin approval.
+            🔒 <strong>Official Email OTP Verification:</strong> A real 6-digit verification code will be sent to your email from Dahej Support (work@dsprogram.space). Email verification is strictly required before submission.
           </div>
 
           <form onSubmit={handleSubmit} className="apply-form" noValidate>
@@ -773,11 +770,11 @@ export default function ReferralApplication({
                     <button
                       type="button"
                       onClick={handleSendEmailOtp}
-                      disabled={emailTimer > 0 || !formData.email || !!validateField('email', formData.email)}
+                      disabled={isSendingEmailOtp || emailTimer > 0 || !formData.email || !!validateField('email', formData.email)}
                       className="btn-send-otp"
                       title={validateField('email', formData.email) ? 'Enter a valid email first' : 'Send OTP'}
                     >
-                      {emailOtpSent ? (emailTimer > 0 ? `Resend (${emailTimer}s)` : 'Resend OTP') : 'Send OTP'}
+                      {isSendingEmailOtp ? 'Sending OTP...' : emailOtpSent ? (emailTimer > 0 ? `Resend (${emailTimer}s)` : 'Resend OTP') : 'Send OTP'}
                     </button>
                   )}
                   {isEmailVerified && (
@@ -804,7 +801,7 @@ export default function ReferralApplication({
                   <div className="otp-verification-box">
                     <div className="otp-box-header">
                       <span>Enter 6-digit code sent to your email:</span>
-                      {emailTimer > 0 && <span>Expires in {emailTimer}s</span>}
+                      {emailTimer > 0 && <span>Resend in {emailTimer}s</span>}
                     </div>
 
                     <div className="otp-input-row">
@@ -814,12 +811,21 @@ export default function ReferralApplication({
                         placeholder="••••••"
                         value={emailOtpCode}
                         onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, ''))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (emailOtpCode.trim().length === 6) {
+                              handleVerifyEmailOtp();
+                            }
+                          }
+                        }}
                         className="otp-code-input"
                         autoFocus
                       />
                       <button
                         type="button"
                         onClick={handleVerifyEmailOtp}
+                        disabled={emailOtpCode.trim().length !== 6}
                         className="btn-verify-otp"
                       >
                         Verify Email OTP
@@ -1000,17 +1006,17 @@ export default function ReferralApplication({
               </div>
             )}
 
-            {/* Row 4: Reference Authorization Container with Dedicated OTP Verification */}
+            {/* Row 4: Referral & Reference Information */}
             <div className="reference-verification-container">
               <div className="ref-section-title-row">
                 <span className="ref-section-title">
                   <KeyRound size={15} color="#0A3D75" />
-                  <span>Referral & Reference Verification ({selectedRole === 'tester' ? 'QA Track' : 'Developer Track'})</span>
+                  <span>Referral & Reference Information ({selectedRole === 'tester' ? 'QA Track' : 'Developer Track'})</span>
                 </span>
-                {isRefVerified && (
+                {formData.referralCode && formData.referenceName && !errors.referralCode && !errors.referenceName && (
                   <span className="otp-verified-badge">
                     <ShieldCheck size={13} strokeWidth={2.5} />
-                    <span>Reference Verified</span>
+                    <span>Reference Complete</span>
                   </span>
                 )}
               </div>
@@ -1032,12 +1038,11 @@ export default function ReferralApplication({
                     id="referralCode"
                     name="referralCode"
                     type="text"
-                    className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : isRefVerified ? 'is-valid' : ''}`}
+                    className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : formData.referralCode.trim() && !errors.referralCode ? 'is-valid' : ''}`}
                     placeholder={selectedRole === 'tester' ? 'e.g. DS-TST-201' : 'e.g. DS-REF-8902'}
                     value={formData.referralCode}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    disabled={isRefVerified}
                     minLength={4}
                     maxLength={20}
                     required
@@ -1067,12 +1072,11 @@ export default function ReferralApplication({
                     id="referenceName"
                     name="referenceName"
                     type="text"
-                    className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : isRefVerified ? 'is-valid' : ''}`}
+                    className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : formData.referenceName.trim() && !errors.referenceName ? 'is-valid' : ''}`}
                     placeholder="e.g. Verified Reference Name"
                     value={formData.referenceName}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    disabled={isRefVerified}
                     minLength={3}
                     maxLength={50}
                     required
@@ -1086,77 +1090,6 @@ export default function ReferralApplication({
                   <span className="field-hint-text">Name of existing member / lead who referred you</span>
                 </div>
               </div>
-
-              {/* Action row to send reference authorization OTP */}
-              {!isRefVerified && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={handleSendRefOtp}
-                    disabled={
-                      refTimer > 0 || 
-                      !formData.referralCode || 
-                      !formData.referenceName ||
-                      !!validateField('referralCode', formData.referralCode) ||
-                      !!validateField('referenceName', formData.referenceName)
-                    }
-                    className="btn-verify-ref-action"
-                    title="Enter valid referral code and reference name to send OTP"
-                  >
-                    <UserCheck size={14} />
-                    <span>{refOtpSent ? (refTimer > 0 ? `Resend Reference OTP (${refTimer}s)` : 'Resend Reference OTP') : 'Send Reference OTP'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Reference OTP Expand Box */}
-              {refOtpSent && !isRefVerified && (
-                <div className="otp-verification-box">
-                  <div className="otp-box-header">
-                    <span>Enter authorization OTP provided by {formData.referenceName || 'your reference'}:</span>
-                    {refTimer > 0 && <span>Expires in {refTimer}s</span>}
-                  </div>
-
-                  <div className="otp-input-row">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      placeholder="••••••"
-                      value={refOtpCode}
-                      onChange={(e) => setRefOtpCode(e.target.value.replace(/\D/g, ''))}
-                      className="otp-code-input"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyRefOtp}
-                      className="btn-verify-otp"
-                    >
-                      Verify Reference OTP
-                    </button>
-                  </div>
-
-                  {refStatusMsg && (
-                    <div style={{ fontSize: '0.78rem', color: refStatusMsg.type === 'error' ? '#DC2626' : '#0F3E6D', fontWeight: 600 }}>
-                      {refStatusMsg.text}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {isRefVerified && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.825rem', color: '#065F46', fontWeight: 600, backgroundColor: '#ECFDF5', padding: '8px 12px', borderRadius: '4px', border: '1px solid #A7F3D0' }}>
-                  <span>✓ Referral Code ({formData.referralCode}) authorized by {formData.referenceName}</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsRefVerified(false)}
-                    className="btn-resend-text"
-                    style={{ fontSize: '0.78rem' }}
-                  >
-                    Edit Reference
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Row 5: Tell us briefly about yourself */}

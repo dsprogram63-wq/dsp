@@ -323,7 +323,7 @@ export default function SettingsPage() {
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="123456"
+                    placeholder="••••••"
                     className="settings-input"
                     style={{ letterSpacing: '4px', fontSize: '1.2rem', textAlign: 'center', fontWeight: 800 }}
                   />

@@ -17,6 +17,7 @@ import {
   Server
 } from 'lucide-react';
 import Logo from '../../components/Logo';
+import { sendOtpVerificationEmail, verifyOtpCode } from '../../services/emailService.js';
 import './AdminLoginPage.css';
 
 export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
@@ -33,6 +34,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpTimer, setOtpTimer] = useState(0);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Forgot Password States
@@ -40,6 +42,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [resetOtpSent, setResetOtpSent] = useState(false);
   const [resetOtpCode, setResetOtpCode] = useState('');
   const [resetOtpTimer, setResetOtpTimer] = useState(0);
+  const [isSendingResetOtp, setIsSendingResetOtp] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -70,8 +73,8 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
     return () => clearInterval(interval);
   }, [resetOtpTimer]);
 
-  // Step 1: Send Admin Login OTP
-  const handleSendLoginOtp = (e) => {
+  // Step 1: Send Admin Login OTP via Brevo
+  const handleSendLoginOtp = async (e) => {
     e.preventDefault();
     if (!adminEmail.trim() || !adminPassword.trim()) {
       setNoticeMessage({
@@ -89,22 +92,54 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
-    setOtpSent(true);
-    setOtpTimer(30);
-    setOtpCode('123456'); // Pre-fill demo OTP for fast testing
+    setIsSendingOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `6-Digit Security OTP sent to ${adminEmail}. (Demo OTP: 123456)`
+      text: `Dispatching 6-Digit security OTP to ${adminEmail.trim()}...`
     });
+
+    try {
+      await sendOtpVerificationEmail({
+        toEmail: adminEmail.trim(),
+        toName: 'Platform Administrator',
+        role: 'developer'
+      });
+
+      setOtpSent(true);
+      setOtpTimer(60);
+      setOtpCode(''); // Clean field, requires real email OTP
+      setNoticeMessage({
+        type: 'success',
+        text: `✓ 6-Digit Security OTP sent to ${adminEmail.trim()}. Please check your inbox (and Spam folder).`
+      });
+    } catch (err) {
+      console.error('Error sending admin OTP:', err);
+      setNoticeMessage({
+        type: 'error',
+        text: `Failed to dispatch OTP: ${err.message || 'Please check your connection.'}`
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   // Step 2: Verify OTP and Login
   const handleVerifyAndLogin = (e) => {
     if (e) e.preventDefault();
-    if (!otpCode || otpCode.trim().length < 4) {
+    const cleanOtp = (otpCode || '').trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setNoticeMessage({
         type: 'warning',
-        text: 'Please enter the 6-digit security OTP sent to your administrator email.'
+        text: 'Please enter the complete 6-digit security OTP sent to your administrator email.'
+      });
+      return;
+    }
+
+    const verifyResult = verifyOtpCode(adminEmail.trim(), cleanOtp);
+    if (!verifyResult.success) {
+      setNoticeMessage({
+        type: 'error',
+        text: verifyResult.error || 'Invalid 2FA OTP code. Please enter the code from your email.'
       });
       return;
     }
@@ -137,7 +172,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const handleQuickDemoAdminLogin = () => {
     setAdminEmail('admin@dahejsupport.com');
     setAdminPassword('admin123');
-    setOtpCode('123456');
+    setOtpCode('');
     setOtpSent(true);
     setLoginSuccess(true);
     setNoticeMessage({
@@ -163,10 +198,11 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
     }, 700);
   };
 
-  // Forgot Password: Send Reset OTP
-  const handleSendResetOtp = (e) => {
+  // Forgot Password: Send Reset OTP via Brevo
+  const handleSendResetOtp = async (e) => {
     e.preventDefault();
-    if (!resetEmail.trim() || !resetEmail.includes('@')) {
+    const emailTrimmed = resetEmail.trim();
+    if (!emailTrimmed || !emailTrimmed.includes('@')) {
       setNoticeMessage({
         type: 'warning',
         text: 'Please enter a valid administrator email.'
@@ -174,22 +210,54 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
-    setResetOtpSent(true);
-    setResetOtpTimer(30);
-    setResetOtpCode('123456');
+    setIsSendingResetOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `Admin reset verification OTP sent to ${resetEmail}. (Demo OTP: 123456)`
+      text: `Dispatching reset verification OTP to ${emailTrimmed}...`
     });
+
+    try {
+      await sendOtpVerificationEmail({
+        toEmail: emailTrimmed,
+        toName: 'Platform Administrator',
+        role: 'developer'
+      });
+
+      setResetOtpSent(true);
+      setResetOtpTimer(60);
+      setResetOtpCode('');
+      setNoticeMessage({
+        type: 'success',
+        text: `✓ Admin reset verification OTP sent to ${emailTrimmed}. Please check your inbox.`
+      });
+    } catch (err) {
+      console.error('Error sending reset OTP:', err);
+      setNoticeMessage({
+        type: 'error',
+        text: `Failed to dispatch reset OTP: ${err.message || 'Please check your connection.'}`
+      });
+    } finally {
+      setIsSendingResetOtp(false);
+    }
   };
 
   // Forgot Password: Reset Submit
   const handleResetPasswordSubmit = (e) => {
     e.preventDefault();
-    if (!resetOtpCode || resetOtpCode.trim().length < 4) {
+    const cleanOtp = (resetOtpCode || '').trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setNoticeMessage({
         type: 'warning',
-        text: 'Please enter the 6-digit OTP code.'
+        text: 'Please enter the complete 6-digit OTP code received on your email.'
+      });
+      return;
+    }
+
+    const verifyResult = verifyOtpCode(resetEmail.trim(), cleanOtp);
+    if (!verifyResult.success) {
+      setNoticeMessage({
+        type: 'error',
+        text: verifyResult.error || 'Invalid reset OTP.'
       });
       return;
     }
@@ -296,10 +364,6 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
               <div className="admin-demo-cred">
                 <span className="demo-lbl">Pass:</span>
                 <span className="demo-val">admin123</span>
-              </div>
-              <div className="admin-demo-cred">
-                <span className="demo-lbl">OTP:</span>
-                <span className="demo-val">123456</span>
               </div>
             </div>
 
@@ -432,7 +496,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                   </div>
 
                   <span className="admin-otp-hint">
-                    Enter the 6-digit 2FA code sent to your registered email (Demo OTP: <strong>123456</strong>).
+                    Enter the 6-digit 2FA code sent to your registered email.
                   </span>
                 </div>
               )}
@@ -546,7 +610,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                       />
                     </div>
                     <span className="admin-otp-hint">
-                      Enter the 6-digit OTP sent to {resetEmail} (Demo: 123456).
+                      Enter the 6-digit OTP sent to {resetEmail}.
                     </span>
                   </div>
 

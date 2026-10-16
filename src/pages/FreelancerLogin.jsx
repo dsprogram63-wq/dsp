@@ -19,6 +19,11 @@ import {
 import Logo from '../components/Logo';
 import { initialDevelopers } from '../data/adminMockData';
 import { initialTesters } from '../data/testerMockData';
+import { 
+  sendOtpVerificationEmail, 
+  verifyOtpCode, 
+  SENDER_PROFILES 
+} from '../services/emailService.js';
 import './FreelancerLogin.css';
 
 export default function FreelancerLogin({ 
@@ -100,6 +105,7 @@ export default function FreelancerLogin({
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [loginOtpCode, setLoginOtpCode] = useState('');
   const [loginOtpTimer, setLoginOtpTimer] = useState(0);
+  const [isSendingLoginOtp, setIsSendingLoginOtp] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Forgot Password States
@@ -107,6 +113,7 @@ export default function FreelancerLogin({
   const [resetOtpSent, setResetOtpSent] = useState(false);
   const [resetOtpCode, setResetOtpCode] = useState('');
   const [resetOtpTimer, setResetOtpTimer] = useState(0);
+  const [isSendingResetOtp, setIsSendingResetOtp] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -156,8 +163,8 @@ export default function FreelancerLogin({
     return () => clearInterval(interval);
   }, [resetOtpTimer]);
 
-  // Step 1: Handle Login Send OTP
-  const handleSendLoginOtp = (e) => {
+  // Step 1: Handle Login Send OTP via Brevo Mailer
+  const handleSendLoginOtp = async (e) => {
     e.preventDefault();
     const idTrimmed = identifier.trim();
     const passTrimmed = password.trim();
@@ -186,54 +193,113 @@ export default function FreelancerLogin({
       return;
     }
 
-    setLoginOtpSent(true);
-    setLoginOtpTimer(30);
-    setLoginOtpCode('123456'); // Pre-fill demo OTP
+    // Resolve target email and name
+    let targetEmail = idTrimmed;
+    let targetName = 'Member';
+    const idLower = idTrimmed.toLowerCase();
+
+    if (selectedRole === 'freelancer') {
+      const dev = allStoredDevs.find(d => 
+        (d.email && d.email.toLowerCase().trim() === idLower) || 
+        (d.id && d.id.toLowerCase().trim() === idLower) || 
+        (d.name && d.name.toLowerCase().trim() === idLower) ||
+        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
+      );
+      if (dev && dev.email) {
+        targetEmail = dev.email;
+        targetName = dev.fullName || dev.name || 'Developer';
+      }
+    } else {
+      const tester = allStoredTesters.find(t => 
+        (t.email && t.email.toLowerCase().trim() === idLower) || 
+        (t.id && t.id.toLowerCase().trim() === idLower) || 
+        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
+        (t.name && t.name.toLowerCase().trim() === idLower) ||
+        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
+      );
+      if (tester && tester.email) {
+        targetEmail = tester.email;
+        targetName = tester.fullName || tester.name || 'QA Tester';
+      }
+    }
+
+    setIsSendingLoginOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `6-Digit Security verification OTP sent to ${idTrimmed}. (Demo OTP: 123456)`
+      text: `Dispatching 6-Digit security OTP to ${targetEmail}...`
     });
+
+    try {
+      await sendOtpVerificationEmail({
+        toEmail: targetEmail,
+        toName: targetName,
+        role: selectedRole === 'tester' ? 'tester' : 'developer',
+        senderProfile: selectedRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
+      });
+
+      setLoginOtpSent(true);
+      setLoginOtpTimer(60);
+      setLoginOtpCode(''); // Clean empty field, real OTP required from email
+      setNoticeMessage({
+        type: 'success',
+        text: `✓ 6-Digit Security verification OTP sent to ${targetEmail}. Please check your inbox (and Spam folder).`
+      });
+    } catch (err) {
+      console.error('Error sending login OTP:', err);
+      setNoticeMessage({
+        type: 'error',
+        text: `Failed to send verification OTP: ${err.message || 'Please check your connection.'}`
+      });
+    } finally {
+      setIsSendingLoginOtp(false);
+    }
   };
 
   // Step 2: Handle Login Verify OTP & Complete
   const handleVerifyAndLogin = (e) => {
     if (e) e.preventDefault();
-    if (!loginOtpCode || loginOtpCode.trim().length < 4) {
+    const trimmedOtp = (loginOtpCode || '').trim();
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
       setNoticeMessage({
         type: 'warning',
-        text: 'Please enter the 6-digit security OTP sent to your email.'
+        text: 'Please enter the complete 6-digit security OTP sent to your email.'
+      });
+      return;
+    }
+
+    const idLower = (identifier || '').toLowerCase().trim();
+    let targetEmail = idLower;
+    if (selectedRole === 'freelancer') {
+      const dev = allStoredDevs.find(d => 
+        (d.email && d.email.toLowerCase().trim() === idLower) || 
+        (d.id && d.id.toLowerCase().trim() === idLower) || 
+        (d.name && d.name.toLowerCase().trim() === idLower) ||
+        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
+      );
+      if (dev && dev.email) targetEmail = dev.email.toLowerCase().trim();
+    } else {
+      const tester = allStoredTesters.find(t => 
+        (t.email && t.email.toLowerCase().trim() === idLower) || 
+        (t.id && t.id.toLowerCase().trim() === idLower) || 
+        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
+        (t.name && t.name.toLowerCase().trim() === idLower) ||
+        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
+      );
+      if (tester && tester.email) targetEmail = tester.email.toLowerCase().trim();
+    }
+
+    const verifyResult = verifyOtpCode(targetEmail, trimmedOtp);
+    if (!verifyResult.success) {
+      setNoticeMessage({
+        type: 'error',
+        text: verifyResult.error || 'Invalid OTP. Please check the code in your email.'
       });
       return;
     }
 
     setLoginSuccess(true);
-    const idLower = (identifier || '').toLowerCase().trim();
-
     let matchedUser = null;
     let actualRole = selectedRole;
-
-    // Load active pool of developers & testers from localStorage
-    const allStoredDevs = (() => {
-      try {
-        const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
-        if (s) {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch (e) {}
-      return initialDevelopers;
-    })();
-
-    const allStoredTesters = (() => {
-      try {
-        const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
-        if (s) {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch (e) {}
-      return initialTesters;
-    })();
 
     if (selectedRole === 'freelancer') {
       const dev = allStoredDevs.find(d => 
@@ -386,7 +452,7 @@ export default function FreelancerLogin({
     setSelectedRole(role);
     setIdentifier(userObj.email);
     setPassword('dev123');
-    setLoginOtpCode('123456');
+    setLoginOtpCode('');
     setLoginOtpSent(true);
     setLoginSuccess(true);
 
@@ -419,10 +485,11 @@ export default function FreelancerLogin({
     handleSelectSpecificUser(targetRole, account);
   };
 
-  // Handle Forgot Password Send OTP
-  const handleSendResetOtp = (e) => {
+  // Handle Forgot Password Send OTP via Brevo
+  const handleSendResetOtp = async (e) => {
     e.preventDefault();
-    if (!resetEmail.trim() || !resetEmail.includes('@')) {
+    const emailTrimmed = resetEmail.trim();
+    if (!emailTrimmed || !emailTrimmed.includes('@')) {
       setNoticeMessage({
         type: 'warning',
         text: 'Please enter a valid registered email address.'
@@ -430,25 +497,59 @@ export default function FreelancerLogin({
       return;
     }
 
-    setResetOtpSent(true);
-    setResetOtpTimer(30);
-    setResetOtpCode('123456');
+    setIsSendingResetOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `Password reset OTP has been sent to ${resetEmail}. (Demo OTP: 123456)`
+      text: `Dispatching password reset OTP to ${emailTrimmed}...`
     });
+
+    try {
+      await sendOtpVerificationEmail({
+        toEmail: emailTrimmed,
+        toName: 'Account Owner',
+        role: selectedRole === 'tester' ? 'tester' : 'developer',
+        senderProfile: selectedRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
+      });
+
+      setResetOtpSent(true);
+      setResetOtpTimer(60);
+      setResetOtpCode('');
+      setNoticeMessage({
+        type: 'success',
+        text: `✓ Password reset OTP has been sent to ${emailTrimmed}. Please check your inbox.`
+      });
+    } catch (err) {
+      console.error('Error sending reset OTP:', err);
+      setNoticeMessage({
+        type: 'error',
+        text: `Failed to send reset OTP: ${err.message || 'Please check your connection.'}`
+      });
+    } finally {
+      setIsSendingResetOtp(false);
+    }
   };
 
   // Handle Forgot Password Verify OTP & Update Password
   const handleResetPasswordSubmit = (e) => {
     e.preventDefault();
-    if (!resetOtpCode || resetOtpCode.trim().length < 4) {
+    const trimmedOtp = (resetOtpCode || '').trim();
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
       setNoticeMessage({
         type: 'warning',
-        text: 'Please enter the 6-digit OTP sent to your email.'
+        text: 'Please enter the complete 6-digit OTP code sent to your email.'
       });
       return;
     }
+
+    const verifyResult = verifyOtpCode(resetEmail.trim(), trimmedOtp);
+    if (!verifyResult.success) {
+      setNoticeMessage({
+        type: 'error',
+        text: verifyResult.error || 'Invalid reset OTP.'
+      });
+      return;
+    }
+
     if (!newPassword || newPassword.length < 6) {
       setNoticeMessage({
         type: 'warning',
@@ -603,10 +704,6 @@ export default function FreelancerLogin({
                 <div className="demo-pill">
                   <span className="p-lbl">Pass:</span>
                   <span className="p-val">{demoAccounts[selectedRole].password}</span>
-                </div>
-                <div className="demo-pill">
-                  <span className="p-lbl">OTP:</span>
-                  <span className="p-val">123456</span>
                 </div>
               </div>
 
@@ -787,6 +884,14 @@ export default function FreelancerLogin({
                       placeholder="••••••"
                       value={loginOtpCode}
                       onChange={(e) => setLoginOtpCode(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (loginOtpCode.trim().length === 6) {
+                            handleVerifyAndLogin();
+                          }
+                        }
+                      }}
                       className="login-otp-code-input"
                       autoFocus
                     />
@@ -800,7 +905,7 @@ export default function FreelancerLogin({
                   </div>
 
                   <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                    Enter the 6-digit OTP sent to {identifier} (Demo OTP: <strong>123456</strong>).
+                    Enter the 6-digit security OTP sent to {identifier}.
                   </span>
                 </div>
               )}
@@ -829,10 +934,11 @@ export default function FreelancerLogin({
               {!loginOtpSent ? (
                 <button 
                   type="submit" 
+                  disabled={isSendingLoginOtp}
                   className={`btn btn-submit-login ${selectedRole === 'tester' ? 'btn-tester-theme' : ''}`}
                 >
                   <KeyRound size={16} />
-                  <span>Continue with OTP Verification</span>
+                  <span>{isSendingLoginOtp ? 'Dispatching OTP Code...' : 'Continue with OTP Verification'}</span>
                 </button>
               ) : (
                 <button type="submit" className="btn btn-submit-login btn-otp-verify">
@@ -920,7 +1026,7 @@ export default function FreelancerLogin({
                       />
                     </div>
                     <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                      Enter the 6-digit OTP sent to {resetEmail} (Demo: 123456).
+                      Enter the 6-digit verification OTP sent to {resetEmail}.
                     </span>
                   </div>
 
@@ -974,9 +1080,9 @@ export default function FreelancerLogin({
               )}
 
               {!resetOtpSent ? (
-                <button type="submit" className="btn btn-submit-reset">
+                <button type="submit" disabled={isSendingResetOtp} className="btn btn-submit-reset">
                   <Mail size={16} />
-                  <span>Send Reset OTP</span>
+                  <span>{isSendingResetOtp ? 'Dispatching Reset OTP...' : 'Send Reset OTP'}</span>
                 </button>
               ) : (
                 <button type="submit" className="btn btn-submit-reset">
