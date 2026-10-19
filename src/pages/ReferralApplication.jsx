@@ -560,6 +560,10 @@ export default function ReferralApplication({
             ...cur,
             isEmailVerified: true,
             verifiedEmail: targetEmail,
+            formData: {
+              ...cur.formData,
+              email: targetEmail
+            },
             emailOtpSent: false,
             emailOtpCode: '',
             emailStatusMsg: { 
@@ -754,16 +758,14 @@ export default function ReferralApplication({
     }
 
     // Strict Real Email OTP verification check
-    const finalVerifiedEmail = (currentTrack.verifiedEmail || '').trim().toLowerCase();
-    const currentInputEmail = (formData.email || '').trim().toLowerCase();
-
-    if (!isEmailVerified || !finalVerifiedEmail) {
+    if (!isEmailVerified) {
       alert('Please verify your Email Address with the 6-digit OTP sent to your email first.');
       return;
     }
 
-    if (currentInputEmail !== finalVerifiedEmail) {
-      alert('The entered email does not match the verified email. Please re-verify your email address.');
+    const finalVerifiedEmail = (currentTrack.verifiedEmail || formData.email || '').trim().toLowerCase();
+    if (!finalVerifiedEmail) {
+      alert('Please enter and verify your Email Address first.');
       return;
     }
 

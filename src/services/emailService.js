@@ -18,15 +18,15 @@ export const SENDER_PROFILES = {
     email: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BREVO_SENDER_EMAIL) || 'work@dsprogram.space'
   },
   WORK: {
-    name: 'Dahej Support Operations',
+    name: 'Dahej Support',
     email: 'work@dsprogram.space'
   },
   DEVELOPER_DESK: {
-    name: 'Dahej Support Developer Desk',
+    name: 'Dahej Support',
     email: 'work@dsprogram.space'
   },
   QA_DESK: {
-    name: 'Dahej Support QA Desk',
+    name: 'Dahej Support',
     email: 'work@dsprogram.space'
   }
 };
@@ -689,17 +689,19 @@ export async function sendApplicationConfirmationEmail({
   portfolioUrl = '',
   aboutSelf = ''
 }) {
-  if (!toEmail) {
+  const cleanEmail = (toEmail || '').toString().trim().toLowerCase();
+  if (!cleanEmail) {
     throw new Error('Applicant email is required.');
   }
 
+  const cleanName = (toName || '').toString().trim();
   const isTester = (role === 'tester' || role === 'qa');
   const roleTitle = isTester ? 'QA Tester' : 'Developer';
-  const senderProfile = isTester ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK;
+  const senderProfile = SENDER_PROFILES.DEFAULT;
 
   const htmlContent = buildApplicationSubmittedEmailHtml({
-    toName: toName.trim(),
-    toEmail: toEmail.trim(),
+    toName: cleanName,
+    toEmail: cleanEmail,
     applicantId,
     role,
     experienceYears,
@@ -712,8 +714,8 @@ export async function sendApplicationConfirmationEmail({
     portfolioUrl
   });
 
-  const subject = `Application Received: Dahej Support ${roleTitle} Program [${applicantId}]`;
-  const textContent = `Hello ${toName || 'Applicant'},\n\n` +
+  const subject = `Application Confirmed: Dahej Support ${roleTitle} Program [${applicantId}]`;
+  const textContent = `Hello ${cleanName || 'Applicant'},\n\n` +
     `Your application for the Dahej Support ${roleTitle} Program has been successfully received!\n\n` +
     `APPLICATION DETAILS:\n` +
     `- Assigned ID: ${applicantId}\n` +
@@ -725,14 +727,14 @@ export async function sendApplicationConfirmationEmail({
     `- Status: Pending Technical & Admin Review\n\n` +
     `Our engineering lead team will review your application within 24-48 hours. Once approved, your login access will be activated.\n\n` +
     `Best regards,\n` +
-    `Dahej Support ${roleTitle} Onboarding Team\n` +
+    `Dahej Support Technical Onboarding Team\n` +
     `Official Email: work@dsprogram.space\n` +
     `Website: https://www.dsprogram.space`;
 
   return await sendTransactionalEmail({
     to: {
-      email: toEmail.trim(),
-      name: toName.trim() || `${roleTitle} Applicant`
+      email: cleanEmail,
+      name: cleanName || `${roleTitle} Applicant`
     },
     subject,
     htmlContent,
