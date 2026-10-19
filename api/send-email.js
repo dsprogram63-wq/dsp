@@ -49,10 +49,17 @@ export default async function handler(req, res) {
 
     const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
       if (typeof item === 'string') {
-        return { email: item.trim() };
+        const cleanEmail = item.trim().toLowerCase();
+        return { email: cleanEmail, name: cleanEmail.split('@')[0] || 'Applicant' };
       }
-      return item;
-    });
+      const cleanEmail = (item?.email || '').trim().toLowerCase();
+      const cleanName = (item?.name || '').trim() || cleanEmail.split('@')[0] || 'Applicant';
+      return { email: cleanEmail, name: cleanName };
+    }).filter(item => Boolean(item.email));
+
+    if (formattedTo.length === 0) {
+      return res.status(400).json({ error: 'No valid recipient email provided.' });
+    }
 
     const payload = {
       sender: sender || { name: senderName, email: senderEmail },

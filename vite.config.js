@@ -47,10 +47,13 @@ export default defineConfig(({ mode }) => {
 
                 const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
                   if (typeof item === 'string') {
-                    return { email: item.trim(), name: item.trim().split('@')[0] };
+                    const cleanEmail = item.trim().toLowerCase();
+                    return { email: cleanEmail, name: cleanEmail.split('@')[0] || 'Applicant' };
                   }
-                  return item;
-                });
+                  const cleanEmail = (item?.email || '').trim().toLowerCase();
+                  const cleanName = (item?.name || '').trim() || cleanEmail.split('@')[0] || 'Applicant';
+                  return { email: cleanEmail, name: cleanName };
+                }).filter(item => Boolean(item.email));
 
                 const payload = {
                   sender: sender || { name: senderName, email: senderEmail },

@@ -73,6 +73,7 @@ const createInitialTrackState = (role) => ({
   errors: {},
   touched: {},
   isEmailVerified: false,
+  verifiedEmail: '',
   emailOtpSent: false,
   emailOtpCode: '',
   emailTimer: 0,
@@ -103,6 +104,7 @@ export default function ReferralApplication({
   const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [confirmationEmailSent, setConfirmationEmailSent] = useState(false);
+  const [isResendingConfirmEmail, setIsResendingConfirmEmail] = useState(false);
 
   // Active track state accessors
   const currentTrack = trackStates[selectedRole] || trackStates.developer;
@@ -110,6 +112,7 @@ export default function ReferralApplication({
   const errors = currentTrack.errors;
   const touched = currentTrack.touched;
   const isEmailVerified = currentTrack.isEmailVerified;
+  const verifiedEmail = currentTrack.verifiedEmail || '';
   const emailOtpSent = currentTrack.emailOtpSent;
   const emailOtpCode = currentTrack.emailOtpCode;
   const emailTimer = currentTrack.emailTimer;
@@ -445,13 +448,23 @@ export default function ReferralApplication({
       sanitizedValue = value.slice(0, 500);
     }
 
-    // Reset verification if verified field is modified
-    if (name === 'email' && (isEmailVerified || emailOtpSent)) {
+    // Reset verification if email field is modified
+    if (name === 'email') {
       clearPendingOtp(formData.email);
-      setIsEmailVerified(false);
-      setEmailOtpSent(false);
-      setEmailOtpCode('');
-      setEmailStatusMsg(null);
+      setTrackStates(prev => {
+        const cur = prev[selectedRole] || prev.developer;
+        return {
+          ...prev,
+          [selectedRole]: {
+            ...cur,
+            isEmailVerified: false,
+            verifiedEmail: '',
+            emailOtpSent: false,
+            emailOtpCode: '',
+            emailStatusMsg: null
+          }
+        };
+      });
     }
 
     const newVal = type === 'checkbox' ? checked : sanitizedValue;
@@ -486,11 +499,13 @@ export default function ReferralApplication({
       return;
     }
 
+    const cleanEmail = formData.email.trim().toLowerCase();
+
     setIsSendingEmailOtp(true);
     setEmailOtpSent(true); // Open OTP verification box immediately
     setEmailStatusMsg({ 
       type: 'info', 
-      text: `Dispatching verification OTP to ${formData.email.trim()}...` 
+      text: `Dispatching verification OTP to ${cleanEmail}...` 
     });
 
     try {
@@ -499,7 +514,7 @@ export default function ReferralApplication({
         : SENDER_PROFILES.DEVELOPER_DESK;
 
       await sendOtpVerificationEmail({
-        toEmail: formData.email.trim(),
+        toEmail: cleanEmail,
         toName: formData.fullName.trim() || (selectedRole === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
         role: selectedRole,
         senderProfile
@@ -509,7 +524,7 @@ export default function ReferralApplication({
       setEmailOtpCode(''); // Must be entered from real email inbox!
       setEmailStatusMsg({ 
         type: 'info', 
-        text: `✓ Verification OTP sent to ${formData.email}. Please check your inbox (and Spam folder) for the 6-digit code.` 
+        text: `✓ Verification OTP sent to ${cleanEmail}. Please check your inbox (and Spam folder) for the 6-digit code.` 
       });
     } catch (err) {
       console.error('Error sending Brevo OTP:', err);
@@ -534,18 +549,80 @@ export default function ReferralApplication({
       return;
     }
 
-    const result = verifyOtpCode(formData.email, trimmedCode);
+    const targetEmail = (formData.email || '').trim().toLowerCase();
+    const result = verifyOtpCode(targetEmail, trimmedCode);
     if (result.success) {
-      setIsEmailVerified(true);
-      setEmailStatusMsg({ 
-        type: 'success', 
-        text: '✓ Email verified successfully!' 
+      setTrackStates(prev => {
+        const cur = prev[selectedRole] || prev.developer;
+        return {
+          ...prev,
+          [selectedRole]: {
+            ...cur,
+            isEmailVerified: true,
+            verifiedEmail: targetEmail,
+            emailOtpSent: false,
+            emailOtpCode: '',
+            emailStatusMsg: { 
+              type: 'success', 
+              text: `✓ Email (${targetEmail}) verified successfully!` 
+            }
+          }
+        };
       });
     } else {
       setEmailStatusMsg({ 
         type: 'error', 
         text: result.error || 'Invalid OTP. Please check the code in your email.' 
       });
+    }
+  };
+
+  const handleChangeEmail = () => {
+    clearPendingOtp(formData.email);
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          isEmailVerified: false,
+          verifiedEmail: '',
+          emailOtpSent: false,
+          emailOtpCode: '',
+          emailTimer: 0,
+          emailStatusMsg: null
+        }
+      };
+    });
+  };
+
+  const handleResendConfirmationEmail = async () => {
+    if (!submittedInfo) return;
+    setIsResendingConfirmEmail(true);
+    try {
+      const recipient = (submittedInfo.verifiedEmail || submittedInfo.email || '').trim().toLowerCase();
+      await sendApplicationConfirmationEmail({
+        toEmail: recipient,
+        toName: (submittedInfo.fullName || '').trim() || (submittedInfo.role === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
+        applicantId: submittedInfo.assignedId,
+        role: submittedInfo.role,
+        experienceYears: submittedInfo.experienceYears,
+        primarySkill: submittedInfo.primarySkill,
+        specialization: submittedInfo.specialization,
+        testingTools: submittedInfo.testingTools,
+        mobileNumber: submittedInfo.mobileNumber,
+        referralCode: submittedInfo.referralCode,
+        referenceName: submittedInfo.referenceName,
+        portfolioUrl: submittedInfo.portfolioUrl,
+        aboutSelf: submittedInfo.aboutSelf
+      });
+      setConfirmationEmailSent(true);
+      alert(`✓ Confirmation email has been sent successfully to ${recipient}! Please check your Inbox and Spam folder.`);
+    } catch (err) {
+      console.error('Error resending confirmation email:', err);
+      alert(`Could not resend confirmation email: ${err.message || 'Please check your connection.'}`);
+    } finally {
+      setIsResendingConfirmEmail(false);
     }
   };
 
@@ -677,10 +754,19 @@ export default function ReferralApplication({
     }
 
     // Strict Real Email OTP verification check
-    if (!isEmailVerified) {
+    const finalVerifiedEmail = (currentTrack.verifiedEmail || '').trim().toLowerCase();
+    const currentInputEmail = (formData.email || '').trim().toLowerCase();
+
+    if (!isEmailVerified || !finalVerifiedEmail) {
       alert('Please verify your Email Address with the 6-digit OTP sent to your email first.');
       return;
     }
+
+    if (currentInputEmail !== finalVerifiedEmail) {
+      alert('The entered email does not match the verified email. Please re-verify your email address.');
+      return;
+    }
+
     if (!formData.hasValidReference) {
       alert('Please check the confirmation box verifying that your reference information is accurate.');
       return;
@@ -700,6 +786,7 @@ export default function ReferralApplication({
       if (onApplyTester) {
         onApplyTester({
           ...formData,
+          email: finalVerifiedEmail,
           avatar: finalAvatar,
           mobileNumber: cleanMobile,
           roleTrack: 'tester',
@@ -712,6 +799,7 @@ export default function ReferralApplication({
       if (onApplyDeveloper) {
         onApplyDeveloper({
           ...formData,
+          email: finalVerifiedEmail,
           avatar: finalAvatar,
           mobileNumber: cleanMobile,
           roleTrack: 'developer',
@@ -722,6 +810,8 @@ export default function ReferralApplication({
 
     const submissionPayload = {
       ...formData,
+      email: finalVerifiedEmail,
+      verifiedEmail: finalVerifiedEmail,
       role: selectedRole,
       avatar: finalAvatar,
       mobileNumber: cleanMobile,
@@ -731,11 +821,11 @@ export default function ReferralApplication({
     setSubmittedInfo(submissionPayload);
     setIsSubmittingApplication(true);
 
-    // Send official HTML application submission confirmation email via Brevo
+    // Send official HTML application submission confirmation email via Brevo strictly to verified email
     try {
-      await sendApplicationConfirmationEmail({
-        toEmail: formData.email,
-        toName: formData.fullName,
+      const emailResult = await sendApplicationConfirmationEmail({
+        toEmail: finalVerifiedEmail,
+        toName: (formData.fullName || '').trim() || (selectedRole === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
         applicantId: generatedId,
         role: selectedRole,
         experienceYears: formData.experienceYears,
@@ -748,9 +838,10 @@ export default function ReferralApplication({
         portfolioUrl: formData.portfolioUrl,
         aboutSelf: formData.aboutSelf
       });
+      console.log('Confirmation email successfully dispatched:', emailResult);
       setConfirmationEmailSent(true);
     } catch (mailErr) {
-      console.warn('Could not send application confirmation email:', mailErr);
+      console.error('Could not send application confirmation email:', mailErr);
       setConfirmationEmailSent(false);
     } finally {
       setIsSubmittingApplication(false);
@@ -968,7 +1059,7 @@ export default function ReferralApplication({
                     type="email"
                     className={`form-input ${touched.email && errors.email ? 'is-invalid' : isEmailVerified ? 'is-valid' : ''}`}
                     placeholder={selectedRole === 'tester' ? 'tester@example.com' : 'dev@example.com'}
-                    value={formData.email}
+                    value={isEmailVerified ? (verifiedEmail || formData.email) : formData.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     disabled={isEmailVerified}
@@ -988,9 +1079,10 @@ export default function ReferralApplication({
                   {isEmailVerified && (
                     <button
                       type="button"
-                      onClick={() => setIsEmailVerified(false)}
+                      onClick={handleChangeEmail}
                       className="btn-resend-text"
                       style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                      title="Click to enter another email and verify"
                     >
                       Change
                     </button>
@@ -1397,27 +1489,72 @@ export default function ReferralApplication({
             </p>
 
             {/* Email Dispatch Notice in Modal */}
-            <div style={{
-              margin: '16px 0',
-              padding: '12px 16px',
-              backgroundColor: '#ECFDF5',
-              border: '1.5px solid #A7F3D0',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              textAlign: 'left'
-            }}>
-              <CheckCircle2 size={20} color="#059669" style={{ flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: '0.86rem', color: '#065F46', fontWeight: 800 }}>
-                  Official Confirmation Email Sent!
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '2px', lineHeight: 1.4 }}>
-                  A confirmation email with Assigned ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> and next steps has been sent to <strong>{submittedInfo?.email || formData.email}</strong>.
+            {confirmationEmailSent ? (
+              <div style={{
+                margin: '16px 0',
+                padding: '14px 16px',
+                backgroundColor: '#ECFDF5',
+                border: '1.5px solid #10B981',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                textAlign: 'left'
+              }}>
+                <CheckCircle2 size={22} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontSize: '0.88rem', color: '#065F46', fontWeight: 800 }}>
+                    Official Confirmation Email Sent!
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#047857', marginTop: '2px', lineHeight: 1.45 }}>
+                    A confirmation email with Assigned ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> and next review steps has been dispatched to <strong>{submittedInfo?.verifiedEmail || submittedInfo?.email || formData.email}</strong>.
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#059669', marginTop: '4px' }}>
+                    💡 Please check your Inbox and Spam/Promotions folder.
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{
+                margin: '16px 0',
+                padding: '14px 16px',
+                backgroundColor: '#FFFBEB',
+                border: '1.5px solid #F59E0B',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                textAlign: 'left'
+              }}>
+                <AlertCircle size={22} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.88rem', color: '#92400E', fontWeight: 800 }}>
+                    Application Registered (Pending Email Delivery)
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#B45309', marginTop: '2px', lineHeight: 1.45 }}>
+                    Your application ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> is safely registered. Email delivery to <strong>{submittedInfo?.verifiedEmail || submittedInfo?.email || formData.email}</strong> took longer than expected.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmationEmail}
+                    disabled={isResendingConfirmEmail}
+                    style={{
+                      marginTop: '8px',
+                      background: '#0F3E6D',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: isResendingConfirmEmail ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isResendingConfirmEmail ? 'Sending...' : '✉ Resend Confirmation Email'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="modal-summary-box">
               <div className="modal-row">
@@ -1442,7 +1579,9 @@ export default function ReferralApplication({
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Verified Email:</span>
-                <span className="modal-row-val">{submittedInfo?.email || formData.email}</span>
+                <span className="modal-row-val" style={{ fontWeight: 700, color: '#0A3D75' }}>
+                  {submittedInfo?.verifiedEmail || submittedInfo?.email || formData.email}
+                </span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Mobile Number:</span>
