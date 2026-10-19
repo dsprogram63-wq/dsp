@@ -17,7 +17,8 @@ import {
   Camera,
   Upload,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { uploadAvatar } from '../services/storageService.js';
 import { 
@@ -1513,8 +1514,19 @@ export default function ReferralApplication({
       {submitted && (
         <div className="modal-overlay" onClick={() => setSubmitted(false)}>
           <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Close Button in Corner */}
+            <button
+              type="button"
+              className="modal-close-icon-btn"
+              onClick={() => setSubmitted(false)}
+              aria-label="Close modal"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+
             <div className="modal-icon-circle">
-              <CheckCircle2 size={32} strokeWidth={2.5} />
+              <CheckCircle2 size={30} strokeWidth={2.5} />
             </div>
 
             <div className="badge-pending-glow">
@@ -1528,65 +1540,35 @@ export default function ReferralApplication({
 
             {/* Email Dispatch Notice in Modal */}
             {confirmationEmailSent ? (
-              <div style={{
-                margin: '16px 0',
-                padding: '14px 16px',
-                backgroundColor: '#ECFDF5',
-                border: '1.5px solid #10B981',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                textAlign: 'left'
-              }}>
-                <CheckCircle2 size={22} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div className="modal-email-box success">
+                <CheckCircle2 size={20} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <div style={{ fontSize: '0.88rem', color: '#065F46', fontWeight: 800 }}>
+                  <div className="modal-email-title success">
                     Official Confirmation Email Sent!
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#047857', marginTop: '2px', lineHeight: 1.45 }}>
+                  <div className="modal-email-text success">
                     A confirmation email with Assigned ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> and next review steps has been dispatched to <strong>{submittedInfo?.verifiedEmail || submittedInfo?.email || formData.email}</strong>.
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: '#059669', marginTop: '4px' }}>
+                  <div className="modal-email-hint">
                     💡 Please check your Inbox and Spam/Promotions folder.
                   </div>
                 </div>
               </div>
             ) : (
-              <div style={{
-                margin: '16px 0',
-                padding: '14px 16px',
-                backgroundColor: '#FFFBEB',
-                border: '1.5px solid #F59E0B',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                textAlign: 'left'
-              }}>
-                <AlertCircle size={22} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div className="modal-email-box pending">
+                <AlertCircle size={20} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.88rem', color: '#92400E', fontWeight: 800 }}>
+                  <div className="modal-email-title pending">
                     Application Registered (Pending Email Delivery)
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#B45309', marginTop: '2px', lineHeight: 1.45 }}>
+                  <div className="modal-email-text pending">
                     Your application ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> is safely registered. Email delivery to <strong>{submittedInfo?.verifiedEmail || submittedInfo?.email || formData.email}</strong> took longer than expected.
                   </div>
                   <button
                     type="button"
                     onClick={handleResendConfirmationEmail}
                     disabled={isResendingConfirmEmail}
-                    style={{
-                      marginTop: '8px',
-                      background: '#0F3E6D',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      cursor: isResendingConfirmEmail ? 'not-allowed' : 'pointer'
-                    }}
+                    className="modal-email-resend-btn"
                   >
                     {isResendingConfirmEmail ? 'Sending...' : '✉ Resend Confirmation Email'}
                   </button>
@@ -1637,7 +1619,7 @@ export default function ReferralApplication({
                   <img
                     src={submittedInfo?.avatar || activeAvatarUrl}
                     alt="Applicant Avatar"
-                    style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #CBD5E1' }}
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #CBD5E1' }}
                   />
                   <span>{(submittedInfo?.avatar || formData.avatar) ? `Custom Photo (${avatarInfo.sizeFormatted || 'Saved'})` : 'Default Track Avatar'}</span>
                 </span>
@@ -1650,10 +1632,10 @@ export default function ReferralApplication({
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="modal-actions-wrap">
               <button
                 type="button"
-                className="btn btn-navy-action"
+                className="btn btn-navy-action modal-action-btn"
                 onClick={() => {
                   setSubmitted(false);
                   onNavigate('home');
@@ -1664,7 +1646,7 @@ export default function ReferralApplication({
               
               <button
                 type="button"
-                className="btn btn-orange-primary"
+                className="btn btn-orange-primary modal-action-btn"
                 onClick={() => {
                   setSubmitted(false);
                   if ((submittedInfo?.role || selectedRole) === 'tester') {
