@@ -438,3 +438,303 @@ export async function sendOtpVerificationEmail({
     email: toEmail.trim()
   };
 }
+
+/**
+ * Builds high-converting, beautifully-styled HTML email for Application Submitted Confirmation
+ */
+export function buildApplicationSubmittedEmailHtml({
+  toName = '',
+  toEmail = '',
+  applicantId = 'DEV-APP',
+  role = 'developer',
+  experienceYears = '3+ Years',
+  primarySkill = '',
+  specialization = '',
+  testingTools = '',
+  mobileNumber = '',
+  referralCode = '',
+  referenceName = '',
+  portfolioUrl = ''
+}) {
+  const isTester = (role === 'tester' || role === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+  const roleProgram = isTester ? 'QA Tester Program' : 'Developer Program';
+  const roleTrackBadge = isTester ? '🧪 QA TESTER APPLICATION' : '💻 DEVELOPER APPLICATION';
+  const accentColor = isTester ? '#059669' : '#0A3D75';
+  const year = new Date().getFullYear();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Received - Dahej Support</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F1F5F9; padding: 36px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Main Email Container -->
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          
+          <!-- Top Navy Header with Gold Brand Accent -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 60%, #174E82 100%); padding: 32px 36px; text-align: center; border-bottom: 3px solid #F59E0B;">
+              <h1 style="margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;">
+                ${isTester ? 'QA Tester & Validation Network' : 'Freelancer & Developer Network'}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content Area -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              
+              <!-- Success Pill Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #047857; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 18px;">
+                ✓ APPLICATION OFFICIALLY RECEIVED & LOGGED
+              </div>
+
+              <!-- Main Heading -->
+              <h2 style="margin: 0 0 12px 0; font-size: 23px; font-weight: 800; color: #0F172A; line-height: 1.3;">
+                ${roleTitle} Application Submitted Successfully!
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                Hello${toName ? ` <strong style="color: #0F3E6D;">${toName}</strong>` : ''},
+              </p>
+
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Thank you for applying to the <strong>Dahej Support ${roleProgram}</strong>. Your technical application credentials, authorized member reference, and verified email address have been successfully captured and routed to our Admin Review Committee.
+              </p>
+
+              <!-- Highlighted Reference ID Box -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 24px 0; background: linear-gradient(145deg, #F0F7FF 0%, #E0F2FE 100%); border: 1.5px solid #93C5FD; border-radius: 12px; padding: 20px;">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #0369A1;">
+                      Assigned Application Reference ID
+                    </div>
+                    <div style="font-size: 26px; font-weight: 900; color: #0A3D75; letter-spacing: 1px; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; margin-top: 4px;">
+                      ${applicantId}
+                    </div>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span style="display: inline-block; padding: 6px 12px; background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; color: #92400E; font-size: 12px; font-weight: 700; white-space: nowrap;">
+                      ⏳ Under Admin Review
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Credentials Summary Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+                <tr>
+                  <td colspan="2" style="background-color: #0F3E6D; color: #FFFFFF; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 12px 18px;">
+                    Summary of Registered Credentials
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; width: 38%; font-weight: 600;">Full Name</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 700;">${toName || 'Applicant'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Program Track</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 700;">${isTester ? 'QA Tester Track (Manual & Automation)' : 'Developer Track (Web & Full Stack)'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">${isTester ? 'Testing Specialization' : 'Primary Tech Stack'}</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 700;">${primarySkill || specialization || 'Full Stack Engineering'}</td>
+                </tr>
+                ${testingTools ? `
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">QA Testing Tools</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 600;">${testingTools}</td>
+                </tr>` : ''}
+                ${portfolioUrl ? `
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Portfolio / GitHub</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0284C7; font-weight: 600;">
+                    <a href="${portfolioUrl}" style="color: #0284C7; text-decoration: underline;" target="_blank">${portfolioUrl}</a>
+                  </td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Technical Experience</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 600;">${experienceYears}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Registered Email</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 600;">
+                    ${toEmail} <span style="display: inline-block; background-color: #ECFDF5; color: #047857; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #A7F3D0; margin-left: 6px;">✓ Email Verified</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Mobile Number</td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 600;">${mobileNumber || 'Registered'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; font-size: 13px; color: #64748B; font-weight: 600;">Authorized Reference</td>
+                  <td style="padding: 12px 18px; font-size: 13px; color: #0F172A; font-weight: 700;">
+                    <span style="color: #0F3E6D;">${referralCode}</span> <span style="color: #64748B; font-weight: 500;">(Referred by ${referenceName})</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Next Steps Roadmap -->
+              <div style="background-color: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 12px; padding: 22px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: 0.5px;">
+                  📋 What Happens Next in the Review Process?
+                </h3>
+                
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="vertical-align: top; width: 32px; padding-bottom: 14px;">
+                      <div style="width: 24px; height: 24px; background-color: #0F3E6D; color: #FFFFFF; border-radius: 50%; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">1</div>
+                    </td>
+                    <td style="vertical-align: top; padding-bottom: 14px;">
+                      <div style="font-size: 13px; font-weight: 700; color: #0F172A;">Technical Screening & Portfolio Check</div>
+                      <div style="font-size: 12px; color: #64748B; line-height: 1.5; margin-top: 2px;">Our engineering leads will evaluate your declared stack, past deliverables, and code samples within 24 to 48 business hours.</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="vertical-align: top; width: 32px; padding-bottom: 14px;">
+                      <div style="width: 24px; height: 24px; background-color: #0F3E6D; color: #FFFFFF; border-radius: 50%; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">2</div>
+                    </td>
+                    <td style="vertical-align: top; padding-bottom: 14px;">
+                      <div style="font-size: 13px; font-weight: 700; color: #0F172A;">Reference Validation</div>
+                      <div style="font-size: 12px; color: #64748B; line-height: 1.5; margin-top: 2px;">Your authorized reference (${referenceName}) will be cross-checked against our verified member directory.</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="vertical-align: top; width: 32px;">
+                      <div style="width: 24px; height: 24px; background-color: #10B981; color: #FFFFFF; border-radius: 50%; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">3</div>
+                    </td>
+                    <td style="vertical-align: top;">
+                      <div style="font-size: 13px; font-weight: 700; color: #0F172A;">Portal Credentials & Project Allocation</div>
+                      <div style="font-size: 12px; color: #64748B; line-height: 1.5; margin-top: 2px;">Once cleared, you will receive an official approval notification with your login instructions to begin claiming client projects and milestones.</div>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Call to Action Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td align="center">
+                    <a href="https://www.dsprogram.space/faq" style="display: inline-block; background: linear-gradient(135deg, #EA580C 0%, #F59E0B 100%); color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 13px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.28);" target="_blank">
+                      View Program Guidelines & FAQ →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Advisory Box -->
+              <div style="background-color: #F8FAFC; border-left: 4px solid #0F3E6D; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #475569;">
+                  <strong>Important Notice:</strong> Please retain this email for your records. Quote your Assigned ID <strong>${applicantId}</strong> in all future communications. For inquiries or updates, simply reply directly to this email at <a href="mailto:work@dsprogram.space" style="color: #0A3D75; font-weight: 700; text-decoration: none;">work@dsprogram.space</a>.
+                </p>
+              </div>
+
+              <p style="margin: 22px 0 0 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                Warm regards,<br>
+                <strong style="color: #0F3E6D;">Dahej Support Technical Onboarding Committee</strong><br>
+                <span style="font-size: 12px; color: #94A3B8;">Dahej Support Freelancer Network • dsprogram.space</span>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer Bar -->
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 22px 36px; text-align: center;">
+              <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748B;">
+                Official Dispatch: <strong style="color: #0F3E6D;">work@dsprogram.space</strong> • Dahej Support Developer Desk
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                © ${year} Dahej Support Freelancer Network. All rights reserved. Confidential technical application communication.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * High-Level Helper: Send Application Confirmation Email upon submission
+ */
+export async function sendApplicationConfirmationEmail({
+  toEmail,
+  toName = '',
+  applicantId = 'DEV-APP',
+  role = 'developer',
+  experienceYears = '3+ Years',
+  primarySkill = '',
+  specialization = '',
+  testingTools = '',
+  mobileNumber = '',
+  referralCode = '',
+  referenceName = '',
+  portfolioUrl = '',
+  aboutSelf = ''
+}) {
+  if (!toEmail) {
+    throw new Error('Applicant email is required.');
+  }
+
+  const isTester = (role === 'tester' || role === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+  const senderProfile = isTester ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK;
+
+  const htmlContent = buildApplicationSubmittedEmailHtml({
+    toName: toName.trim(),
+    toEmail: toEmail.trim(),
+    applicantId,
+    role,
+    experienceYears,
+    primarySkill,
+    specialization,
+    testingTools,
+    mobileNumber,
+    referralCode,
+    referenceName,
+    portfolioUrl
+  });
+
+  const subject = `Application Received: Dahej Support ${roleTitle} Program [${applicantId}]`;
+  const textContent = `Hello ${toName || 'Applicant'},\n\n` +
+    `Your application for the Dahej Support ${roleTitle} Program has been successfully received!\n\n` +
+    `APPLICATION DETAILS:\n` +
+    `- Assigned ID: ${applicantId}\n` +
+    `- Program Track: ${roleTitle} Track\n` +
+    `- Specialization/Stack: ${primarySkill || specialization || 'Technical Specialist'}\n` +
+    `- Technical Experience: ${experienceYears}\n` +
+    `- Mobile: ${mobileNumber}\n` +
+    `- Verified Reference: ${referralCode} (${referenceName})\n` +
+    `- Status: Pending Technical & Admin Review\n\n` +
+    `Our engineering lead team will review your application within 24-48 hours. Once approved, your login access will be activated.\n\n` +
+    `Best regards,\n` +
+    `Dahej Support ${roleTitle} Onboarding Team\n` +
+    `Official Email: work@dsprogram.space\n` +
+    `Website: https://www.dsprogram.space`;
+
+  return await sendTransactionalEmail({
+    to: {
+      email: toEmail.trim(),
+      name: toName.trim() || `${roleTitle} Applicant`
+    },
+    subject,
+    htmlContent,
+    textContent,
+    senderProfile
+  });
+}
+

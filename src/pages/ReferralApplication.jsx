@@ -24,6 +24,7 @@ import {
   sendOtpVerificationEmail, 
   verifyOtpCode, 
   clearPendingOtp, 
+  sendApplicationConfirmationEmail,
   SENDER_PROFILES 
 } from '../services/emailService.js';
 import './ReferralApplication.css';
@@ -100,6 +101,8 @@ export default function ReferralApplication({
   const [assignedApplicantId, setAssignedApplicantId] = useState('');
   const [submittedInfo, setSubmittedInfo] = useState(null);
   const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
+  const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
+  const [confirmationEmailSent, setConfirmationEmailSent] = useState(false);
 
   // Active track state accessors
   const currentTrack = trackStates[selectedRole] || trackStates.developer;
@@ -632,7 +635,7 @@ export default function ReferralApplication({
 
   const activeAvatarUrl = formData.avatar || (selectedRole === 'tester' ? DEFAULT_TESTER_AVATAR : DEFAULT_DEV_AVATAR);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate all fields
@@ -717,14 +720,42 @@ export default function ReferralApplication({
       }
     }
 
-    setSubmittedInfo({
+    const submissionPayload = {
       ...formData,
       role: selectedRole,
       avatar: finalAvatar,
       mobileNumber: cleanMobile,
       assignedId: generatedId
-    });
-    setSubmitted(true);
+    };
+
+    setSubmittedInfo(submissionPayload);
+    setIsSubmittingApplication(true);
+
+    // Send official HTML application submission confirmation email via Brevo
+    try {
+      await sendApplicationConfirmationEmail({
+        toEmail: formData.email,
+        toName: formData.fullName,
+        applicantId: generatedId,
+        role: selectedRole,
+        experienceYears: formData.experienceYears,
+        primarySkill: formData.primarySkill,
+        specialization: formData.specialization,
+        testingTools: formData.testingTools,
+        mobileNumber: cleanMobile,
+        referralCode: formData.referralCode,
+        referenceName: formData.referenceName,
+        portfolioUrl: formData.portfolioUrl,
+        aboutSelf: formData.aboutSelf
+      });
+      setConfirmationEmailSent(true);
+    } catch (mailErr) {
+      console.warn('Could not send application confirmation email:', mailErr);
+      setConfirmationEmailSent(false);
+    } finally {
+      setIsSubmittingApplication(false);
+      setSubmitted(true);
+    }
   };
 
   return (
@@ -1328,8 +1359,17 @@ export default function ReferralApplication({
 
             {/* Submit Button */}
             <div className="apply-submit-group">
-              <button type="submit" className="btn btn-submit-apply">
-                <span>Submit {selectedRole === 'tester' ? 'QA Tester' : 'Developer'} Application</span>
+              <button 
+                type="submit" 
+                className="btn btn-submit-apply"
+                disabled={isSubmittingApplication}
+                style={{ opacity: isSubmittingApplication ? 0.8 : 1, cursor: isSubmittingApplication ? 'not-allowed' : 'pointer' }}
+              >
+                <span>
+                  {isSubmittingApplication 
+                    ? 'Submitting & Sending Confirmation Email...' 
+                    : `Submit ${selectedRole === 'tester' ? 'QA Tester' : 'Developer'} Application`}
+                </span>
               </button>
               <p className="apply-disclaimer">
                 All fields are validated. Both Email and Referral OTPs must be verified before submission. Application will be routed to Admin queue for review.
@@ -1355,6 +1395,29 @@ export default function ReferralApplication({
             <p className="modal-desc">
               Thank you for applying to the <strong>{(submittedInfo?.role || selectedRole) === 'tester' ? 'QA Tester Program' : 'Developer Program'}</strong>, <strong>{submittedInfo?.fullName || formData.fullName}</strong>. Both your email and reference authorization from <strong>{submittedInfo?.referenceName || formData.referenceName}</strong> have been verified.
             </p>
+
+            {/* Email Dispatch Notice in Modal */}
+            <div style={{
+              margin: '16px 0',
+              padding: '12px 16px',
+              backgroundColor: '#ECFDF5',
+              border: '1.5px solid #A7F3D0',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              textAlign: 'left'
+            }}>
+              <CheckCircle2 size={20} color="#059669" style={{ flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '0.86rem', color: '#065F46', fontWeight: 800 }}>
+                  Official Confirmation Email Sent!
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '2px', lineHeight: 1.4 }}>
+                  A confirmation email with Assigned ID <strong>{submittedInfo?.assignedId || assignedApplicantId}</strong> and next steps has been sent to <strong>{submittedInfo?.email || formData.email}</strong>.
+                </div>
+              </div>
+            </div>
 
             <div className="modal-summary-box">
               <div className="modal-row">
