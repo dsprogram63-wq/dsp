@@ -32,6 +32,52 @@ const DEFAULT_DEV_AVATAR = 'https://images.unsplash.com/photo-1534528741775-5399
 const DEFAULT_TESTER_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160';
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB strict limit
 
+const INITIAL_DEVELOPER_DATA = {
+  fullName: '',
+  email: '',
+  mobileNumber: '',
+  experienceYears: '3+ Years',
+  avatar: '', // Base64 data URL if uploaded
+  primarySkill: 'Full Stack Developer (React & Node)',
+  portfolioUrl: '',
+  referralCode: '',
+  referenceName: '',
+  aboutSelf: '',
+  hasValidReference: false
+};
+
+const INITIAL_TESTER_DATA = {
+  fullName: '',
+  email: '',
+  mobileNumber: '',
+  experienceYears: '3+ Years',
+  avatar: '', // Base64 data URL if uploaded
+  specialization: 'Web & Functional QA Testing',
+  testingTools: 'Postman, Cypress, Chrome DevTools, Jira',
+  referralCode: '',
+  referenceName: '',
+  aboutSelf: '',
+  hasValidReference: false
+};
+
+const createInitialTrackState = (role) => ({
+  formData: role === 'tester' ? { ...INITIAL_TESTER_DATA } : { ...INITIAL_DEVELOPER_DATA },
+  avatarInfo: {
+    name: '',
+    sizeFormatted: '',
+    sizeBytes: 0,
+    isCustom: false
+  },
+  avatarError: '',
+  errors: {},
+  touched: {},
+  isEmailVerified: false,
+  emailOtpSent: false,
+  emailOtpCode: '',
+  emailTimer: 0,
+  emailStatusMsg: null
+});
+
 export default function ReferralApplication({ 
   onNavigate, 
   onApplyDeveloper, 
@@ -43,47 +89,164 @@ export default function ReferralApplication({
   const [selectedRole, setSelectedRole] = useState(defaultTrack);
 
   const fileInputRef = useRef(null);
-  const [avatarError, setAvatarError] = useState('');
-  const [avatarInfo, setAvatarInfo] = useState({
-    name: '',
-    sizeFormatted: '',
-    sizeBytes: 0,
-    isCustom: false
+
+  // Independent state per track so developer and tester forms never overwrite each other
+  const [trackStates, setTrackStates] = useState({
+    developer: createInitialTrackState('developer'),
+    tester: createInitialTrackState('tester')
   });
-
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    mobileNumber: '',
-    experienceYears: '3+ Years',
-    avatar: '', // Base64 data URL if uploaded
-    // Developer specific
-    primarySkill: 'Full Stack Developer (React & Node)',
-    portfolioUrl: '',
-    // Tester specific
-    specialization: 'Web & Functional QA Testing',
-    testingTools: 'Postman, Cypress, Chrome DevTools, Jira',
-    // Reference verification
-    referralCode: '',
-    referenceName: '',
-    aboutSelf: '',
-    hasValidReference: false
-  });
-
-  // Validation Errors & Touched States
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
-
-  // Email OTP Verification States (Strict Real Email Delivery via Brevo)
-  const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [emailOtpCode, setEmailOtpCode] = useState('');
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
-  const [emailTimer, setEmailTimer] = useState(0);
-  const [emailStatusMsg, setEmailStatusMsg] = useState(null);
 
   const [submitted, setSubmitted] = useState(false);
   const [assignedApplicantId, setAssignedApplicantId] = useState('');
+  const [submittedInfo, setSubmittedInfo] = useState(null);
+  const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
+
+  // Active track state accessors
+  const currentTrack = trackStates[selectedRole] || trackStates.developer;
+  const formData = currentTrack.formData;
+  const errors = currentTrack.errors;
+  const touched = currentTrack.touched;
+  const isEmailVerified = currentTrack.isEmailVerified;
+  const emailOtpSent = currentTrack.emailOtpSent;
+  const emailOtpCode = currentTrack.emailOtpCode;
+  const emailTimer = currentTrack.emailTimer;
+  const emailStatusMsg = currentTrack.emailStatusMsg;
+  const avatarError = currentTrack.avatarError;
+  const avatarInfo = currentTrack.avatarInfo;
+
+  // Track state setters
+  const setFormData = (updater) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      const nextFormData = typeof updater === 'function' ? updater(cur.formData) : updater;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          formData: nextFormData
+        }
+      };
+    });
+  };
+
+  const setErrors = (updater) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      const nextErrors = typeof updater === 'function' ? updater(cur.errors) : updater;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          errors: nextErrors
+        }
+      };
+    });
+  };
+
+  const setTouched = (updater) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      const nextTouched = typeof updater === 'function' ? updater(cur.touched) : updater;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          touched: nextTouched
+        }
+      };
+    });
+  };
+
+  const setIsEmailVerified = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          isEmailVerified: typeof val === 'function' ? val(cur.isEmailVerified) : val
+        }
+      };
+    });
+  };
+
+  const setEmailOtpSent = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          emailOtpSent: typeof val === 'function' ? val(cur.emailOtpSent) : val
+        }
+      };
+    });
+  };
+
+  const setEmailOtpCode = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          emailOtpCode: typeof val === 'function' ? val(cur.emailOtpCode) : val
+        }
+      };
+    });
+  };
+
+  const setEmailTimer = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          emailTimer: typeof val === 'function' ? val(cur.emailTimer) : val
+        }
+      };
+    });
+  };
+
+  const setEmailStatusMsg = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          emailStatusMsg: typeof val === 'function' ? val(cur.emailStatusMsg) : val
+        }
+      };
+    });
+  };
+
+  const setAvatarError = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          avatarError: typeof val === 'function' ? val(cur.avatarError) : val
+        }
+      };
+    });
+  };
+
+  const setAvatarInfo = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          avatarInfo: typeof val === 'function' ? val(cur.avatarInfo) : val
+        }
+      };
+    });
+  };
 
   // When initialRole prop changes externally
   useEffect(() => {
@@ -93,16 +256,28 @@ export default function ReferralApplication({
     }
   }, [initialRole]);
 
-  // Countdown timer for Email OTP
+  // Countdown timer for Email OTP across both tracks independently
   useEffect(() => {
-    let interval = null;
-    if (emailTimer > 0) {
-      interval = setInterval(() => {
-        setEmailTimer((prev) => prev - 1);
-      }, 1000);
-    }
+    const interval = setInterval(() => {
+      setTrackStates((prev) => {
+        const devTimer = prev.developer?.emailTimer || 0;
+        const testTimer = prev.tester?.emailTimer || 0;
+        if (devTimer <= 0 && testTimer <= 0) return prev;
+
+        return {
+          developer: {
+            ...prev.developer,
+            emailTimer: devTimer > 0 ? devTimer - 1 : 0
+          },
+          tester: {
+            ...prev.tester,
+            emailTimer: testTimer > 0 ? testTimer - 1 : 0
+          }
+        };
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [emailTimer]);
+  }, []);
 
   // =========================================================================
   // FIELD VALIDATION CONSTRAINTS (Strict & Comprehensive)
@@ -291,19 +466,11 @@ export default function ReferralApplication({
   };
 
   const handleRoleSelect = (role) => {
+    if (role === selectedRole) return;
     setSelectedRole(role);
-    // Clear errors for fields specific to the other role
-    setErrors(prev => {
-      const copy = { ...prev };
-      if (role === 'developer') {
-        delete copy.specialization;
-        delete copy.testingTools;
-      } else {
-        delete copy.primarySkill;
-        delete copy.portfolioUrl;
-      }
-      return copy;
-    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Email OTP Handlers with Brevo Transactional Email & Real Verification
@@ -523,8 +690,9 @@ export default function ReferralApplication({
 
     const finalAvatar = formData.avatar || (selectedRole === 'tester' ? DEFAULT_TESTER_AVATAR : DEFAULT_DEV_AVATAR);
 
+    let generatedId = '';
     if (selectedRole === 'tester') {
-      const generatedId = `TST-${Math.floor(100 + Math.random() * 900)}`;
+      generatedId = `TST-${Math.floor(100 + Math.random() * 900)}`;
       setAssignedApplicantId(generatedId);
       if (onApplyTester) {
         onApplyTester({
@@ -536,7 +704,7 @@ export default function ReferralApplication({
         });
       }
     } else {
-      const generatedId = `DEV-${Math.floor(100 + Math.random() * 900)}`;
+      generatedId = `DEV-${Math.floor(100 + Math.random() * 900)}`;
       setAssignedApplicantId(generatedId);
       if (onApplyDeveloper) {
         onApplyDeveloper({
@@ -549,6 +717,13 @@ export default function ReferralApplication({
       }
     }
 
+    setSubmittedInfo({
+      ...formData,
+      role: selectedRole,
+      avatar: finalAvatar,
+      mobileNumber: cleanMobile,
+      assignedId: generatedId
+    });
     setSubmitted(true);
   };
 
@@ -1178,49 +1353,53 @@ export default function ReferralApplication({
 
             <h3 className="modal-title">Application Submitted Successfully</h3>
             <p className="modal-desc">
-              Thank you for applying to the <strong>{selectedRole === 'tester' ? 'QA Tester Program' : 'Developer Program'}</strong>, <strong>{formData.fullName}</strong>. Both your email and reference authorization from <strong>{formData.referenceName}</strong> have been verified.
+              Thank you for applying to the <strong>{(submittedInfo?.role || selectedRole) === 'tester' ? 'QA Tester Program' : 'Developer Program'}</strong>, <strong>{submittedInfo?.fullName || formData.fullName}</strong>. Both your email and reference authorization from <strong>{submittedInfo?.referenceName || formData.referenceName}</strong> have been verified.
             </p>
 
             <div className="modal-summary-box">
               <div className="modal-row">
                 <span className="modal-row-label">Assigned ID:</span>
                 <span className="modal-row-val" style={{ fontWeight: 800, color: '#0A3D75' }}>
-                  {assignedApplicantId || (selectedRole === 'tester' ? 'TST-NEW' : 'DEV-NEW')}
+                  {submittedInfo?.assignedId || assignedApplicantId || (selectedRole === 'tester' ? 'TST-NEW' : 'DEV-NEW')}
                 </span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Track / Role:</span>
                 <span className="modal-row-val">
-                  {selectedRole === 'tester' ? 'QA / Software Tester' : 'Developer'}
+                  {(submittedInfo?.role || selectedRole) === 'tester' ? 'QA / Software Tester' : 'Developer'}
                 </span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Specialization:</span>
                 <span className="modal-row-val">
-                  {selectedRole === 'tester' ? formData.specialization : formData.primarySkill}
+                  {(submittedInfo?.role || selectedRole) === 'tester' 
+                    ? (submittedInfo?.specialization || formData.specialization) 
+                    : (submittedInfo?.primarySkill || formData.primarySkill)}
                 </span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Verified Email:</span>
-                <span className="modal-row-val">{formData.email}</span>
+                <span className="modal-row-val">{submittedInfo?.email || formData.email}</span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Mobile Number:</span>
-                <span className="modal-row-val">{formData.mobileNumber}</span>
+                <span className="modal-row-val">{submittedInfo?.mobileNumber || formData.mobileNumber}</span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Referral Code:</span>
-                <span className="modal-row-val">{formData.referralCode} ({formData.referenceName})</span>
+                <span className="modal-row-val">
+                  {(submittedInfo?.referralCode || formData.referralCode)} ({(submittedInfo?.referenceName || formData.referenceName)})
+                </span>
               </div>
               <div className="modal-row">
                 <span className="modal-row-label">Profile Photo:</span>
                 <span className="modal-row-val" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   <img
-                    src={activeAvatarUrl}
+                    src={submittedInfo?.avatar || activeAvatarUrl}
                     alt="Applicant Avatar"
                     style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #CBD5E1' }}
                   />
-                  <span>{formData.avatar ? `Custom Photo (${avatarInfo.sizeFormatted || 'Saved'})` : 'Default Track Avatar'}</span>
+                  <span>{(submittedInfo?.avatar || formData.avatar) ? `Custom Photo (${avatarInfo.sizeFormatted || 'Saved'})` : 'Default Track Avatar'}</span>
                 </span>
               </div>
               <div className="modal-row">
@@ -1248,14 +1427,14 @@ export default function ReferralApplication({
                 className="btn btn-orange-primary"
                 onClick={() => {
                   setSubmitted(false);
-                  if (selectedRole === 'tester') {
+                  if ((submittedInfo?.role || selectedRole) === 'tester') {
                     onNavigate('tester-login');
                   } else {
                     onNavigate('login');
                   }
                 }}
               >
-                <span>{selectedRole === 'tester' ? 'Go to QA Tester Login' : 'Go to Freelancer Login'}</span>
+                <span>{(submittedInfo?.role || selectedRole) === 'tester' ? 'Go to QA Tester Login' : 'Go to Freelancer Login'}</span>
               </button>
             </div>
           </div>
