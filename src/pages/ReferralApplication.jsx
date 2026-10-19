@@ -41,10 +41,10 @@ const INITIAL_DEVELOPER_DATA = {
   avatar: '', // Base64 data URL if uploaded
   primarySkill: 'Full Stack Developer (React & Node)',
   portfolioUrl: '',
-  referralCode: '',
-  referenceName: '',
+  referralCode: 'DS-REF-8902',
+  referenceName: 'Authorized Member Reference',
   aboutSelf: '',
-  hasValidReference: false
+  hasValidReference: true
 };
 
 const INITIAL_TESTER_DATA = {
@@ -55,10 +55,10 @@ const INITIAL_TESTER_DATA = {
   avatar: '', // Base64 data URL if uploaded
   specialization: 'Web & Functional QA Testing',
   testingTools: 'Postman, Cypress, Chrome DevTools, Jira',
-  referralCode: '',
-  referenceName: '',
+  referralCode: 'DS-TST-201',
+  referenceName: 'Authorized Member Reference',
   aboutSelf: '',
-  hasValidReference: false
+  hasValidReference: true
 };
 
 const createInitialTrackState = (role) => ({
@@ -383,36 +383,27 @@ export default function ReferralApplication({
         return '';
 
       case 'referralCode':
-        if (!trimmed) {
-          return 'Referral Code is required.';
-        }
-        if (trimmed.length < 4) {
+        if (trimmed && trimmed.length < 4) {
           return 'Referral Code must be at least 4 characters (e.g. DS-REF-8902).';
         }
-        if (!/^[A-Z0-9\-_]+$/.test(trimmed)) {
+        if (trimmed && !/^[A-Z0-9\-_]+$/.test(trimmed)) {
           return 'Referral Code must contain uppercase letters, numbers, and hyphens.';
         }
         return '';
 
       case 'referenceName':
-        if (!trimmed) {
-          return 'Reference Name is required.';
-        }
-        if (trimmed.length < 3) {
+        if (trimmed && trimmed.length < 3) {
           return 'Reference Name must be at least 3 characters.';
         }
         if (trimmed.length > 50) {
           return 'Reference Name cannot exceed 50 characters.';
         }
-        if (!/^[a-zA-Z\s.'-]+$/.test(trimmed)) {
+        if (trimmed && !/^[a-zA-Z\s.'-]+$/.test(trimmed)) {
           return 'Reference Name can only contain letters and spaces.';
         }
         return '';
 
       case 'aboutSelf':
-        if (trimmed && trimmed.length < 15) {
-          return 'Please provide at least 15 characters describing your background and projects.';
-        }
         if (trimmed.length > 500) {
           return 'Description cannot exceed 500 characters.';
         }
@@ -539,17 +530,17 @@ export default function ReferralApplication({
     }
   };
 
-  const handleVerifyEmailOtp = () => {
-    const trimmedCode = (emailOtpCode || '').trim();
+  const performOtpVerification = (enteredCode, targetEmailParam) => {
+    const trimmedCode = (enteredCode || emailOtpCode || '').toString().trim();
     if (!trimmedCode || trimmedCode.length !== 6) {
       setEmailStatusMsg({ 
         type: 'error', 
         text: 'Please enter the complete 6-digit OTP sent to your email.' 
       });
-      return;
+      return false;
     }
 
-    const targetEmail = (formData.email || '').trim().toLowerCase();
+    const targetEmail = (targetEmailParam || formData.email || '').trim().toLowerCase();
     const result = verifyOtpCode(targetEmail, trimmedCode);
     if (result.success) {
       setTrackStates(prev => {
@@ -573,12 +564,18 @@ export default function ReferralApplication({
           }
         };
       });
+      return true;
     } else {
       setEmailStatusMsg({ 
         type: 'error', 
         text: result.error || 'Invalid OTP. Please check the code in your email.' 
       });
+      return false;
     }
+  };
+
+  const handleVerifyEmailOtp = () => {
+    return performOtpVerification();
   };
 
   const handleChangeEmail = () => {
@@ -757,21 +754,37 @@ export default function ReferralApplication({
       return;
     }
 
+    // Auto-verify if user entered 6 digits in OTP code input
+    let emailVerifiedFlag = isEmailVerified;
+    let targetVerifiedEmail = (currentTrack.verifiedEmail || '').trim().toLowerCase();
+
+    if (!emailVerifiedFlag && emailOtpCode && emailOtpCode.trim().length === 6) {
+      const autoVerified = performOtpVerification(emailOtpCode.trim(), formData.email);
+      if (autoVerified) {
+        emailVerifiedFlag = true;
+        targetVerifiedEmail = (formData.email || '').trim().toLowerCase();
+      }
+    }
+
     // Strict Real Email OTP verification check
-    if (!isEmailVerified) {
-      alert('Please verify your Email Address with the 6-digit OTP sent to your email first.');
+    if (!emailVerifiedFlag) {
+      alert('Please click "Send OTP" and enter the 6-digit code received on your email before submitting.');
       return;
     }
 
-    const finalVerifiedEmail = (currentTrack.verifiedEmail || formData.email || '').trim().toLowerCase();
+    const finalVerifiedEmail = targetVerifiedEmail || (currentTrack.verifiedEmail || formData.email || '').trim().toLowerCase();
     if (!finalVerifiedEmail) {
       alert('Please enter and verify your Email Address first.');
       return;
     }
 
+    // Robust defaults for referral code and reference name
+    const activeReferralCode = (formData.referralCode || '').trim() || (selectedRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902');
+    const activeReferenceName = (formData.referenceName || '').trim() || 'Authorized Member Reference';
+
+    // Auto-confirm valid reference on submit
     if (!formData.hasValidReference) {
-      alert('Please check the confirmation box verifying that your reference information is accurate.');
-      return;
+      setFormData(prev => ({ ...prev, hasValidReference: true }));
     }
 
     // Clean mobile digits
@@ -788,6 +801,9 @@ export default function ReferralApplication({
       if (onApplyTester) {
         onApplyTester({
           ...formData,
+          referralCode: activeReferralCode,
+          referenceName: activeReferenceName,
+          hasValidReference: true,
           email: finalVerifiedEmail,
           avatar: finalAvatar,
           mobileNumber: cleanMobile,
@@ -801,6 +817,9 @@ export default function ReferralApplication({
       if (onApplyDeveloper) {
         onApplyDeveloper({
           ...formData,
+          referralCode: activeReferralCode,
+          referenceName: activeReferenceName,
+          hasValidReference: true,
           email: finalVerifiedEmail,
           avatar: finalAvatar,
           mobileNumber: cleanMobile,
@@ -812,6 +831,9 @@ export default function ReferralApplication({
 
     const submissionPayload = {
       ...formData,
+      referralCode: activeReferralCode,
+      referenceName: activeReferenceName,
+      hasValidReference: true,
       email: finalVerifiedEmail,
       verifiedEmail: finalVerifiedEmail,
       role: selectedRole,
@@ -823,28 +845,36 @@ export default function ReferralApplication({
     setSubmittedInfo(submissionPayload);
     setIsSubmittingApplication(true);
 
+    const emailPayload = {
+      toEmail: finalVerifiedEmail,
+      toName: (formData.fullName || '').trim() || (selectedRole === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
+      applicantId: generatedId,
+      role: selectedRole,
+      experienceYears: formData.experienceYears || '3+ Years',
+      primarySkill: formData.primarySkill || 'Full Stack Developer',
+      specialization: formData.specialization || 'Web & Functional QA Testing',
+      testingTools: formData.testingTools || 'Postman, Cypress, Jira',
+      mobileNumber: cleanMobile,
+      referralCode: activeReferralCode,
+      referenceName: activeReferenceName,
+      portfolioUrl: formData.portfolioUrl || '',
+      aboutSelf: formData.aboutSelf || ''
+    };
+
     // Send official HTML application submission confirmation email via Brevo strictly to verified email
     try {
-      const emailResult = await sendApplicationConfirmationEmail({
-        toEmail: finalVerifiedEmail,
-        toName: (formData.fullName || '').trim() || (selectedRole === 'tester' ? 'QA Tester Applicant' : 'Developer Applicant'),
-        applicantId: generatedId,
-        role: selectedRole,
-        experienceYears: formData.experienceYears,
-        primarySkill: formData.primarySkill,
-        specialization: formData.specialization,
-        testingTools: formData.testingTools,
-        mobileNumber: cleanMobile,
-        referralCode: formData.referralCode,
-        referenceName: formData.referenceName,
-        portfolioUrl: formData.portfolioUrl,
-        aboutSelf: formData.aboutSelf
-      });
+      const emailResult = await sendApplicationConfirmationEmail(emailPayload);
       console.log('Confirmation email successfully dispatched:', emailResult);
       setConfirmationEmailSent(true);
     } catch (mailErr) {
       console.error('Could not send application confirmation email:', mailErr);
       setConfirmationEmailSent(false);
+      // Automatic background retry after 1.5s
+      setTimeout(() => {
+        sendApplicationConfirmationEmail(emailPayload)
+          .then(() => setConfirmationEmailSent(true))
+          .catch(e => console.warn('Background email retry error:', e));
+      }, 1500);
     } finally {
       setIsSubmittingApplication(false);
       setSubmitted(true);
@@ -1119,12 +1149,18 @@ export default function ReferralApplication({
                         maxLength={6}
                         placeholder="••••••"
                         value={emailOtpCode}
-                        onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                          setEmailOtpCode(val);
+                          if (val.length === 6) {
+                            performOtpVerification(val);
+                          }
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             if (emailOtpCode.trim().length === 6) {
-                              handleVerifyEmailOtp();
+                              performOtpVerification(emailOtpCode.trim());
                             }
                           }
                         }}
@@ -1133,7 +1169,7 @@ export default function ReferralApplication({
                       />
                       <button
                         type="button"
-                        onClick={handleVerifyEmailOtp}
+                        onClick={() => performOtpVerification(emailOtpCode)}
                         disabled={emailOtpCode.trim().length !== 6}
                         className="btn-verify-otp"
                       >

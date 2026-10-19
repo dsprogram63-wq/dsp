@@ -331,36 +331,60 @@ export async function sendTransactionalEmail({
 
   let lastError = null;
 
-  // 1. Primary: Try /api/send-email proxy endpoint (serverless function on Vercel or dev middleware)
-  try {
-    const proxyUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/send-email` : '/api/send-email';
-    const proxyRes = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const contentType = proxyRes.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const data = await proxyRes.json();
-      if (proxyRes.ok && (data.success || data.messageId)) {
-        return {
-          success: true,
-          messageId: data.messageId
-        };
-      } else {
-        lastError = data.error || `Server returned error (${proxyRes.status})`;
-        console.warn('Proxy returned error:', lastError);
+  // Determine priority endpoints to avoid cross-origin 308 redirects on naked domains
+  const getEndpoints = () => {
+    const list = [];
+    if (typeof window !== 'undefined') {
+      // 1. If running on dsprogram.space domain, target the canonical https://www.dsprogram.space/api/send-email directly (no 308 redirect)
+      if (window.location.hostname.includes('dsprogram.space')) {
+        list.push('https://www.dsprogram.space/api/send-email');
+      }
+      // 2. Relative endpoint
+      list.push('/api/send-email');
+      // 3. Current origin endpoint
+      if (window.location.origin) {
+        list.push(`${window.location.origin}/api/send-email`);
       }
     } else {
-      const rawText = await proxyRes.text().catch(() => '');
-      lastError = `Proxy returned status ${proxyRes.status}: ${rawText.slice(0, 100)}`;
+      list.push('https://www.dsprogram.space/api/send-email');
+      list.push('http://localhost:5173/api/send-email');
     }
-  } catch (err) {
-    lastError = err.message || 'Failed to contact /api/send-email';
-    console.warn('Proxy request failed:', lastError);
+    return [...new Set(list)];
+  };
+
+  const endpoints = getEndpoints();
+
+  // 1. Primary: Try proxy endpoints in priority order
+  for (const proxyUrl of endpoints) {
+    try {
+      const proxyRes = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const contentType = proxyRes.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await proxyRes.json();
+        if (proxyRes.ok && (data.success || data.messageId)) {
+          return {
+            success: true,
+            messageId: data.messageId
+          };
+        } else {
+          lastError = data.error || `Server returned error (${proxyRes.status})`;
+          console.warn(`Proxy ${proxyUrl} returned error:`, lastError);
+        }
+      } else {
+        const rawText = await proxyRes.text().catch(() => '');
+        lastError = `Proxy ${proxyUrl} returned status ${proxyRes.status}: ${rawText.slice(0, 100)}`;
+      }
+    } catch (err) {
+      lastError = err.message || `Failed to contact ${proxyUrl}`;
+      console.warn(`Proxy ${proxyUrl} request failed:`, lastError);
+    }
   }
 
   // 2. Direct Brevo API fallback (only if apiKey is configured in client bundle)
@@ -457,7 +481,8 @@ export function buildApplicationSubmittedEmailHtml({
   mobileNumber = '',
   referralCode = '',
   referenceName = '',
-  portfolioUrl = ''
+  portfolioUrl = '',
+  aboutSelf = ''
 }) {
   const isTester = (role === 'tester' || role === 'qa');
   const roleTitle = isTester ? 'QA Tester' : 'Developer';
@@ -580,11 +605,16 @@ export function buildApplicationSubmittedEmailHtml({
                   <td style="padding: 12px 18px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 600;">${mobileNumber || 'Registered'}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 12px 18px; font-size: 13px; color: #64748B; font-weight: 600;">Authorized Reference</td>
-                  <td style="padding: 12px 18px; font-size: 13px; color: #0F172A; font-weight: 700;">
+                  <td style="padding: 12px 18px; border-bottom: ${aboutSelf ? '1px solid #E2E8F0' : 'none'}; font-size: 13px; color: #64748B; font-weight: 600;">Authorized Reference</td>
+                  <td style="padding: 12px 18px; border-bottom: ${aboutSelf ? '1px solid #E2E8F0' : 'none'}; font-size: 13px; color: #0F172A; font-weight: 700;">
                     <span style="color: #0F3E6D;">${referralCode}</span> <span style="color: #64748B; font-weight: 500;">(Referred by ${referenceName})</span>
                   </td>
                 </tr>
+                ${aboutSelf ? `
+                <tr>
+                  <td style="padding: 12px 18px; font-size: 13px; color: #64748B; font-weight: 600;">Applicant Notes / Bio</td>
+                  <td style="padding: 12px 18px; font-size: 13px; color: #334155; line-height: 1.5;">${aboutSelf}</td>
+                </tr>` : ''}
               </table>
 
               <!-- Next Steps Roadmap -->
@@ -711,7 +741,8 @@ export async function sendApplicationConfirmationEmail({
     mobileNumber,
     referralCode,
     referenceName,
-    portfolioUrl
+    portfolioUrl,
+    aboutSelf
   });
 
   const subject = `Application Confirmed: Dahej Support ${roleTitle} Program [${applicantId}]`;
@@ -721,9 +752,12 @@ export async function sendApplicationConfirmationEmail({
     `- Assigned ID: ${applicantId}\n` +
     `- Program Track: ${roleTitle} Track\n` +
     `- Specialization/Stack: ${primarySkill || specialization || 'Technical Specialist'}\n` +
+    (testingTools ? `- QA Testing Tools: ${testingTools}\n` : '') +
+    (portfolioUrl ? `- Portfolio / GitHub: ${portfolioUrl}\n` : '') +
     `- Technical Experience: ${experienceYears}\n` +
     `- Mobile: ${mobileNumber}\n` +
     `- Verified Reference: ${referralCode} (${referenceName})\n` +
+    (aboutSelf ? `- Overview / Experience: ${aboutSelf}\n` : '') +
     `- Status: Pending Technical & Admin Review\n\n` +
     `Our engineering lead team will review your application within 24-48 hours. Once approved, your login access will be activated.\n\n` +
     `Best regards,\n` +
