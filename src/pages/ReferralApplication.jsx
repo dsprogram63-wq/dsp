@@ -1688,7 +1688,7 @@ export default function ReferralApplication({
               <div className="sponsor-policy-banner">
                 <ShieldAlert size={16} color="#B45309" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong>Strict Network Rule:</strong> Random references are strictly prohibited. You must provide a valid <strong>Referrer Trust ID</strong> and matching <strong>Sponsor Profile Name</strong> of an approved member. An authorization OTP will be sent to their registered email before you can submit.
+                  <strong>Strict Network Rule:</strong> Random references are strictly prohibited. You must provide a valid <strong>Referral Code</strong> and matching <strong>Name of Reference Person</strong> from an approved member. An authorization OTP will be sent to their registered email before you can submit.
                 </div>
               </div>
 
@@ -1710,7 +1710,7 @@ export default function ReferralApplication({
                     name="referralCode"
                     type="text"
                     className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : formData.referralCode.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
-                    placeholder="Enter Referrer Trust ID"
+                    placeholder="Refrnce Code"
                     value={formData.referralCode}
                     onChange={handleChange}
                     onBlur={handleBlur}
@@ -1744,7 +1744,7 @@ export default function ReferralApplication({
                     name="referenceName"
                     type="text"
                     className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : formData.referenceName.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
-                    placeholder="Enter Sponsor Profile Name"
+                    placeholder="Name of Refrence Person"
                     value={formData.referenceName}
                     onChange={handleChange}
                     onBlur={handleBlur}
