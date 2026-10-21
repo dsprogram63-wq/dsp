@@ -197,24 +197,24 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   const cleanId = (inputTrustId || '').trim().toUpperCase();
   const cleanName = (inputSponsorName || '').trim().toLowerCase();
 
-  if (!cleanId) {
+  if (!cleanId || !cleanName) {
     return {
       valid: false,
-      error: 'Please enter your Referral Sponsor’s Trust ID (e.g. RFF-PatelHet-523).'
+      error: 'Invalid'
     };
   }
 
   if (!cleanId.startsWith('RFF-')) {
     return {
       valid: false,
-      error: 'Invalid Referrer ID format. It must start with "RFF-" (e.g. RFF-[ProfileName]-523).'
+      error: 'Invalid'
     };
   }
 
-  if (!cleanName || cleanName.length < 2) {
+  if (cleanName.length < 2) {
     return {
       valid: false,
-      error: 'Please enter the Reference Name of the approved member who provided this code.'
+      error: 'Invalid'
     };
   }
 
@@ -226,7 +226,7 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   if (!matchedSponsor) {
     return {
       valid: false,
-      error: `No approved developer or QA tester found with Referrer Trust ID "${cleanId}". Only verified active members can sponsor applications.`
+      error: 'Invalid'
     };
   }
 
@@ -246,14 +246,14 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   if (!isNameMatch) {
     return {
       valid: false,
-      error: `Trust ID "${cleanId}" belongs to "${matchedSponsor.name}". The entered reference name does not match this member's profile name.`
+      error: 'Invalid'
     };
   }
 
   if (!matchedSponsor.email) {
     return {
       valid: false,
-      error: `Referral Sponsor "${matchedSponsor.name}" does not have a verified email on file for OTP verification.`
+      error: 'Invalid'
     };
   }
 

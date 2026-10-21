@@ -534,23 +534,14 @@ export default function ReferralApplication({
         return '';
 
       case 'referralCode':
-        if (trimmed && trimmed.length < 4) {
-          return 'Referral Code must be at least 4 characters (e.g. DS-REF-8902).';
-        }
-        if (trimmed && !/^[A-Z0-9\-_]+$/.test(trimmed)) {
-          return 'Referral Code must contain uppercase letters, numbers, and hyphens.';
+        if (!trimmed) {
+          return 'Referral Code is required.';
         }
         return '';
 
       case 'referenceName':
-        if (trimmed && trimmed.length < 3) {
-          return 'Reference Name must be at least 3 characters.';
-        }
-        if (trimmed.length > 50) {
-          return 'Reference Name cannot exceed 50 characters.';
-        }
-        if (trimmed && !/^[a-zA-Z\s.'-]+$/.test(trimmed)) {
-          return 'Reference Name can only contain letters and spaces.';
+        if (!trimmed) {
+          return 'Reference Name is required.';
         }
         return '';
 
@@ -776,7 +767,7 @@ export default function ReferralApplication({
   // Sponsor Referral Authorization OTP Handlers
   const handleSendSponsorOtp = async () => {
     if (!sponsorValidationResult.valid || !sponsorValidationResult.sponsor) {
-      const err = sponsorValidationResult.error || 'Please enter valid sponsor Referrer ID and matching Profile Name.';
+      const err = 'Invalid';
       setSponsorStatusMsg({ type: 'error', text: err });
       alert(err);
       return;
@@ -1069,13 +1060,7 @@ export default function ReferralApplication({
     }
 
     if (!sponsorVerifiedFlag || !finalSponsor) {
-      const alertMsg = '⚠️ Strict Referral Authorization Required\n\n' +
-        'Random referral codes are strictly disallowed in the Dahej Support Network.\n\n' +
-        '1. Enter the Referrer Trust ID of an active approved member (e.g. RFF-PatelHet-523).\n' +
-        '2. Enter their matching Profile Name (e.g. Patel Het).\n' +
-        '3. Click "Send Authorization OTP to Sponsor" and enter the 6-digit code sent to their registered email.\n\n' +
-        'Your application cannot be submitted without official sponsor OTP authorization.';
-      alert(alertMsg);
+      alert('Invalid Reference Information. Please verify your reference details and complete sponsor authorization.');
       const refElem = document.querySelector('.reference-verification-container');
       if (refElem) {
         refElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1703,7 +1688,7 @@ export default function ReferralApplication({
               <div className="sponsor-policy-banner">
                 <ShieldAlert size={16} color="#B45309" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong>Strict Network Rule:</strong> Random references are strictly prohibited. You must provide the unique <strong>Reffer Trustable ID</strong> (e.g. <code>RFF-PatelHet-523</code>) and matching Profile Name of an approved, active member. An authorization OTP will be sent to their registered email before you can submit.
+                  <strong>Strict Network Rule:</strong> Random references are strictly prohibited. You must provide a valid <strong>Referrer Trust ID</strong> and matching <strong>Sponsor Profile Name</strong> of an approved member. An authorization OTP will be sent to their registered email before you can submit.
                 </div>
               </div>
 
@@ -1725,7 +1710,7 @@ export default function ReferralApplication({
                     name="referralCode"
                     type="text"
                     className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : formData.referralCode.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
-                    placeholder="e.g. RFF-PatelHet-523"
+                    placeholder="Enter Referrer Trust ID"
                     value={formData.referralCode}
                     onChange={handleChange}
                     onBlur={handleBlur}
@@ -1740,7 +1725,6 @@ export default function ReferralApplication({
                       <span>{errors.referralCode}</span>
                     </div>
                   )}
-                  <span className="field-hint-text">Format: RFF-[ProfileName]-[Unique3Digits] (e.g. RFF-PatelHet-523)</span>
                 </div>
 
                 <div className="form-group">
@@ -1760,7 +1744,7 @@ export default function ReferralApplication({
                     name="referenceName"
                     type="text"
                     className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : formData.referenceName.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
-                    placeholder="e.g. Patel Het"
+                    placeholder="Enter Sponsor Profile Name"
                     value={formData.referenceName}
                     onChange={handleChange}
                     onBlur={handleBlur}
@@ -1775,7 +1759,6 @@ export default function ReferralApplication({
                       <span>{errors.referenceName}</span>
                     </div>
                   )}
-                  <span className="field-hint-text">Exact profile name of the approved member</span>
                 </div>
               </div>
 
@@ -1905,16 +1888,11 @@ export default function ReferralApplication({
               {/* Error state when credentials do not match approved members */}
               {formData.referralCode.trim() && formData.referenceName.trim() && !sponsorValidationResult.valid && (
                 <div className="sponsor-status-card error">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <div>
-                      <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#991B1B' }}>
-                        Invalid Referral Sponsor Credentials
-                      </div>
-                      <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: '#B91C1C', lineHeight: 1.45 }}>
-                        {sponsorValidationResult.error}
-                      </p>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#991B1B' }}>
+                      Invalid
+                    </span>
                   </div>
                 </div>
               )}
