@@ -27,6 +27,23 @@ export default function TesterProfilePage({
   const currentProfile = propProfile || {};
   const fileInputRef = useRef(null);
 
+  // Robust resolver that prioritizes real referral codes and completely rejects synthetic 'REF-00...' values
+  const resolveRefCode = (profileObj, fallback = 'DS-TST-201') => {
+    if (!profileObj) return fallback;
+    const candidates = [
+      profileObj.referralCode,
+      profileObj.referenceId
+    ];
+    for (const c of candidates) {
+      if (c && typeof c === 'string' && c.trim() && !c.trim().toUpperCase().startsWith('REF-00')) {
+        return c.trim();
+      }
+    }
+    return fallback;
+  };
+
+  const initialRefCode = resolveRefCode(currentProfile, 'DS-TST-201');
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: currentProfile.fullName || currentProfile.name || '',
@@ -36,9 +53,9 @@ export default function TesterProfilePage({
     email: currentProfile.email || '',
     experienceAtJoining: currentProfile.experienceAtJoining !== undefined ? currentProfile.experienceAtJoining : 0,
     experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '',
-    referenceName: currentProfile.referenceName || '',
-    referenceId: (currentProfile.referralCode || (currentProfile.referenceId && !currentProfile.referenceId.startsWith('REF-00') ? currentProfile.referenceId : null)) || currentProfile.referralCode || currentProfile.referenceId || '',
-    referralCode: currentProfile.referralCode || currentProfile.referenceId || '',
+    referenceName: currentProfile.referenceName || 'Reference Verification',
+    referenceId: initialRefCode,
+    referralCode: initialRefCode,
     program: 'The HIT Support Tester Program',
     avatar: currentProfile.avatar || '',
     verified: currentProfile.verified !== false
@@ -48,6 +65,7 @@ export default function TesterProfilePage({
 
   useEffect(() => {
     if (propProfile) {
+      const cleanRefCode = resolveRefCode(propProfile, resolveRefCode(formData, 'DS-TST-201'));
       setFormData(prev => ({
         ...prev,
         fullName: propProfile.fullName || propProfile.name || prev.fullName,
@@ -57,9 +75,9 @@ export default function TesterProfilePage({
         email: propProfile.email || prev.email,
         experienceAtJoining: propProfile.experienceAtJoining !== undefined ? propProfile.experienceAtJoining : prev.experienceAtJoining,
         experienceReferenceDate: propProfile.experienceReferenceDate || propProfile.joiningDate || prev.experienceReferenceDate,
-        referenceName: propProfile.referenceName || prev.referenceName,
-        referenceId: (propProfile.referralCode || (propProfile.referenceId && !propProfile.referenceId.startsWith('REF-00') ? propProfile.referenceId : null)) || propProfile.referralCode || propProfile.referenceId || prev.referenceId,
-        referralCode: propProfile.referralCode || propProfile.referenceId || prev.referralCode,
+        referenceName: propProfile.referenceName || prev.referenceName || 'Reference Verification',
+        referenceId: cleanRefCode,
+        referralCode: cleanRefCode,
         program: 'The HIT Support Tester Program',
         avatar: propProfile.avatar || prev.avatar,
         verified: propProfile.verified !== false
@@ -449,11 +467,11 @@ export default function TesterProfilePage({
                 </div>
                 <input
                   type="text"
-                  value={formData.referenceId}
+                  value={resolveRefCode(formData, 'DS-TST-201')}
                   disabled
                   className="profile-input disabled"
                 />
-                <span className="field-hint">Permanent sponsor ID</span>
+                <span className="field-hint">Permanent referral sponsor ID</span>
               </div>
             </div>
 
@@ -463,9 +481,9 @@ export default function TesterProfilePage({
                 <UserCheck size={15} color="#0369A1" />
                 <span className="reference-tag" style={{ margin: 0 }}>Verified Referral Sponsor</span>
               </div>
-              <div className="reference-name-val">{formData.referenceName} ({formData.referenceId})</div>
+              <div className="reference-name-val">{formData.referenceName} ({resolveRefCode(formData, 'DS-TST-201')})</div>
               <p className="reference-desc">
-                This QA tester account was verified and registered under {formData.referenceName} ({formData.referenceId}) for The HIT Support Tester Program.
+                This QA tester account was verified and registered under {formData.referenceName} ({resolveRefCode(formData, 'DS-TST-201')}) for The HIT Support Tester Program.
               </p>
             </div>
           </form>

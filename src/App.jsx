@@ -74,7 +74,18 @@ export default function App() {
   const [authSession, setAuthSession] = useState(() => {
     try {
       const saved = localStorage.getItem('dahej_auth_session');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.user) {
+          if (parsed.user.referralCode && parsed.user.referralCode.startsWith('REF-00')) {
+            delete parsed.user.referralCode;
+          }
+          if (parsed.user.referenceId && parsed.user.referenceId.startsWith('REF-00')) {
+            delete parsed.user.referenceId;
+          }
+        }
+        return parsed;
+      }
     } catch (e) {
       console.error('Failed to parse auth session:', e);
     }
@@ -240,7 +251,27 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           // Normalize and self-heal any missing referenceId or outdated synthetic REF-00 IDs
           return parsed.map(d => {
-            const actualCode = d.referralCode || (d.referenceId && !d.referenceId.startsWith('REF-00') ? d.referenceId : 'DS-REF-8902');
+            const actualCode = (d.referralCode && !d.referralCode.startsWith('REF-00') ? d.referralCode : null) ||
+              (d.referenceId && !d.referenceId.startsWith('REF-00') ? d.referenceId : null) ||
+              'DS-REF-8902';
+
+            // Proactively heal any cached custom profile in localStorage
+            try {
+              if (d.id) {
+                const devKey = `dahej_profile_${d.id}`;
+                const devProf = localStorage.getItem(devKey);
+                if (devProf) {
+                  const p = JSON.parse(devProf);
+                  if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
+                    p.referralCode = actualCode;
+                    p.referenceId = actualCode;
+                    p.referenceName = d.referenceName || p.referenceName || 'Reference Verification';
+                    localStorage.setItem(devKey, JSON.stringify(p));
+                  }
+                }
+              }
+            } catch (err) {}
+
             return {
               ...d,
               referralCode: actualCode,
@@ -264,7 +295,27 @@ export default function App() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(t => {
-            const actualCode = t.referralCode || (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : 'DS-TST-201');
+            const actualCode = (t.referralCode && !t.referralCode.startsWith('REF-00') ? t.referralCode : null) ||
+              (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : null) ||
+              'DS-TST-201';
+
+            // Proactively heal any cached custom tester profile in localStorage
+            try {
+              if (t.id) {
+                const testerKey = `dahej_tester_profile_${t.id}`;
+                const testerProf = localStorage.getItem(testerKey);
+                if (testerProf) {
+                  const p = JSON.parse(testerProf);
+                  if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
+                    p.referralCode = actualCode;
+                    p.referenceId = actualCode;
+                    p.referenceName = t.referenceName || p.referenceName || 'Reference Verification';
+                    localStorage.setItem(testerKey, JSON.stringify(p));
+                  }
+                }
+              }
+            } catch (err) {}
+
             return {
               ...t,
               referralCode: actualCode,
@@ -516,6 +567,13 @@ export default function App() {
     const sanitizedMobile = (updatedFields.mobile || matchedDev.mobile || '').trim();
     const updatedAvatar = updatedFields.avatar || matchedDev.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
 
+    const activeDevRefCode = (matchedDev.referralCode && !matchedDev.referralCode.startsWith('REF-00') ? matchedDev.referralCode : null) ||
+      (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null) ||
+      (authUser && authUser.referralCode && !authUser.referralCode.startsWith('REF-00') ? authUser.referralCode : null) ||
+      (authUser && authUser.referenceId && !authUser.referenceId.startsWith('REF-00') ? authUser.referenceId : null) ||
+      'DS-REF-8902';
+    const activeDevRefName = matchedDev.referenceName || (authUser && authUser.referenceName) || 'Reference Verification';
+
     const newProfile = {
       fullName: sanitizedName,
       name: sanitizedName,
@@ -527,9 +585,9 @@ export default function App() {
       joiningDate: matchedDev.joiningDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: matchedDev.experienceAtJoining !== undefined ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: matchedDev.experienceReferenceDate || '2025-06-15',
-      referenceName: matchedDev.referenceName || 'Reference Verification',
-      referenceId: matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : 'DS-REF-8902'),
-      referralCode: matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : 'DS-REF-8902'),
+      referenceName: activeDevRefName,
+      referenceId: activeDevRefCode,
+      referralCode: activeDevRefCode,
       program: 'The HIT Support Developer Program',
       roleTitle: 'The HIT Support Developer Program',
       avatar: updatedAvatar,
@@ -554,7 +612,10 @@ export default function App() {
           fullName: sanitizedName,
           email: sanitizedEmail,
           mobile: sanitizedMobile,
-          avatar: updatedAvatar
+          avatar: updatedAvatar,
+          referralCode: activeDevRefCode,
+          referenceId: activeDevRefCode,
+          referenceName: activeDevRefName
         }
       };
       setAuthSession(updatedSession);
@@ -608,6 +669,13 @@ export default function App() {
     const sanitizedMobile = (updatedFields.mobile || matchedTester.mobile || '').trim();
     const updatedAvatar = updatedFields.avatar || matchedTester.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160';
 
+    const activeTesterRefCode = (matchedTester.referralCode && !matchedTester.referralCode.startsWith('REF-00') ? matchedTester.referralCode : null) ||
+      (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null) ||
+      (authUser && authUser.referralCode && !authUser.referralCode.startsWith('REF-00') ? authUser.referralCode : null) ||
+      (authUser && authUser.referenceId && !authUser.referenceId.startsWith('REF-00') ? authUser.referenceId : null) ||
+      'DS-TST-201';
+    const activeTesterRefName = matchedTester.referenceName || (authUser && authUser.referenceName) || 'Reference Verification';
+
     const newProfile = {
       fullName: sanitizedName,
       name: sanitizedName,
@@ -619,9 +687,9 @@ export default function App() {
       joiningDate: matchedTester.joiningDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: matchedTester.experienceAtJoining !== undefined ? matchedTester.experienceAtJoining : (matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: matchedTester.experienceReferenceDate || matchedTester.joiningDate || '2025-02-10',
-      referenceName: matchedTester.referenceName || 'Reference Verification',
-      referenceId: matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : 'DS-TST-201'),
-      referralCode: matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : 'DS-TST-201'),
+      referenceName: activeTesterRefName,
+      referenceId: activeTesterRefCode,
+      referralCode: activeTesterRefCode,
       program: 'The HIT Support Tester Program',
       roleTitle: 'The HIT Support Tester Program',
       avatar: updatedAvatar,
@@ -647,7 +715,10 @@ export default function App() {
           fullName: sanitizedName,
           email: sanitizedEmail,
           mobile: sanitizedMobile,
-          avatar: updatedAvatar
+          avatar: updatedAvatar,
+          referralCode: activeTesterRefCode,
+          referenceId: activeTesterRefCode,
+          referenceName: activeTesterRefName
         }
       };
       setAuthSession(updatedSession);
@@ -735,8 +806,15 @@ export default function App() {
   // Referral / Developer registration handler (dynamically adds to Pending Developers with saved avatar)
   const handleApplyDeveloper = (newDevData) => {
     const newId = newDevData.applicantId || `DEV-${Math.floor(100 + Math.random() * 900)}`;
-    const activeRefCode = newDevData.referralCode || newDevData.referenceId || 'DS-REF-8902';
+    const activeRefCode = (newDevData.referralCode && !newDevData.referralCode.startsWith('REF-00') ? newDevData.referralCode : null) ||
+      (newDevData.referenceId && !newDevData.referenceId.startsWith('REF-00') ? newDevData.referenceId : null) ||
+      'DS-REF-8902';
     const activeRefName = newDevData.referenceName || 'Reference Verification';
+
+    try {
+      localStorage.removeItem(`dahej_profile_${newId}`);
+    } catch (e) {}
+
     const newDev = {
       id: newId,
       developerId: newId,
@@ -775,8 +853,15 @@ export default function App() {
   // Referral / QA Tester registration handler (dynamically adds to Pending Testers with saved avatar)
   const handleApplyTester = (newTesterData) => {
     const newId = newTesterData.applicantId || `TST-${Math.floor(100 + Math.random() * 900)}`;
-    const activeRefCode = newTesterData.referralCode || newTesterData.referenceId || 'DS-TST-201';
+    const activeRefCode = (newTesterData.referralCode && !newTesterData.referralCode.startsWith('REF-00') ? newTesterData.referralCode : null) ||
+      (newTesterData.referenceId && !newTesterData.referenceId.startsWith('REF-00') ? newTesterData.referenceId : null) ||
+      'DS-TST-201';
     const activeRefName = newTesterData.referenceName || 'Reference Verification';
+
+    try {
+      localStorage.removeItem(`dahej_tester_profile_${newId}`);
+    } catch (e) {}
+
     const newTester = {
       id: newId,
       testerId: newId,
@@ -1078,13 +1163,27 @@ export default function App() {
 
     const finalTesterName = (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester';
 
-    const officialTesterRefName = (matchedTester && (matchedTester.referenceName || matchedTester.reference)) || (savedCustomTesterProfile && savedCustomTesterProfile.referenceName) || (authTesterUser && authTesterUser.referenceName) || 'Reference Verification';
-    const officialTesterRefCode = (matchedTester && (matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null))) ||
-      (matchedTester && matchedTester.referralCode) ||
+    const officialTesterRefCode = (matchedTester && matchedTester.referralCode && !matchedTester.referralCode.startsWith('REF-00') ? matchedTester.referralCode : null) ||
       (matchedTester && matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null) ||
+      (authTesterUser && authTesterUser.referralCode && !authTesterUser.referralCode.startsWith('REF-00') ? authTesterUser.referralCode : null) ||
+      (authTesterUser && authTesterUser.referenceId && !authTesterUser.referenceId.startsWith('REF-00') ? authTesterUser.referenceId : null) ||
       (savedCustomTesterProfile && savedCustomTesterProfile.referralCode && !savedCustomTesterProfile.referralCode.startsWith('REF-00') ? savedCustomTesterProfile.referralCode : null) ||
       (savedCustomTesterProfile && savedCustomTesterProfile.referenceId && !savedCustomTesterProfile.referenceId.startsWith('REF-00') ? savedCustomTesterProfile.referenceId : null) ||
       'DS-TST-201';
+
+    const officialTesterRefName = (matchedTester && (matchedTester.referenceName || matchedTester.reference)) || (authTesterUser && authTesterUser.referenceName) || (savedCustomTesterProfile && savedCustomTesterProfile.referenceName) || 'Reference Verification';
+
+    // Proactively synchronize savedCustomTesterProfile in localStorage if it contains stale values
+    if (finalTesterId && savedCustomTesterProfile && (!savedCustomTesterProfile.referralCode || savedCustomTesterProfile.referralCode.startsWith('REF-00') || savedCustomTesterProfile.referenceId?.startsWith('REF-00') || savedCustomTesterProfile.referenceId !== officialTesterRefCode)) {
+      try {
+        localStorage.setItem(`dahej_tester_profile_${finalTesterId}`, JSON.stringify({
+          ...savedCustomTesterProfile,
+          referralCode: officialTesterRefCode,
+          referenceId: officialTesterRefCode,
+          referenceName: officialTesterRefName
+        }));
+      } catch (e) {}
+    }
 
     const currentLoggedInTester = {
       id: finalTesterId,
@@ -1437,13 +1536,27 @@ export default function App() {
 
     const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer';
 
-    const officialRefName = (matchedDev && (matchedDev.referenceName || matchedDev.reference)) || (savedCustomProfile && savedCustomProfile.referenceName) || (authUser && authUser.referenceName) || 'Reference Verification';
-    const officialRefCode = (matchedDev && (matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null))) ||
-      (matchedDev && matchedDev.referralCode) ||
+    const officialRefCode = (matchedDev && matchedDev.referralCode && !matchedDev.referralCode.startsWith('REF-00') ? matchedDev.referralCode : null) ||
       (matchedDev && matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null) ||
+      (authUser && authUser.referralCode && !authUser.referralCode.startsWith('REF-00') ? authUser.referralCode : null) ||
+      (authUser && authUser.referenceId && !authUser.referenceId.startsWith('REF-00') ? authUser.referenceId : null) ||
       (savedCustomProfile && savedCustomProfile.referralCode && !savedCustomProfile.referralCode.startsWith('REF-00') ? savedCustomProfile.referralCode : null) ||
       (savedCustomProfile && savedCustomProfile.referenceId && !savedCustomProfile.referenceId.startsWith('REF-00') ? savedCustomProfile.referenceId : null) ||
       'DS-REF-8902';
+
+    const officialRefName = (matchedDev && (matchedDev.referenceName || matchedDev.reference)) || (authUser && authUser.referenceName) || (savedCustomProfile && savedCustomProfile.referenceName) || 'Reference Verification';
+
+    // Proactively synchronize savedCustomProfile in localStorage if it contains stale values
+    if (finalDevId && savedCustomProfile && (!savedCustomProfile.referralCode || savedCustomProfile.referralCode.startsWith('REF-00') || savedCustomProfile.referenceId?.startsWith('REF-00') || savedCustomProfile.referenceId !== officialRefCode)) {
+      try {
+        localStorage.setItem(`dahej_profile_${finalDevId}`, JSON.stringify({
+          ...savedCustomProfile,
+          referralCode: officialRefCode,
+          referenceId: officialRefCode,
+          referenceName: officialRefName
+        }));
+      } catch (e) {}
+    }
 
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,

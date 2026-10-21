@@ -333,12 +333,22 @@ export default function FreelancerLogin({
           if (cust) devCustom = JSON.parse(cust);
         } catch (e) {}
 
+        const devRefCode = (dev.referralCode && !dev.referralCode.startsWith('REF-00') ? dev.referralCode : null) ||
+          (dev.referenceId && !dev.referenceId.startsWith('REF-00') ? dev.referenceId : null) ||
+          (devCustom && devCustom.referralCode && !devCustom.referralCode.startsWith('REF-00') ? devCustom.referralCode : null) ||
+          (devCustom && devCustom.referenceId && !devCustom.referenceId.startsWith('REF-00') ? devCustom.referenceId : null) ||
+          'DS-REF-8902';
+        const devRefName = dev.referenceName || (devCustom && devCustom.referenceName) || 'Reference Verification';
+
         matchedUser = {
           name: (devCustom && (devCustom.name || devCustom.fullName)) || dev.name,
           email: (devCustom && devCustom.email) || dev.email,
           id: dev.id,
           roleTitle: dev.primarySkill || 'Full Stack Developer',
-          avatar: (devCustom && devCustom.avatar) || dev.avatar
+          avatar: (devCustom && devCustom.avatar) || dev.avatar,
+          referralCode: devRefCode,
+          referenceId: devRefCode,
+          referenceName: devRefName
         };
       } else if (savedDev && (
         (savedDev.email && savedDev.email.toLowerCase().trim() === idLower) ||
@@ -352,14 +362,20 @@ export default function FreelancerLogin({
           email: savedDev.email,
           id: savedDev.freelancerId || savedDev.id || 'DEV-DEMO',
           roleTitle: savedDev.program || 'The HIT Support Developer Program',
-          avatar: savedDev.avatar
+          avatar: savedDev.avatar,
+          referralCode: savedDev.referralCode || savedDev.referenceId || 'DS-REF-8902',
+          referenceId: savedDev.referralCode || savedDev.referenceId || 'DS-REF-8902',
+          referenceName: savedDev.referenceName || 'Reference Verification'
         };
       } else {
         matchedUser = {
           name: demoAccounts.freelancer.name,
           email: identifier,
           id: 'DEV-DEMO',
-          roleTitle: demoAccounts.freelancer.roleTitle
+          roleTitle: demoAccounts.freelancer.roleTitle,
+          referralCode: 'DS-REF-8902',
+          referenceId: 'DS-REF-8902',
+          referenceName: 'Reference Verification'
         };
       }
     } else {
@@ -395,12 +411,22 @@ export default function FreelancerLogin({
           if (cust) testerCustom = JSON.parse(cust);
         } catch (e) {}
 
+        const testerRefCode = (tester.referralCode && !tester.referralCode.startsWith('REF-00') ? tester.referralCode : null) ||
+          (tester.referenceId && !tester.referenceId.startsWith('REF-00') ? tester.referenceId : null) ||
+          (testerCustom && testerCustom.referralCode && !testerCustom.referralCode.startsWith('REF-00') ? testerCustom.referralCode : null) ||
+          (testerCustom && testerCustom.referenceId && !testerCustom.referenceId.startsWith('REF-00') ? testerCustom.referenceId : null) ||
+          'DS-TST-201';
+        const testerRefName = tester.referenceName || (testerCustom && testerCustom.referenceName) || 'Reference Verification';
+
         matchedUser = {
           name: (testerCustom && (testerCustom.name || testerCustom.fullName)) || tester.name,
           email: (testerCustom && testerCustom.email) || tester.email,
           id: tester.id,
           roleTitle: tester.specialization || tester.role || 'QA Specialist',
-          avatar: (testerCustom && testerCustom.avatar) || tester.avatar
+          avatar: (testerCustom && testerCustom.avatar) || tester.avatar,
+          referralCode: testerRefCode,
+          referenceId: testerRefCode,
+          referenceName: testerRefName
         };
       } else if (savedTester && (
         (savedTester.email && savedTester.email.toLowerCase().trim() === idLower) ||
@@ -414,14 +440,20 @@ export default function FreelancerLogin({
           email: savedTester.email,
           id: savedTester.testerId || savedTester.id || 'TST-DEMO',
           roleTitle: savedTester.program || 'The HIT Support Tester Program',
-          avatar: savedTester.avatar
+          avatar: savedTester.avatar,
+          referralCode: savedTester.referralCode || savedTester.referenceId || 'DS-TST-201',
+          referenceId: savedTester.referralCode || savedTester.referenceId || 'DS-TST-201',
+          referenceName: savedTester.referenceName || 'Reference Verification'
         };
       } else {
         matchedUser = {
           name: demoAccounts.tester.name,
           email: identifier,
           id: 'TST-DEMO',
-          roleTitle: demoAccounts.tester.roleTitle
+          roleTitle: demoAccounts.tester.roleTitle,
+          referralCode: 'DS-TST-201',
+          referenceId: 'DS-TST-201',
+          referenceName: 'Reference Verification'
         };
       }
     }
@@ -456,12 +488,20 @@ export default function FreelancerLogin({
     setLoginOtpSent(true);
     setLoginSuccess(true);
 
+    const activeRefCode = (userObj.referralCode && !userObj.referralCode.startsWith('REF-00') ? userObj.referralCode : null) ||
+      (userObj.referenceId && !userObj.referenceId.startsWith('REF-00') ? userObj.referenceId : null) ||
+      (role === 'tester' ? 'DS-TST-201' : 'DS-REF-8902');
+    const activeRefName = userObj.referenceName || 'Reference Verification';
+
     const userPayload = {
       name: userObj.name,
       email: userObj.email,
       id: userObj.id,
       roleTitle: userObj.primarySkill || userObj.specialization || userObj.role || 'Member',
-      avatar: userObj.avatar
+      avatar: userObj.avatar,
+      referralCode: activeRefCode,
+      referenceId: activeRefCode,
+      referenceName: activeRefName
     };
 
     setNoticeMessage({
