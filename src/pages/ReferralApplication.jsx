@@ -27,8 +27,16 @@ import {
   verifyOtpCode, 
   clearPendingOtp, 
   sendApplicationConfirmationEmail,
+  sendSponsorAuthorizationOtpEmail,
   SENDER_PROFILES 
 } from '../services/emailService.js';
+import { 
+  getAllApprovedSponsors, 
+  validateSponsorCredentials, 
+  maskEmailAddress 
+} from '../utils/referralTrustUtils.js';
+import { initialDevelopers } from '../data/adminMockData.js';
+import { initialTesters } from '../data/testerMockData.js';
 import './ReferralApplication.css';
 
 const DEFAULT_DEV_AVATAR = '';
@@ -43,10 +51,10 @@ const INITIAL_DEVELOPER_DATA = {
   avatar: '', // Base64 data URL if uploaded
   primarySkill: 'Full Stack Developer (React & Node)',
   portfolioUrl: '',
-  referralCode: 'DS-REF-8902',
-  referenceName: 'Authorized Member Reference',
+  referralCode: '',
+  referenceName: '',
   aboutSelf: '',
-  hasValidReference: true
+  hasValidReference: false
 };
 
 const INITIAL_TESTER_DATA = {
@@ -57,10 +65,10 @@ const INITIAL_TESTER_DATA = {
   avatar: '', // Base64 data URL if uploaded
   specialization: 'Web & Functional QA Testing',
   testingTools: 'Postman, Cypress, Chrome DevTools, Jira',
-  referralCode: 'DS-TST-201',
-  referenceName: 'Authorized Member Reference',
+  referralCode: '',
+  referenceName: '',
   aboutSelf: '',
-  hasValidReference: true
+  hasValidReference: false
 };
 
 const createInitialTrackState = (role) => ({
@@ -74,19 +82,31 @@ const createInitialTrackState = (role) => ({
   avatarError: '',
   errors: {},
   touched: {},
+  // Candidate Email OTP state
   isEmailVerified: false,
   verifiedEmail: '',
   emailOtpSent: false,
   emailOtpCode: '',
   emailTimer: 0,
-  emailStatusMsg: null
+  emailStatusMsg: null,
+  // Sponsor Referral Verification & Sponsor OTP state
+  isSponsorVerified: false,
+  verifiedSponsor: null,
+  sponsorOtpSent: false,
+  sponsorOtpCode: '',
+  sponsorTimer: 0,
+  sponsorStatusMsg: null,
+  isSendingSponsorOtp: false,
+  isVerifyingSponsorOtp: false
 });
 
 export default function ReferralApplication({ 
   onNavigate, 
   onApplyDeveloper, 
   onApplyTester,
-  initialRole = 'developer'
+  initialRole = 'developer',
+  developers = initialDevelopers,
+  testers = initialTesters
 }) {
   // Normalize initialRole ('tester' -> 'tester', 'freelancer'/'developer' -> 'developer')
   const defaultTrack = (initialRole === 'tester' || initialRole === 'qa') ? 'tester' : 'developer';
@@ -121,6 +141,26 @@ export default function ReferralApplication({
   const emailStatusMsg = currentTrack.emailStatusMsg;
   const avatarError = currentTrack.avatarError;
   const avatarInfo = currentTrack.avatarInfo;
+
+  // Sponsor Referral Verification & Sponsor OTP state accessors
+  const isSponsorVerified = currentTrack.isSponsorVerified;
+  const verifiedSponsor = currentTrack.verifiedSponsor;
+  const sponsorOtpSent = currentTrack.sponsorOtpSent;
+  const sponsorOtpCode = currentTrack.sponsorOtpCode;
+  const sponsorTimer = currentTrack.sponsorTimer;
+  const sponsorStatusMsg = currentTrack.sponsorStatusMsg;
+  const isSendingSponsorOtp = currentTrack.isSendingSponsorOtp;
+  const isVerifyingSponsorOtp = currentTrack.isVerifyingSponsorOtp;
+
+  // Real approved sponsors eligible to refer candidates
+  const approvedSponsors = getAllApprovedSponsors(developers, testers);
+
+  // Real-time verification of entered Trust ID & Reference Name
+  const sponsorValidationResult = validateSponsorCredentials(
+    formData.referralCode,
+    formData.referenceName,
+    approvedSponsors
+  );
 
   // Track state setters
   const setFormData = (updater) => {
@@ -230,6 +270,110 @@ export default function ReferralApplication({
     });
   };
 
+  const setIsSponsorVerified = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          isSponsorVerified: typeof val === 'function' ? val(cur.isSponsorVerified) : val
+        }
+      };
+    });
+  };
+
+  const setVerifiedSponsor = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          verifiedSponsor: typeof val === 'function' ? val(cur.verifiedSponsor) : val
+        }
+      };
+    });
+  };
+
+  const setSponsorOtpSent = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          sponsorOtpSent: typeof val === 'function' ? val(cur.sponsorOtpSent) : val
+        }
+      };
+    });
+  };
+
+  const setSponsorOtpCode = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          sponsorOtpCode: typeof val === 'function' ? val(cur.sponsorOtpCode) : val
+        }
+      };
+    });
+  };
+
+  const setSponsorTimer = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          sponsorTimer: typeof val === 'function' ? val(cur.sponsorTimer) : val
+        }
+      };
+    });
+  };
+
+  const setSponsorStatusMsg = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          sponsorStatusMsg: typeof val === 'function' ? val(cur.sponsorStatusMsg) : val
+        }
+      };
+    });
+  };
+
+  const setIsSendingSponsorOtp = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          isSendingSponsorOtp: typeof val === 'function' ? val(cur.isSendingSponsorOtp) : val
+        }
+      };
+    });
+  };
+
+  const setIsVerifyingSponsorOtp = (val) => {
+    setTrackStates(prev => {
+      const cur = prev[selectedRole] || prev.developer;
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...cur,
+          isVerifyingSponsorOtp: typeof val === 'function' ? val(cur.isVerifyingSponsorOtp) : val
+        }
+      };
+    });
+  };
+
   const setAvatarError = (val) => {
     setTrackStates(prev => {
       const cur = prev[selectedRole] || prev.developer;
@@ -264,22 +408,27 @@ export default function ReferralApplication({
     }
   }, [initialRole]);
 
-  // Countdown timer for Email OTP across both tracks independently
+  // Countdown timer for Candidate Email OTP & Sponsor OTP across both tracks independently
   useEffect(() => {
     const interval = setInterval(() => {
       setTrackStates((prev) => {
         const devTimer = prev.developer?.emailTimer || 0;
         const testTimer = prev.tester?.emailTimer || 0;
-        if (devTimer <= 0 && testTimer <= 0) return prev;
+        const devSponsorTimer = prev.developer?.sponsorTimer || 0;
+        const testSponsorTimer = prev.tester?.sponsorTimer || 0;
+
+        if (devTimer <= 0 && testTimer <= 0 && devSponsorTimer <= 0 && testSponsorTimer <= 0) return prev;
 
         return {
           developer: {
             ...prev.developer,
-            emailTimer: devTimer > 0 ? devTimer - 1 : 0
+            emailTimer: devTimer > 0 ? devTimer - 1 : 0,
+            sponsorTimer: devSponsorTimer > 0 ? devSponsorTimer - 1 : 0
           },
           tester: {
             ...prev.tester,
-            emailTimer: testTimer > 0 ? testTimer - 1 : 0
+            emailTimer: testTimer > 0 ? testTimer - 1 : 0,
+            sponsorTimer: testSponsorTimer > 0 ? testSponsorTimer - 1 : 0
           }
         };
       });
@@ -466,6 +615,25 @@ export default function ReferralApplication({
       });
     }
 
+    // Reset sponsor authorization if referralCode or referenceName is modified
+    if (name === 'referralCode' || name === 'referenceName') {
+      setTrackStates(prev => {
+        const cur = prev[selectedRole] || prev.developer;
+        return {
+          ...prev,
+          [selectedRole]: {
+            ...cur,
+            isSponsorVerified: false,
+            verifiedSponsor: null,
+            sponsorOtpSent: false,
+            sponsorOtpCode: '',
+            sponsorTimer: 0,
+            sponsorStatusMsg: null
+          }
+        };
+      });
+    }
+
     const newVal = type === 'checkbox' ? checked : sanitizedValue;
 
     setFormData((prev) => ({
@@ -603,6 +771,93 @@ export default function ReferralApplication({
         }
       };
     });
+  };
+
+  // Sponsor Referral Authorization OTP Handlers
+  const handleSendSponsorOtp = async () => {
+    if (!sponsorValidationResult.valid || !sponsorValidationResult.sponsor) {
+      const err = sponsorValidationResult.error || 'Please enter valid sponsor Referrer ID and matching Profile Name.';
+      setSponsorStatusMsg({ type: 'error', text: err });
+      alert(err);
+      return;
+    }
+
+    const sponsor = sponsorValidationResult.sponsor;
+    setIsSendingSponsorOtp(true);
+    setSponsorStatusMsg({
+      type: 'info',
+      text: `Sending 6-digit authorization OTP to ${maskEmailAddress(sponsor.email)}...`
+    });
+
+    try {
+      await sendSponsorAuthorizationOtpEmail({
+        sponsorEmail: sponsor.email,
+        sponsorName: sponsor.name,
+        applicantName: (formData.fullName || '').trim() || (selectedRole === 'tester' ? 'QA Tester Candidate' : 'Developer Candidate'),
+        applicantRole: selectedRole,
+        trustId: sponsor.trustId
+      });
+
+      setSponsorOtpSent(true);
+      setSponsorTimer(60);
+      setSponsorStatusMsg({
+        type: 'success',
+        text: `Authorization OTP sent successfully to ${sponsor.name}'s email (${maskEmailAddress(sponsor.email)})! Ask your sponsor for the 6-digit code to authorize.`
+      });
+    } catch (err) {
+      const errMsg = err.message || 'Failed to dispatch OTP to sponsor. Please check your internet connection.';
+      setSponsorStatusMsg({ type: 'error', text: errMsg });
+      alert(errMsg);
+    } finally {
+      setIsSendingSponsorOtp(false);
+    }
+  };
+
+  const handleVerifySponsorOtp = () => {
+    const code = (sponsorOtpCode || '').toString().trim();
+    if (!code || code.length !== 6) {
+      setSponsorStatusMsg({
+        type: 'error',
+        text: 'Please enter the complete 6-digit OTP code received from your sponsor.'
+      });
+      return;
+    }
+
+    const sponsor = sponsorValidationResult.sponsor;
+    if (!sponsor) {
+      setSponsorStatusMsg({
+        type: 'error',
+        text: 'Sponsor verification failed. Please check the entered Referrer ID and Name.'
+      });
+      return;
+    }
+
+    setIsVerifyingSponsorOtp(true);
+    try {
+      const result = verifyOtpCode(sponsor.email, code);
+      if (result.success) {
+        setIsSponsorVerified(true);
+        setVerifiedSponsor(sponsor);
+        setSponsorOtpSent(false);
+        setSponsorOtpCode('');
+        setSponsorStatusMsg({
+          type: 'success',
+          text: `✓ Referral Officially Authorized by ${sponsor.name} (${sponsor.trustId})!`
+        });
+      } else {
+        setSponsorStatusMsg({
+          type: 'error',
+          text: result.error || 'Invalid OTP code. Please enter the correct code from your sponsor.'
+        });
+      }
+    } catch (err) {
+      setSponsorStatusMsg({
+        type: 'error',
+        text: err.message || 'OTP verification failed.'
+      });
+    } finally {
+      setIsVerifyingSponsorOtp(false);
+    }
   };
 
   const handleResendConfirmationEmail = async () => {
@@ -798,9 +1053,38 @@ export default function ReferralApplication({
       return;
     }
 
-    // Robust defaults for referral code and reference name
-    const activeReferralCode = (formData.referralCode || '').trim() || (selectedRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902');
-    const activeReferenceName = (formData.referenceName || '').trim() || 'Authorized Member Reference';
+    // Strict Sponsor Referral & Sponsor OTP verification check
+    let sponsorVerifiedFlag = isSponsorVerified;
+    let finalSponsor = verifiedSponsor;
+
+    // Auto-verify if user entered 6 digits in sponsor OTP input
+    if (!sponsorVerifiedFlag && sponsorOtpCode && sponsorOtpCode.trim().length === 6 && sponsorValidationResult.valid && sponsorValidationResult.sponsor) {
+      const autoSponsorVerify = verifyOtpCode(sponsorValidationResult.sponsor.email, sponsorOtpCode.trim());
+      if (autoSponsorVerify.success) {
+        sponsorVerifiedFlag = true;
+        finalSponsor = sponsorValidationResult.sponsor;
+        setIsSponsorVerified(true);
+        setVerifiedSponsor(sponsorValidationResult.sponsor);
+      }
+    }
+
+    if (!sponsorVerifiedFlag || !finalSponsor) {
+      const alertMsg = '⚠️ Strict Referral Authorization Required\n\n' +
+        'Random referral codes are strictly disallowed in the Dahej Support Network.\n\n' +
+        '1. Enter the Referrer Trust ID of an active approved member (e.g. RFF-PatelHet-523).\n' +
+        '2. Enter their matching Profile Name (e.g. Patel Het).\n' +
+        '3. Click "Send Authorization OTP to Sponsor" and enter the 6-digit code sent to their registered email.\n\n' +
+        'Your application cannot be submitted without official sponsor OTP authorization.';
+      alert(alertMsg);
+      const refElem = document.querySelector('.reference-verification-container');
+      if (refElem) {
+        refElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    const activeReferralCode = finalSponsor.trustId;
+    const activeReferenceName = finalSponsor.name;
 
     // Auto-confirm valid reference on submit
     if (!formData.hasValidReference) {
@@ -1392,31 +1676,47 @@ export default function ReferralApplication({
               </div>
             )}
 
-            {/* Row 4: Referral & Reference Information */}
+            {/* Row 4: Strict Referral & Sponsor Authorization */}
             <div className="reference-verification-container">
               <div className="ref-section-title-row">
                 <span className="ref-section-title">
                   <KeyRound size={15} color="#0A3D75" />
-                  <span>Referral & Reference Information ({selectedRole === 'tester' ? 'QA Track' : 'Developer Track'})</span>
+                  <span>Strict Referral Verification ({selectedRole === 'tester' ? 'QA Track' : 'Developer Track'})</span>
                 </span>
-                {formData.referralCode && formData.referenceName && !errors.referralCode && !errors.referenceName && (
+                {isSponsorVerified ? (
                   <span className="otp-verified-badge">
                     <ShieldCheck size={13} strokeWidth={2.5} />
-                    <span>Reference Complete</span>
+                    <span>Sponsor Authorized</span>
+                  </span>
+                ) : sponsorValidationResult.valid && sponsorValidationResult.sponsor ? (
+                  <span className="sponsor-auth-status-badge pending">
+                    <span>Authorization Pending</span>
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                    Active Member Sponsor Compulsory
                   </span>
                 )}
+              </div>
+
+              {/* Sponsor Policy Notice */}
+              <div className="sponsor-policy-banner">
+                <ShieldAlert size={16} color="#B45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>Strict Network Rule:</strong> Random references are strictly prohibited. You must provide the unique <strong>Reffer Trustable ID</strong> (e.g. <code>RFF-PatelHet-523</code>) and matching Profile Name of an approved, active member. An authorization OTP will be sent to their registered email before you can submit.
+                </div>
               </div>
 
               <div className="form-grid-2">
                 <div className="form-group">
                   <label htmlFor="referralCode" className="form-label">
                     <span className="form-label-left">
-                      Referral Code <span className="required-star">*</span>
+                      Referrer Trust ID <span className="required-star">*</span>
                     </span>
-                    {touched.referralCode && !errors.referralCode && formData.referralCode.trim() && (
+                    {formData.referralCode.trim() && sponsorValidationResult.valid && (
                       <span className="field-valid-badge">
                         <Check size={11} strokeWidth={3} />
-                        <span>Valid Code</span>
+                        <span>Valid Trust ID</span>
                       </span>
                     )}
                   </label>
@@ -1424,13 +1724,14 @@ export default function ReferralApplication({
                     id="referralCode"
                     name="referralCode"
                     type="text"
-                    className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : formData.referralCode.trim() && !errors.referralCode ? 'is-valid' : ''}`}
-                    placeholder={selectedRole === 'tester' ? 'e.g. DS-TST-201' : 'e.g. DS-REF-8902'}
+                    className={`form-input ${touched.referralCode && errors.referralCode ? 'is-invalid' : formData.referralCode.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
+                    placeholder="e.g. RFF-PatelHet-523"
                     value={formData.referralCode}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     minLength={4}
-                    maxLength={20}
+                    maxLength={30}
+                    disabled={isSponsorVerified}
                     required
                   />
                   {touched.referralCode && errors.referralCode && (
@@ -1439,18 +1740,18 @@ export default function ReferralApplication({
                       <span>{errors.referralCode}</span>
                     </div>
                   )}
-                  <span className="field-hint-text">Uppercase alphanumeric (min 4 characters)</span>
+                  <span className="field-hint-text">Format: RFF-[ProfileName]-[Unique3Digits] (e.g. RFF-PatelHet-523)</span>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="referenceName" className="form-label">
                     <span className="form-label-left">
-                      Reference Name <span className="required-star">*</span>
+                      Sponsor Profile Name <span className="required-star">*</span>
                     </span>
-                    {touched.referenceName && !errors.referenceName && formData.referenceName.trim() && (
+                    {formData.referenceName.trim() && sponsorValidationResult.valid && (
                       <span className="field-valid-badge">
                         <Check size={11} strokeWidth={3} />
-                        <span>Valid Name</span>
+                        <span>Matching Name</span>
                       </span>
                     )}
                   </label>
@@ -1458,13 +1759,14 @@ export default function ReferralApplication({
                     id="referenceName"
                     name="referenceName"
                     type="text"
-                    className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : formData.referenceName.trim() && !errors.referenceName ? 'is-valid' : ''}`}
-                    placeholder="e.g. Verified Reference Name"
+                    className={`form-input ${touched.referenceName && errors.referenceName ? 'is-invalid' : formData.referenceName.trim() && sponsorValidationResult.valid ? 'is-valid' : ''}`}
+                    placeholder="e.g. Patel Het"
                     value={formData.referenceName}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    minLength={3}
+                    minLength={2}
                     maxLength={50}
+                    disabled={isSponsorVerified}
                     required
                   />
                   {touched.referenceName && errors.referenceName && (
@@ -1473,9 +1775,149 @@ export default function ReferralApplication({
                       <span>{errors.referenceName}</span>
                     </div>
                   )}
-                  <span className="field-hint-text">Name of existing member / lead who referred you</span>
+                  <span className="field-hint-text">Exact profile name of the approved member</span>
                 </div>
               </div>
+
+              {/* Matched Sponsor Card & OTP Verification Flow */}
+              {formData.referralCode.trim() && formData.referenceName.trim() && sponsorValidationResult.valid && sponsorValidationResult.sponsor && (
+                <div className={`sponsor-status-card ${isSponsorVerified ? 'authorized' : 'matched'}`}>
+                  <div className="sponsor-card-top">
+                    <div className="sponsor-profile-chip">
+                      {sponsorValidationResult.sponsor.avatar ? (
+                        <img src={sponsorValidationResult.sponsor.avatar} alt={sponsorValidationResult.sponsor.name} className="sponsor-avatar-circle" />
+                      ) : (
+                        <div className="sponsor-avatar-circle">
+                          {sponsorValidationResult.sponsor.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="sponsor-info-col">
+                        <span className="sponsor-name-title">{sponsorValidationResult.sponsor.name}</span>
+                        <span className="sponsor-meta-sub">
+                          <span>{sponsorValidationResult.sponsor.roleTitle}</span>
+                          <span>•</span>
+                          <span className="sponsor-trust-tag">{sponsorValidationResult.sponsor.trustId}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {isSponsorVerified ? (
+                      <span className="sponsor-auth-status-badge verified">
+                        <CheckCircle2 size={14} />
+                        <span>Referral Authorized</span>
+                      </span>
+                    ) : (
+                      <span className="sponsor-auth-status-badge pending">
+                        <span>OTP Approval Required</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {!isSponsorVerified ? (
+                    <>
+                      <p className="sponsor-email-hint">
+                        Registered Sponsor Email: <strong>{maskEmailAddress(sponsorValidationResult.sponsor.email)}</strong>.
+                        To prevent unauthorized use of members’ profiles, an authorization OTP will be sent to this email.
+                      </p>
+
+                      {!sponsorOtpSent ? (
+                        <div>
+                          <button
+                            type="button"
+                            className="btn-send-sponsor-otp"
+                            onClick={handleSendSponsorOtp}
+                            disabled={isSendingSponsorOtp}
+                          >
+                            <KeyRound size={14} />
+                            <span>{isSendingSponsorOtp ? 'Sending OTP to Sponsor...' : 'Send Referral Authorization OTP'}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="sponsor-otp-input-card">
+                          <div className="otp-box-header">
+                            <span>Enter 6-digit OTP received by <strong>{sponsorValidationResult.sponsor.name}</strong>:</span>
+                            {sponsorTimer > 0 ? (
+                              <span style={{ color: '#D97706', fontWeight: 600, fontSize: '0.78rem' }}>Resend in {sponsorTimer}s</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleSendSponsorOtp}
+                                disabled={isSendingSponsorOtp}
+                                style={{ background: 'none', border: 'none', color: '#0A3D75', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
+                              >
+                                Resend Sponsor OTP
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="otp-input-row">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              placeholder="• • • • • •"
+                              className="otp-code-input"
+                              value={sponsorOtpCode}
+                              onChange={(e) => setSponsorOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            />
+                            <button
+                              type="button"
+                              className="btn-verify-otp"
+                              onClick={handleVerifySponsorOtp}
+                              disabled={isVerifyingSponsorOtp || sponsorOtpCode.length !== 6}
+                            >
+                              {isVerifyingSponsorOtp ? 'Verifying...' : 'Verify Sponsor OTP'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#166534', fontWeight: 600 }}>
+                        ✓ {sponsorValidationResult.sponsor.name} has authorized this application via registered email verification ({maskEmailAddress(sponsorValidationResult.sponsor.email)}).
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSponsorVerified(false);
+                          setVerifiedSponsor(null);
+                          setSponsorOtpSent(false);
+                          setSponsorOtpCode('');
+                          setSponsorStatusMsg(null);
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        Change Sponsor
+                      </button>
+                    </div>
+                  )}
+
+                  {sponsorStatusMsg && (
+                    <div className={`otp-status-banner ${sponsorStatusMsg.type}`} style={{ margin: '4px 0 0 0' }}>
+                      {sponsorStatusMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+                      <span>{sponsorStatusMsg.text}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Error state when credentials do not match approved members */}
+              {formData.referralCode.trim() && formData.referenceName.trim() && !sponsorValidationResult.valid && (
+                <div className="sponsor-status-card error">
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#991B1B' }}>
+                        Invalid Referral Sponsor Credentials
+                      </div>
+                      <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: '#B91C1C', lineHeight: 1.45 }}>
+                        {sponsorValidationResult.error}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Row 5: Tell us briefly about yourself */}

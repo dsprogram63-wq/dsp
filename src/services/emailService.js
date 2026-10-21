@@ -777,3 +777,154 @@ export async function sendApplicationConfirmationEmail({
   });
 }
 
+/**
+ * Send Referral Sponsor Authorization OTP Email
+ * Dispatched to the sponsor's registered email when an applicant provides their Referrer Trust ID
+ */
+export async function sendSponsorAuthorizationOtpEmail({
+  sponsorEmail,
+  sponsorName = 'Referral Sponsor',
+  applicantName = 'Applicant',
+  applicantRole = 'developer',
+  trustId = 'RFF-MEMBER-000',
+  otpCode
+}) {
+  const cleanEmail = (sponsorEmail || '').trim().toLowerCase();
+  if (!cleanEmail) throw new Error('Sponsor email address is required.');
+
+  const generatedOtp = otpCode || generateOtpCode();
+  savePendingOtp(cleanEmail, generatedOtp, 'sponsor_referral');
+
+  const roleTitle = applicantRole === 'tester' ? 'QA Tester' : 'Developer';
+  const roleBadgeColor = applicantRole === 'tester' ? '#C2410C' : '#0F3E6D';
+  const roleBadgeBg = applicantRole === 'tester' ? '#FFF7ED' : '#EFF6FF';
+  const roleBadgeBorder = applicantRole === 'tester' ? '#FFEDD5' : '#DBEAFE';
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Referral Sponsor Authorization OTP</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" max-width="580" style="max-width: 580px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          
+          <!-- Header Bar -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0F3E6D 0%, #0A2540 100%); padding: 32px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Verified Referral Sponsorship Desk
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <!-- Trust ID Tag -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: ${roleBadgeBg}; border: 1px solid ${roleBadgeBorder}; color: ${roleBadgeColor}; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 20px;">
+                Sponsor Trust ID: <strong>${trustId}</strong>
+              </div>
+
+              <h2 style="margin: 0 0 14px 0; font-size: 21px; font-weight: 800; color: #0F172A;">
+                Candidate Referral Authorization Request
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+                Hello <strong>${sponsorName}</strong>,
+              </p>
+
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                A new candidate named <strong style="color: #0F3E6D; font-size: 15px;">${applicantName}</strong> is applying for the <strong>Dahej Support ${roleTitle} Program</strong> and has specified you as their referral sponsor using your Trust ID <span style="font-family: monospace; font-weight: 700; color: #0F3E6D; background: #E8F2FC; padding: 2px 6px; border-radius: 4px;">${trustId}</span>.
+              </p>
+
+              <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                <div style="font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 4px;">
+                  Action Required to Sponsor This Candidate:
+                </div>
+                <div style="font-size: 13px; color: #15803D; line-height: 1.5;">
+                  If you know and recommend <strong>${applicantName}</strong>, share the 6-digit authorization OTP below with them so they can complete their application.
+                </div>
+              </div>
+
+              <!-- OTP Code Display Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 24px 0;">
+                <tr>
+                  <td align="center" style="background: linear-gradient(145deg, #FFFBEB 0%, #FEF3C7 100%); border: 2px dashed #D97706; border-radius: 12px; padding: 22px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #B45309; margin-bottom: 8px;">
+                      Sponsor Authorization Code
+                    </div>
+                    <div style="font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #92400E; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">
+                      ${generatedOtp}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px; color: #78350F;">
+                      ⏱️ Valid for <strong>10 minutes</strong>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Strict Security Warning -->
+              <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 12px 16px; border-radius: 4px; margin: 24px 0 16px 0;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #991B1B;">
+                  <strong>Important Security Notice:</strong> If you DO NOT know this candidate or did not grant them permission to use your Referrer Trust ID, <strong>DO NOT share this code</strong>. Without this OTP, their application cannot be submitted under your name.
+                </p>
+              </div>
+
+              <p style="margin: 20px 0 0 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                Thank you for helping keep the Dahej Support Network verified and trustworthy.<br>
+                <strong style="color: #0F3E6D;">Dahej Support Network Administration</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Sent via Dahej Support Automated Mail Service • Official Sender: <strong style="color: #0F3E6D;">work@dsprogram.space</strong>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                © ${new Date().getFullYear()} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const subject = `Referral Authorization OTP: ${applicantName} requested your sponsorship [${trustId}]`;
+  const textContent = `Hello ${sponsorName},\n\n` +
+    `A candidate named ${applicantName} is applying for the Dahej Support ${roleTitle} Program using your Referrer Trust ID ${trustId}.\n\n` +
+    `YOUR 6-DIGIT SPONSOR AUTHORIZATION OTP: ${generatedOtp}\n` +
+    `(Valid for 10 minutes)\n\n` +
+    `If you know and recommend this candidate, share this code with them to authorize their application.\n` +
+    `If you DO NOT know this person, DO NOT share this code.\n\n` +
+    `Best regards,\n` +
+    `Dahej Support Network Administration`;
+
+  return await sendTransactionalEmail({
+    to: {
+      email: cleanEmail,
+      name: sponsorName
+    },
+    subject,
+    htmlContent,
+    textContent,
+    senderProfile: SENDER_PROFILES.DEFAULT
+  });
+}
+
+

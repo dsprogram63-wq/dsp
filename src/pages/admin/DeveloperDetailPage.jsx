@@ -27,6 +27,7 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import AssignmentModal from '../../components/admin/AssignmentModal';
 import { initialAdminProjects } from '../../data/adminMockData';
+import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
 import './DeveloperDetailPage.css';
 
 export default function DeveloperDetailPage({ 
@@ -73,11 +74,17 @@ export default function DeveloperDetailPage({
       newAvailability = (developer.activeProjectsCount || 0) > 1 ? 'Busy' : 'Available';
     }
 
+    const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
+    const assignedTrustId = isNowActive 
+      ? (developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: newStatus }))
+      : (developer.referralTrustId || '');
+
     const updated = {
       ...developer,
       status: newStatus,
       availability: newAvailability,
-      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
+      ...(assignedTrustId ? { referralTrustId: assignedTrustId } : {}),
+      ...( isNowActive ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateDeveloper) {

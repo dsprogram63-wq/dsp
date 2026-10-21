@@ -18,6 +18,7 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialTesters } from '../../data/testerMockData';
+import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
 import './TestersPage.css';
 
 export default function TestersPage({ 
@@ -101,11 +102,17 @@ export default function TestersPage({
       newAvailability = assignedCount > 0 ? 'Busy' : 'Available';
     }
 
+    const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
+    const assignedTrustId = isNowActive 
+      ? (tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: newStatus }, testers))
+      : (tester.referralTrustId || '');
+
     const updated = {
       ...tester,
       status: newStatus,
       availability: newAvailability,
-      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
+      ...(assignedTrustId ? { referralTrustId: assignedTrustId } : {}),
+      ...( isNowActive ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateTester) {

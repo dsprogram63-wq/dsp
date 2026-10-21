@@ -1691,6 +1691,8 @@ export default function App() {
           onApplyDeveloper={handleApplyDeveloper} 
           onApplyTester={handleApplyTester}
           initialRole={routeState.defaultRole || 'developer'}
+          developers={developers}
+          testers={testers}
         />
       )}
 

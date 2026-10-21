@@ -11,11 +11,14 @@ import {
   CheckCircle,
   UserCheck,
   Lock,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import { initialTesterProfile } from '../../data/testerMockData';
 import { calculateCurrentExperience } from '../../utils/projectStatusUtils';
 import { uploadAvatar } from '../../services/storageService.js';
+import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils.js';
 import '../portal/ProfilePage.css';
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -62,6 +65,20 @@ export default function TesterProfilePage({
   });
 
   const [toastMessage, setToastMessage] = useState(null);
+  const [copiedTrustId, setCopiedTrustId] = useState(false);
+
+  // Reffer Trustable ID for approved QA tester
+  const myReferralTrustId = getOrAssignReferralTrustId(currentProfile);
+
+  const handleCopyTrustId = () => {
+    if (!myReferralTrustId) return;
+    try {
+      navigator.clipboard?.writeText(myReferralTrustId);
+    } catch (e) {}
+    setCopiedTrustId(true);
+    showToast(`Referrer Trust ID "${myReferralTrustId}" copied to clipboard!`);
+    setTimeout(() => setCopiedTrustId(false), 2500);
+  };
 
   useEffect(() => {
     if (propProfile) {
@@ -486,6 +503,38 @@ export default function TesterProfilePage({
                 This QA tester account was verified and registered under {formData.referenceName} ({resolveRefCode(formData, 'DS-TST-201')}) for The HIT Support Tester Program.
               </p>
             </div>
+
+            {/* Show personal Referrer Trust ID if approved/active */}
+            {myReferralTrustId && (
+              <div className="trust-id-showcase-box">
+                <div className="trust-id-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={16} color="#38BDF8" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.3px' }}>
+                      Your Reffer Trustable ID
+                    </span>
+                  </div>
+                  <span className="trust-id-badge">Approved Sponsor</span>
+                </div>
+
+                <div className="trust-id-value-card">
+                  <span className="trust-id-code">{myReferralTrustId}</span>
+                  <button
+                    type="button"
+                    className="btn-copy-trust-id"
+                    onClick={handleCopyTrustId}
+                    title="Copy Referrer ID to share with new applicants"
+                  >
+                    {copiedTrustId ? <Check size={14} color="#16A34A" /> : <Copy size={14} />}
+                    <span>{copiedTrustId ? 'Copied!' : 'Copy Referrer ID'}</span>
+                  </button>
+                </div>
+
+                <p className="trust-id-help-text">
+                  Give this ID and your profile name (<strong>{formData.fullName}</strong>) to candidates applying to the Dahej Support Developer/Tester Program. When they apply, an authorization OTP will be sent to your email (<strong>{formData.email}</strong>) to approve their reference.
+                </p>
+              </div>
+            )}
           </form>
         </div>
       </div>

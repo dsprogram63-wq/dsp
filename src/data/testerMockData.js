@@ -5,6 +5,8 @@ export const initialTesterProfile = {
   email: 'hetvi@dahejsupport.com',
   id: 'TST-781',
   role: 'Dedicated QA Specialist',
+  status: 'Active',
+  referralTrustId: 'RFF-Hetvi-781',
   avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160'
 };
 
@@ -21,6 +23,7 @@ export const initialTesters = [
     testingTools: 'Postman, Cypress, Jira',
     experience: '3+ Years',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
+    referralTrustId: 'RFF-Hetvi-781',
     referenceName: 'Reference Verification',
     referralCode: 'DS-TST-201',
     referenceId: 'DS-TST-201',

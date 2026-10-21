@@ -22,6 +22,7 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialDevelopers } from '../../data/adminMockData';
+import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
 import './DevelopersPage.css';
 
 export default function DevelopersPage({ 
@@ -106,11 +107,17 @@ export default function DevelopersPage({
       newAvailability = assignedCount > 0 ? 'Busy' : 'Available';
     }
 
+    const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
+    const assignedTrustId = isNowActive 
+      ? (dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: newStatus }, developers))
+      : (dev.referralTrustId || '');
+
     const updated = {
       ...dev,
       status: newStatus,
       availability: newAvailability,
-      ...( (newStatus === 'Active' || newStatus === 'Approved') ? { applicationMessage: '', aboutSelf: '' } : {} )
+      ...(assignedTrustId ? { referralTrustId: assignedTrustId } : {}),
+      ...( isNowActive ? { applicationMessage: '', aboutSelf: '' } : {} )
     };
 
     if (onUpdateDeveloper) {
