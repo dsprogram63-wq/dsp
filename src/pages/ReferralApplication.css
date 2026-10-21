@@ -713,7 +713,7 @@
 }
 
 /* =========================================================================
-   Profile Photo Upload Card & Controls (Strict 2 MB Limit)
+   Profile Photo Upload Card & Controls (Strict 2 MB Limit - Compulsory)
    ========================================================================= */
 .apply-avatar-card {
   display: flex;
@@ -724,12 +724,24 @@
   border: 1.5px dashed #CBD5E1;
   border-radius: var(--radius-md);
   margin-bottom: 24px;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .apply-avatar-card:hover {
   border-color: var(--color-primary-orange);
   background: #FFFDF9;
+}
+
+.apply-avatar-card.has-error {
+  border-color: #EF4444 !important;
+  background: #FFF5F5 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.apply-avatar-card.has-avatar {
+  border-color: #10B981;
+  border-style: solid;
+  background: #F0FDF4;
 }
 
 .apply-avatar-left {
@@ -744,6 +756,19 @@
   padding: 3px;
   background: linear-gradient(135deg, var(--color-primary-orange) 0%, #0A3D75 100%);
   box-shadow: 0 4px 12px rgba(10, 61, 117, 0.12);
+  transition: all 0.2s ease;
+}
+
+.apply-avatar-preview-wrap.is-empty {
+  background: #E2E8F0;
+  border: 2px dashed #94A3B8;
+  padding: 2px;
+}
+
+.apply-avatar-card.has-error .apply-avatar-preview-wrap.is-empty {
+  background: #FEE2E2;
+  border: 2px dashed #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 .apply-avatar-preview-img {
@@ -753,6 +778,27 @@
   object-fit: cover;
   background-color: #FFFFFF;
   display: block;
+}
+
+.apply-avatar-empty-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  transition: all 0.2s ease;
+}
+
+.apply-avatar-preview-wrap:hover .apply-avatar-empty-placeholder {
+  background: #E2E8F0;
+  color: #0A3D75;
+}
+
+.apply-avatar-empty-icon {
+  opacity: 0.8;
 }
 
 .apply-avatar-camera-btn {
@@ -802,6 +848,25 @@
   color: var(--color-text-heading);
 }
 
+.apply-avatar-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.apply-avatar-compulsory-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+}
+
 .apply-avatar-limit-badge {
   font-size: 0.72rem;
   font-weight: 800;
@@ -847,6 +912,36 @@
 .btn-upload-photo-action:hover {
   background-color: #082E59;
   transform: translateY(-1px);
+}
+
+.btn-upload-photo-action.pulse-attention {
+  animation: pulseAttention 1.5s infinite;
+}
+
+@keyframes pulseAttention {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.avatar-error-box {
+  background-color: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #DC2626;
+  padding: 6px 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  width: fit-content;
 }
 
 .btn-remove-photo-action {

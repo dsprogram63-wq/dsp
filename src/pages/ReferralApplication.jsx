@@ -8,6 +8,7 @@ import {
   ShieldCheck, 
   KeyRound, 
   UserCheck,
+  User,
   Code2,
   FlaskConical,
   Laptop,
@@ -30,8 +31,8 @@ import {
 } from '../services/emailService.js';
 import './ReferralApplication.css';
 
-const DEFAULT_DEV_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
-const DEFAULT_TESTER_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160';
+const DEFAULT_DEV_AVATAR = '';
+const DEFAULT_TESTER_AVATAR = '';
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB strict limit
 
 const INITIAL_DEVELOPER_DATA = {
@@ -410,6 +411,12 @@ export default function ReferralApplication({
         }
         return '';
 
+      case 'avatar':
+        if (!trimmed) {
+          return 'Profile photo is compulsory. Please upload a clear photo (under 2 MB).';
+        }
+        return '';
+
       default:
         return '';
     }
@@ -706,16 +713,28 @@ export default function ReferralApplication({
       sizeBytes: 0,
       isCustom: false
     });
-    setAvatarError('');
+    setAvatarError('Profile photo is compulsory. Please upload a clear photo (under 2 MB) to proceed.');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const activeAvatarUrl = formData.avatar || (selectedRole === 'tester' ? DEFAULT_TESTER_AVATAR : DEFAULT_DEV_AVATAR);
+  const activeAvatarUrl = formData.avatar || '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Strict Profile Photo Mandatory Validation (Both Developer & Tester Tracks)
+    if (!formData.avatar || !formData.avatar.trim()) {
+      const avatarErrMsg = 'Profile photo is compulsory. Please upload your profile photo (under 2 MB) before submitting the application.';
+      setAvatarError(avatarErrMsg);
+      alert(`⚠️ Profile Photo Required\n\n${avatarErrMsg}`);
+      const avatarElem = document.querySelector('.apply-avatar-card');
+      if (avatarElem) {
+        avatarElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
 
     // Validate all fields
     const fieldsToValidate = [
@@ -793,7 +812,7 @@ export default function ReferralApplication({
       ? formData.mobileNumber 
       : `+91 ${formData.mobileNumber.replace(/\D/g, '').slice(-10)}`;
 
-    const finalAvatar = formData.avatar || (selectedRole === 'tester' ? DEFAULT_TESTER_AVATAR : DEFAULT_DEV_AVATAR);
+    const finalAvatar = (formData.avatar || '').trim();
 
     let generatedId = '';
     if (selectedRole === 'tester') {
@@ -952,18 +971,32 @@ export default function ReferralApplication({
           </div>
 
           <form onSubmit={handleSubmit} className="apply-form" noValidate>
-            {/* Profile Photo Upload Section (Strict 2 MB Limit) */}
-            <div className="apply-avatar-card">
+            {/* Profile Photo Upload Section (Strict 2 MB Limit - Compulsory) */}
+            <div className={`apply-avatar-card ${avatarError ? 'has-error' : ''} ${formData.avatar ? 'has-avatar' : ''}`}>
               <div className="apply-avatar-left">
-                <div className="apply-avatar-preview-wrap">
-                  <img
-                    src={activeAvatarUrl}
-                    alt="Applicant Profile Avatar"
-                    className="apply-avatar-preview-img"
-                  />
+                <div 
+                  className={`apply-avatar-preview-wrap ${!formData.avatar ? 'is-empty' : ''}`}
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  title={formData.avatar ? 'Click to Change Profile Photo' : 'Click to Upload Profile Photo (Compulsory)'}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {formData.avatar ? (
+                    <img
+                      src={formData.avatar}
+                      alt="Applicant Profile Avatar"
+                      className="apply-avatar-preview-img"
+                    />
+                  ) : (
+                    <div className="apply-avatar-empty-placeholder">
+                      <User size={38} className="apply-avatar-empty-icon" />
+                    </div>
+                  )}
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (fileInputRef.current) fileInputRef.current.click();
+                    }}
                     className="apply-avatar-camera-btn"
                     title="Click to Upload / Change Profile Photo"
                   >
@@ -977,12 +1010,16 @@ export default function ReferralApplication({
                   <span className="apply-avatar-title">
                     <Camera size={15} color="#0A3D75" />
                     <span>Profile Photo (Official ID & Admin Directory)</span>
+                    <span className="required-star">*</span>
                   </span>
-                  <span className="apply-avatar-limit-badge">Strict Max 2 MB</span>
+                  <div className="apply-avatar-badges">
+                    <span className="apply-avatar-compulsory-badge">Compulsory</span>
+                    <span className="apply-avatar-limit-badge">Strict Max 2 MB</span>
+                  </div>
                 </div>
 
                 <p className="apply-avatar-hint">
-                  Upload a clear professional photo (PNG, JPG, or WebP). Maximum file size is strictly <strong>2 MB</strong>. Your uploaded photo will be saved to your profile and displayed directly in the Admin Panel.
+                  Upload a clear professional photo (PNG, JPG, or WebP). Maximum file size is strictly <strong>2 MB</strong>. Profile photo is <strong>strictly compulsory</strong> to complete registration and will appear on your official ID and in the Admin Panel.
                 </p>
 
                 <div className="apply-avatar-action-row">
@@ -996,10 +1033,10 @@ export default function ReferralApplication({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                    className="btn-upload-photo-action"
+                    className={`btn-upload-photo-action ${avatarError ? 'pulse-attention' : ''}`}
                   >
                     <Upload size={14} />
-                    <span>{formData.avatar ? 'Change Profile Photo' : 'Upload Profile Photo'}</span>
+                    <span>{formData.avatar ? 'Change Profile Photo' : 'Upload Profile Photo *'}</span>
                   </button>
 
                   {formData.avatar && (
@@ -1016,16 +1053,16 @@ export default function ReferralApplication({
 
                 {/* Validation message or uploaded file status */}
                 {avatarError && (
-                  <div className="field-error-msg" style={{ marginTop: '8px' }}>
-                    <AlertCircle size={13} />
+                  <div className="avatar-error-box" style={{ marginTop: '8px' }}>
+                    <AlertCircle size={14} />
                     <span>{avatarError}</span>
                   </div>
                 )}
 
-                {!avatarError && avatarInfo.isCustom && (
+                {!avatarError && avatarInfo.isCustom && formData.avatar && (
                   <div className="avatar-success-pill" style={{ marginTop: '8px' }}>
                     <Check size={12} strokeWidth={3} />
-                    <span>✓ Custom Photo Ready: <strong>{avatarInfo.name}</strong> ({avatarInfo.sizeFormatted} • Verified under 2 MB)</span>
+                    <span>✓ Profile Photo Ready: <strong>{avatarInfo.name}</strong> ({avatarInfo.sizeFormatted} • Verified under 2 MB)</span>
                   </div>
                 )}
               </div>
