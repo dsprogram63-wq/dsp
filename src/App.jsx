@@ -237,7 +237,18 @@ export default function App() {
       const saved = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Normalize and self-heal any missing referenceId or outdated synthetic REF-00 IDs
+          return parsed.map(d => {
+            const actualCode = d.referralCode || (d.referenceId && !d.referenceId.startsWith('REF-00') ? d.referenceId : 'DS-REF-8902');
+            return {
+              ...d,
+              referralCode: actualCode,
+              referenceId: actualCode,
+              referenceName: d.referenceName || 'Reference Verification'
+            };
+          });
+        }
       }
     } catch (e) {
       console.error('Failed to parse developers:', e);
@@ -251,7 +262,17 @@ export default function App() {
       const saved = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(t => {
+            const actualCode = t.referralCode || (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : 'DS-TST-201');
+            return {
+              ...t,
+              referralCode: actualCode,
+              referenceId: actualCode,
+              referenceName: t.referenceName || 'Reference Verification'
+            };
+          });
+        }
       }
     } catch (e) {
       console.error('Failed to parse testers:', e);
@@ -485,7 +506,8 @@ export default function App() {
       mobile: (authUser && authUser.mobile) || '',
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       referenceName: (authUser && authUser.referenceName) || 'Reference Verification',
-      referenceId: 'REF-00125'
+      referralCode: (authUser && authUser.referralCode) || 'DS-REF-8902',
+      referenceId: (authUser && (authUser.referralCode || authUser.referenceId)) || 'DS-REF-8902'
     };
 
     // Only accept allowed editable fields: fullName / name, mobile, email, avatar
@@ -506,7 +528,8 @@ export default function App() {
       experienceAtJoining: matchedDev.experienceAtJoining !== undefined ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: matchedDev.experienceReferenceDate || '2025-06-15',
       referenceName: matchedDev.referenceName || 'Reference Verification',
-      referenceId: matchedDev.referenceId || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '101'}` : 'REF-001'),
+      referenceId: matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : 'DS-REF-8902'),
+      referralCode: matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : 'DS-REF-8902'),
       program: 'The HIT Support Developer Program',
       roleTitle: 'The HIT Support Developer Program',
       avatar: updatedAvatar,
@@ -575,7 +598,8 @@ export default function App() {
       mobile: (authUser && authUser.mobile) || '',
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       referenceName: (authUser && authUser.referenceName) || 'Reference Verification',
-      referenceId: 'REF-00125'
+      referralCode: (authUser && authUser.referralCode) || 'DS-TST-201',
+      referenceId: (authUser && (authUser.referralCode || authUser.referenceId)) || 'DS-TST-201'
     };
 
     // Only accept allowed editable fields: fullName / name, mobile, email, avatar
@@ -596,7 +620,8 @@ export default function App() {
       experienceAtJoining: matchedTester.experienceAtJoining !== undefined ? matchedTester.experienceAtJoining : (matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: matchedTester.experienceReferenceDate || matchedTester.joiningDate || '2025-02-10',
       referenceName: matchedTester.referenceName || 'Reference Verification',
-      referenceId: matchedTester.referenceId || (authId ? `REF-00${authId.replace(/[^0-9]/g, '') || '125'}` : 'REF-002'),
+      referenceId: matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : 'DS-TST-201'),
+      referralCode: matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : 'DS-TST-201'),
       program: 'The HIT Support Tester Program',
       roleTitle: 'The HIT Support Tester Program',
       avatar: updatedAvatar,
@@ -710,6 +735,8 @@ export default function App() {
   // Referral / Developer registration handler (dynamically adds to Pending Developers with saved avatar)
   const handleApplyDeveloper = (newDevData) => {
     const newId = newDevData.applicantId || `DEV-${Math.floor(100 + Math.random() * 900)}`;
+    const activeRefCode = newDevData.referralCode || newDevData.referenceId || 'DS-REF-8902';
+    const activeRefName = newDevData.referenceName || 'Reference Verification';
     const newDev = {
       id: newId,
       developerId: newId,
@@ -721,8 +748,9 @@ export default function App() {
       experience: newDevData.experienceYears || '3+ Years',
       portfolioUrl: newDevData.portfolioUrl || '',
       avatar: newDevData.avatar || '',
-      referenceName: newDevData.referenceName || 'Reference Verification',
-      referralCode: newDevData.referralCode || 'DS-REF-8902',
+      referenceName: activeRefName,
+      referralCode: activeRefCode,
+      referenceId: activeRefCode,
       applicationMessage: (newDevData.aboutSelf || '').trim(),
       aboutSelf: (newDevData.aboutSelf || '').trim(),
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -747,6 +775,8 @@ export default function App() {
   // Referral / QA Tester registration handler (dynamically adds to Pending Testers with saved avatar)
   const handleApplyTester = (newTesterData) => {
     const newId = newTesterData.applicantId || `TST-${Math.floor(100 + Math.random() * 900)}`;
+    const activeRefCode = newTesterData.referralCode || newTesterData.referenceId || 'DS-TST-201';
+    const activeRefName = newTesterData.referenceName || 'Reference Verification';
     const newTester = {
       id: newId,
       testerId: newId,
@@ -759,8 +789,9 @@ export default function App() {
       testingTools: newTesterData.testingTools || 'Postman, Cypress, Jira',
       experience: newTesterData.experienceYears || '3+ Years',
       avatar: newTesterData.avatar || '',
-      referenceName: newTesterData.referenceName || 'Reference Verification',
-      referralCode: newTesterData.referralCode || 'DS-TST-201',
+      referenceName: activeRefName,
+      referralCode: activeRefCode,
+      referenceId: activeRefCode,
       applicationMessage: (newTesterData.aboutSelf || '').trim(),
       aboutSelf: (newTesterData.aboutSelf || '').trim(),
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -1047,6 +1078,14 @@ export default function App() {
 
     const finalTesterName = (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester';
 
+    const officialTesterRefName = (matchedTester && (matchedTester.referenceName || matchedTester.reference)) || (savedCustomTesterProfile && savedCustomTesterProfile.referenceName) || (authTesterUser && authTesterUser.referenceName) || 'Reference Verification';
+    const officialTesterRefCode = (matchedTester && (matchedTester.referralCode || (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null))) ||
+      (matchedTester && matchedTester.referralCode) ||
+      (matchedTester && matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null) ||
+      (savedCustomTesterProfile && savedCustomTesterProfile.referralCode && !savedCustomTesterProfile.referralCode.startsWith('REF-00') ? savedCustomTesterProfile.referralCode : null) ||
+      (savedCustomTesterProfile && savedCustomTesterProfile.referenceId && !savedCustomTesterProfile.referenceId.startsWith('REF-00') ? savedCustomTesterProfile.referenceId : null) ||
+      'DS-TST-201';
+
     const currentLoggedInTester = {
       id: finalTesterId,
       testerId: finalTesterId,
@@ -1057,11 +1096,12 @@ export default function App() {
       joiningDate: (matchedTester && matchedTester.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester && matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: (matchedTester && matchedTester.experienceReferenceDate) || (matchedTester && matchedTester.joiningDate) || '2025-02-10',
-      referenceName: (matchedTester && matchedTester.referenceName) || 'Reference Verification',
-      referenceId: (matchedTester && matchedTester.referenceId) || (finalTesterId ? `REF-00${finalTesterId.replace(/[^0-9]/g, '') || '02'}` : 'REF-002'),
+      referenceName: officialTesterRefName,
+      referenceId: officialTesterRefCode,
+      referralCode: officialTesterRefCode,
       program: 'The HIT Support Tester Program',
       roleTitle: (matchedTester && (matchedTester.specialization || matchedTester.role)) || 'The HIT Support Tester Program',
-      avatar: (matchedTester && matchedTester.avatar) || (authTesterUser && authTesterUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
+      avatar: (matchedTester && matchedTester.avatar) || (authTesterUser && authTesterUser.avatar) || '',
       verified: matchedTester ? matchedTester.verified !== false : true
     };
 
@@ -1397,6 +1437,14 @@ export default function App() {
 
     const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer';
 
+    const officialRefName = (matchedDev && (matchedDev.referenceName || matchedDev.reference)) || (savedCustomProfile && savedCustomProfile.referenceName) || (authUser && authUser.referenceName) || 'Reference Verification';
+    const officialRefCode = (matchedDev && (matchedDev.referralCode || (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null))) ||
+      (matchedDev && matchedDev.referralCode) ||
+      (matchedDev && matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null) ||
+      (savedCustomProfile && savedCustomProfile.referralCode && !savedCustomProfile.referralCode.startsWith('REF-00') ? savedCustomProfile.referralCode : null) ||
+      (savedCustomProfile && savedCustomProfile.referenceId && !savedCustomProfile.referenceId.startsWith('REF-00') ? savedCustomProfile.referenceId : null) ||
+      'DS-REF-8902';
+
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,
       id: finalDevId,
@@ -1407,11 +1455,12 @@ export default function App() {
       joiningDate: (matchedDev && matchedDev.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedDev && matchedDev.experienceAtJoining !== undefined) ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: (matchedDev && matchedDev.experienceReferenceDate) || '2025-06-15',
-      referenceName: (matchedDev && matchedDev.referenceName) || 'Reference Verification',
-      referenceId: (matchedDev && matchedDev.referenceId) || (finalDevId ? `REF-00${finalDevId.replace(/[^0-9]/g, '') || '01'}` : 'REF-001'),
+      referenceName: officialRefName,
+      referenceId: officialRefCode,
+      referralCode: officialRefCode,
       program: 'The HIT Support Developer Program',
       roleTitle: (matchedDev && matchedDev.primarySkill) || 'The HIT Support Developer Program',
-      avatar: (matchedDev && matchedDev.avatar) || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
+      avatar: (matchedDev && matchedDev.avatar) || (authUser && authUser.avatar) || ''
     };
 
     // Strictly fetch ONLY projects assigned to the authenticated freelancer

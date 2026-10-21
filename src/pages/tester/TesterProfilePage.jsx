@@ -37,9 +37,10 @@ export default function TesterProfilePage({
     experienceAtJoining: currentProfile.experienceAtJoining !== undefined ? currentProfile.experienceAtJoining : 0,
     experienceReferenceDate: currentProfile.experienceReferenceDate || currentProfile.joiningDate || '',
     referenceName: currentProfile.referenceName || '',
-    referenceId: currentProfile.referenceId || '',
+    referenceId: (currentProfile.referralCode || (currentProfile.referenceId && !currentProfile.referenceId.startsWith('REF-00') ? currentProfile.referenceId : null)) || currentProfile.referralCode || currentProfile.referenceId || '',
+    referralCode: currentProfile.referralCode || currentProfile.referenceId || '',
     program: 'The HIT Support Tester Program',
-    avatar: currentProfile.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
+    avatar: currentProfile.avatar || '',
     verified: currentProfile.verified !== false
   });
 
@@ -57,7 +58,8 @@ export default function TesterProfilePage({
         experienceAtJoining: propProfile.experienceAtJoining !== undefined ? propProfile.experienceAtJoining : prev.experienceAtJoining,
         experienceReferenceDate: propProfile.experienceReferenceDate || propProfile.joiningDate || prev.experienceReferenceDate,
         referenceName: propProfile.referenceName || prev.referenceName,
-        referenceId: propProfile.referenceId || prev.referenceId,
+        referenceId: (propProfile.referralCode || (propProfile.referenceId && !propProfile.referenceId.startsWith('REF-00') ? propProfile.referenceId : null)) || propProfile.referralCode || propProfile.referenceId || prev.referenceId,
+        referralCode: propProfile.referralCode || propProfile.referenceId || prev.referralCode,
         program: 'The HIT Support Tester Program',
         avatar: propProfile.avatar || prev.avatar,
         verified: propProfile.verified !== false

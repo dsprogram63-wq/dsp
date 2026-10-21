@@ -822,6 +822,7 @@ export default function ReferralApplication({
         onApplyTester({
           ...formData,
           referralCode: activeReferralCode,
+          referenceId: activeReferralCode,
           referenceName: activeReferenceName,
           hasValidReference: true,
           email: finalVerifiedEmail,
@@ -838,6 +839,7 @@ export default function ReferralApplication({
         onApplyDeveloper({
           ...formData,
           referralCode: activeReferralCode,
+          referenceId: activeReferralCode,
           referenceName: activeReferenceName,
           hasValidReference: true,
           email: finalVerifiedEmail,
@@ -852,6 +854,7 @@ export default function ReferralApplication({
     const submissionPayload = {
       ...formData,
       referralCode: activeReferralCode,
+      referenceId: activeReferralCode,
       referenceName: activeReferenceName,
       hasValidReference: true,
       email: finalVerifiedEmail,

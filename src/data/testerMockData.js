@@ -23,6 +23,7 @@ export const initialTesters = [
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
     referenceName: 'Reference Verification',
     referralCode: 'DS-TST-201',
+    referenceId: 'DS-TST-201',
     joiningDate: '10 Oct 2026',
     status: 'Active',
     availability: 'Busy',
