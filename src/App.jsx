@@ -56,6 +56,7 @@ import TesterEarningsPage from './pages/tester/TesterEarningsPage';
 import { initialProjects, initialProfile } from './data/mockData';
 import { initialAdminProjects, initialDevelopers } from './data/adminMockData';
 import { initialTesters, initialTesterProfile } from './data/testerMockData';
+import { removeReferralTrustId } from './utils/referralTrustUtils';
 import { 
   getAuthenticatedFreelancerProjects, 
   getAuthenticatedFreelancerProjectById, 
@@ -246,9 +247,10 @@ export default function App() {
   const [developers, setDevelopers] = useState(() => {
     try {
       const saved = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) return [];
           // Normalize and self-heal any missing referenceId or outdated synthetic REF-00 IDs
           return parsed.map(d => {
             const actualCode = (d.referralCode && !d.referralCode.startsWith('REF-00') ? d.referralCode : null) ||
@@ -291,9 +293,10 @@ export default function App() {
   const [testers, setTesters] = useState(() => {
     try {
       const saved = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) return [];
           return parsed.map(t => {
             const actualCode = (t.referralCode && !t.referralCode.startsWith('REF-00') ? t.referralCode : null) ||
               (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : null) ||
@@ -340,7 +343,7 @@ export default function App() {
   // Sync real data to LocalStorage (Dual-key persistence so data is NEVER lost)
   useEffect(() => {
     try {
-      if (adminProjects && adminProjects.length > 0) {
+      if (Array.isArray(adminProjects)) {
         localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
         localStorage.setItem('dahej_admin_projects', JSON.stringify(adminProjects));
       }
@@ -351,7 +354,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      if (projects && projects.length > 0) {
+      if (Array.isArray(projects)) {
         localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(projects));
         localStorage.setItem('dahej_freelancer_projects', JSON.stringify(projects));
       }
@@ -362,7 +365,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      if (developers && developers.length > 0) {
+      if (Array.isArray(developers)) {
         localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
         localStorage.setItem('dahej_developers', JSON.stringify(developers));
       }
@@ -373,7 +376,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      if (testers && testers.length > 0) {
+      if (Array.isArray(testers)) {
         localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
         localStorage.setItem('dahej_testers', JSON.stringify(testers));
       }
@@ -537,6 +540,85 @@ export default function App() {
       ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
     };
     setDevelopers(prev => prev.map(d => d.id === sanitizedDev.id ? sanitizedDev : d));
+  };
+
+  // Admin delete developer (permanently removes developer and purges cached profiles, trust IDs & unassigns projects)
+  const handleDeleteDeveloper = (developerId) => {
+    if (!developerId) return;
+    const targetId = developerId.trim().toLowerCase();
+
+    // 1. Remove from developers state and persist immediately
+    setDevelopers(prevDevs => {
+      const updated = prevDevs.filter(d => (d.id || '').toLowerCase() !== targetId);
+      try {
+        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
+        localStorage.setItem('dahej_developers', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save developers after deletion:', e);
+      }
+      return updated;
+    });
+
+    // 2. Clean up any stored profile cache for this developer
+    try {
+      localStorage.removeItem(`dahej_profile_${developerId}`);
+      localStorage.removeItem(`dahej_profile_${targetId}`);
+    } catch (e) {}
+
+    // 3. Remove from Referral Trust Registry if present
+    removeReferralTrustId(developerId);
+    removeReferralTrustId(targetId);
+
+    // 4. Safely unassign from any active admin projects
+    setAdminProjects(prevProjects => {
+      const updated = prevProjects.map(p => {
+        const matchesId = p.developerId && p.developerId.toLowerCase() === targetId;
+        if (matchesId) {
+          return {
+            ...p,
+            developer: 'Unassigned',
+            developerId: null,
+            developerEmail: '',
+            developerSkill: '',
+            developerAvatar: ''
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updated));
+        localStorage.setItem('dahej_admin_projects', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 5. Safely unassign from freelancer projects list
+    setProjects(prevProjects => {
+      const updated = prevProjects.map(p => {
+        const matchesId = p.developerId && p.developerId.toLowerCase() === targetId;
+        if (matchesId) {
+          return {
+            ...p,
+            developer: 'Unassigned',
+            developerId: null,
+            developerEmail: '',
+            developerSkill: '',
+            developerAvatar: ''
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updated));
+        localStorage.setItem('dahej_freelancer_projects', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 6. If currently on developer-detail page for the deleted developer, redirect to directory
+    if (routeState.subView === 'developer-detail' && (selectedDeveloperId || '').toLowerCase() === targetId) {
+      navigateTo('admin/developers');
+    }
   };
 
   // Freelancer profile update (strictly enforces immutable fields & persists to localStorage, authSession & developer directory)
@@ -752,6 +834,61 @@ export default function App() {
       ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
     };
     setTesters(prev => prev.map(t => t.id === sanitizedTester.id ? sanitizedTester : t));
+  };
+
+  // Admin delete tester (permanently removes QA tester and purges cached profiles, trust IDs & unassigns projects)
+  const handleDeleteTester = (testerId) => {
+    if (!testerId) return;
+    const targetId = testerId.trim().toLowerCase();
+
+    // 1. Remove from testers state and persist immediately
+    setTesters(prevTesters => {
+      const updated = prevTesters.filter(t => (t.id || '').toLowerCase() !== targetId);
+      try {
+        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
+        localStorage.setItem('dahej_testers', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save testers after deletion:', e);
+      }
+      return updated;
+    });
+
+    // 2. Clean up any stored profile cache for this tester
+    try {
+      localStorage.removeItem(`dahej_tester_profile_${testerId}`);
+      localStorage.removeItem(`dahej_tester_profile_${targetId}`);
+    } catch (e) {}
+
+    // 3. Remove from Referral Trust Registry if present
+    removeReferralTrustId(testerId);
+    removeReferralTrustId(targetId);
+
+    // 4. Safely unassign from any active admin projects
+    setAdminProjects(prevProjects => {
+      const updated = prevProjects.map(p => {
+        const matchesId = p.testerId && p.testerId.toLowerCase() === targetId;
+        if (matchesId) {
+          return {
+            ...p,
+            tester: 'Unassigned',
+            testerId: null,
+            testerEmail: '',
+            testerAvatar: ''
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updated));
+        localStorage.setItem('dahej_admin_projects', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 5. If currently on tester-detail page for the deleted tester, redirect to directory
+    if (routeState.subView === 'tester-detail' && (selectedTesterId || '').toLowerCase() === targetId) {
+      navigateTo('admin/testers');
+    }
   };
 
   // Admin create project (dynamically updates developer/tester assigned state)
@@ -1417,6 +1554,7 @@ export default function App() {
             developers={developers}
             projects={adminProjects}
             onUpdateDeveloper={handleUpdateDeveloper}
+            onDeleteDeveloper={handleDeleteDeveloper}
             onOpenDeveloper={handleOpenAdminDeveloper}
             onNavigate={navigateTo}
           />
@@ -1427,6 +1565,7 @@ export default function App() {
             developer={currentDeveloper}
             projects={adminProjects}
             onUpdateDeveloper={handleUpdateDeveloper}
+            onDeleteDeveloper={handleDeleteDeveloper}
             onBack={() => navigateTo('admin/developers')}
             onOpenProject={handleOpenAdminProject}
             onNavigate={navigateTo}
@@ -1438,6 +1577,7 @@ export default function App() {
             testers={testers}
             projects={adminProjects}
             onUpdateTester={handleUpdateTester}
+            onDeleteTester={handleDeleteTester}
             onOpenTester={handleOpenAdminTester}
             onNavigate={navigateTo}
           />
@@ -1448,6 +1588,7 @@ export default function App() {
             tester={currentTester}
             projects={adminProjects}
             onUpdateTester={handleUpdateTester}
+            onDeleteTester={handleDeleteTester}
             onBack={() => navigateTo('admin/testers')}
             onOpenProject={handleOpenAdminProject}
             onNavigate={navigateTo}

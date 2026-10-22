@@ -11,11 +11,13 @@ import {
   Check,
   IndianRupee,
   Users,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import StatsCard from '../../components/portal/StatsCard';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
+import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
@@ -25,12 +27,14 @@ export default function TestersPage({
   testers = initialTesters, 
   projects = [],
   onUpdateTester,
+  onDeleteTester,
   onOpenTester,
   onNavigate 
 }) {
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
+  const [deleteTargetTester, setDeleteTargetTester] = useState(null);
 
   const filterTabs = ['All', 'Pending', 'Active', 'On Hold', 'Deactivated'];
 
@@ -129,6 +133,16 @@ export default function TestersPage({
   const handleReject = (tester) => {
     handleStatusChange(tester, 'Rejected');
     showToast(`QA Tester "${tester.name}" application rejected.`);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTargetTester) return;
+    const testerToDelete = deleteTargetTester;
+    if (onDeleteTester) {
+      onDeleteTester(testerToDelete.id);
+    }
+    setDeleteTargetTester(null);
+    showToast(`QA Tester "${testerToDelete.name}" (${testerToDelete.id}) permanently deleted.`);
   };
 
   const filtered = uniqueTesters.filter(t => {
@@ -404,6 +418,16 @@ export default function TestersPage({
                           <XCircle size={13} style={{ marginRight: '4px' }} />
                           <span>Reject</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTargetTester(tester)}
+                          className="btn btn-delete-action"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                          title="Delete QA Tester Application"
+                        >
+                          <Trash2 size={13} style={{ marginRight: '4px' }} />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -592,13 +616,20 @@ export default function TestersPage({
                             <div className="dev-status-select-wrap">
                               <select
                                 value="Active"
-                                onChange={(e) => handleStatusChange(tester, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'DELETE_TESTER') {
+                                    setDeleteTargetTester(tester);
+                                  } else {
+                                    handleStatusChange(tester, e.target.value);
+                                  }
+                                }}
                                 className="sort-select"
                                 style={{ padding: '5px 8px', fontSize: '0.75rem', height: '31px' }}
                               >
                                 <option value="Active" disabled>Status Action</option>
                                 <option value="On Hold">Put On Hold</option>
                                 <option value="Deactivated">Deactivate</option>
+                                <option value="DELETE_TESTER">🗑️ Delete QA Tester</option>
                               </select>
                             </div>
                           )}
@@ -607,13 +638,20 @@ export default function TestersPage({
                             <div className="dev-status-select-wrap">
                               <select
                                 value="On Hold"
-                                onChange={(e) => handleStatusChange(tester, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'DELETE_TESTER') {
+                                    setDeleteTargetTester(tester);
+                                  } else {
+                                    handleStatusChange(tester, e.target.value);
+                                  }
+                                }}
                                 className="sort-select"
                                 style={{ padding: '5px 8px', fontSize: '0.75rem', height: '31px' }}
                               >
                                 <option value="On Hold" disabled>Status Action</option>
                                 <option value="Active">Activate</option>
                                 <option value="Deactivated">Deactivate</option>
+                                <option value="DELETE_TESTER">🗑️ Delete QA Tester</option>
                               </select>
                             </div>
                           )}
@@ -629,6 +667,18 @@ export default function TestersPage({
                               <span>Activate</span>
                             </button>
                           )}
+
+                          {/* Delete QA Tester Action */}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetTester(tester)}
+                            className="btn btn-delete-action"
+                            style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                            title="Delete QA Tester"
+                          >
+                            <Trash2 size={13} style={{ marginRight: '4px' }} />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -658,6 +708,16 @@ export default function TestersPage({
           />
         </div>
       )}
+
+      {/* Delete QA Tester Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTargetTester)}
+        item={deleteTargetTester}
+        itemType="tester"
+        assignedProjectsCount={deleteTargetTester ? getTesterAssignedProjectsCount(deleteTargetTester) : 0}
+        onClose={() => setDeleteTargetTester(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

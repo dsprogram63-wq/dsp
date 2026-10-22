@@ -16,23 +16,28 @@ import {
   Check,
   X,
   XCircle,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
+import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
 import './TesterDetailPage.css';
 
 export default function TesterDetailPage({ 
   tester, 
+  projects = [],
   onUpdateTester,
+  onDeleteTester,
   onBack, 
   onOpenProject,
   onNavigate 
 }) {
   const [activeTab, setActiveTab] = useState('current');
   const [toastMessage, setToastMessage] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const t = tester || initialTesters[0];
 
   if (!t) {
@@ -88,6 +93,14 @@ export default function TesterDetailPage({
     } else {
       showToast(`QA Tester "${t.name}" status updated to "${newStatus}"`);
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (onDeleteTester && t) {
+      onDeleteTester(t.id);
+    }
+    setIsDeleteModalOpen(false);
+    if (onBack) onBack();
   };
 
   return (
@@ -184,6 +197,17 @@ export default function TesterDetailPage({
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="btn btn-delete-action"
+            style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+            title="Permanently Delete QA Tester"
+          >
+            <Trash2 size={14} style={{ marginRight: '4px' }} />
+            <span>Delete Tester</span>
+          </button>
         </div>
       </div>
 
@@ -535,6 +559,16 @@ export default function TesterDetailPage({
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        item={t}
+        itemType="tester"
+        assignedProjectsCount={Array.isArray(t.currentProjects) ? t.currentProjects.length : (t.activeTestingProjects || 0)}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

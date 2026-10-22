@@ -21,11 +21,13 @@ import {
   X,
   XCircle,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import AssignmentModal from '../../components/admin/AssignmentModal';
+import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import { initialAdminProjects } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
 import './DeveloperDetailPage.css';
@@ -34,6 +36,7 @@ export default function DeveloperDetailPage({
   developer, 
   projects = [],
   onUpdateDeveloper,
+  onDeleteDeveloper,
   onBack, 
   onOpenProject, 
   onNavigate 
@@ -42,6 +45,7 @@ export default function DeveloperDetailPage({
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedProjectToAssign, setSelectedProjectToAssign] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   if (!developer) {
     return (
@@ -107,6 +111,14 @@ export default function DeveloperDetailPage({
     } else if (onNavigate) {
       onNavigate('admin/create-project');
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (onDeleteDeveloper && developer) {
+      onDeleteDeveloper(developer.id);
+    }
+    setIsDeleteModalOpen(false);
+    if (onBack) onBack();
   };
 
   return (
@@ -203,6 +215,17 @@ export default function DeveloperDetailPage({
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="btn btn-delete-action"
+            style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+            title="Permanently Delete Developer"
+          >
+            <Trash2 size={14} style={{ marginRight: '4px' }} />
+            <span>Delete Developer</span>
+          </button>
         </div>
       </div>
 
@@ -610,6 +633,16 @@ export default function DeveloperDetailPage({
           onAssign={() => setIsAssignModalOpen(false)}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        item={developer}
+        itemType="developer"
+        assignedProjectsCount={Array.isArray(developer.currentProjects) ? developer.currentProjects.length : (developer.activeProjectsCount || 0)}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

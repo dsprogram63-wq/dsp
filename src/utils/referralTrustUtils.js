@@ -277,3 +277,19 @@ export function maskEmailAddress(email) {
   const end = local.slice(-2);
   return `${start}******${end}@${domain}`;
 }
+
+/**
+ * Remove a member from the Referral Trust Registry
+ */
+export function removeReferralTrustId(memberId) {
+  if (!memberId) return;
+  try {
+    const registry = getTrustRegistry();
+    if (registry && registry[memberId]) {
+      delete registry[memberId];
+      saveTrustRegistry(registry);
+    }
+  } catch (e) {
+    console.error('Failed to remove referral trust ID from registry:', e);
+  }
+}

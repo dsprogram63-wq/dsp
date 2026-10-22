@@ -15,11 +15,13 @@ import {
   ChevronDown,
   UserX,
   UserPlus,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import StatsCard from '../../components/portal/StatsCard';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
+import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialDevelopers } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
@@ -29,6 +31,7 @@ export default function DevelopersPage({
   developers = initialDevelopers, 
   projects = [],
   onUpdateDeveloper,
+  onDeleteDeveloper,
   onOpenDeveloper, 
   onNavigate 
 }) {
@@ -36,6 +39,7 @@ export default function DevelopersPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [deleteTargetDev, setDeleteTargetDev] = useState(null);
 
   const filterTabs = ['All', 'Pending', 'Active', 'On Hold', 'Deactivated'];
 
@@ -135,6 +139,16 @@ export default function DevelopersPage({
   const handleReject = (dev) => {
     handleStatusChange(dev, 'Rejected');
     showToast(`Developer "${dev.name}" application rejected.`);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTargetDev) return;
+    const devToDelete = deleteTargetDev;
+    if (onDeleteDeveloper) {
+      onDeleteDeveloper(devToDelete.id);
+    }
+    setDeleteTargetDev(null);
+    showToast(`Developer "${devToDelete.name}" (${devToDelete.id}) permanently deleted.`);
   };
 
   const filtered = uniqueDevelopers.filter(dev => {
@@ -409,6 +423,16 @@ export default function DevelopersPage({
                           <XCircle size={13} style={{ marginRight: '4px' }} />
                           <span>Reject</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTargetDev(dev)}
+                          className="btn btn-delete-action"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                          title="Delete Developer Application"
+                        >
+                          <Trash2 size={13} style={{ marginRight: '4px' }} />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -597,13 +621,20 @@ export default function DevelopersPage({
                             <div className="dev-status-select-wrap">
                               <select
                                 value="Active"
-                                onChange={(e) => handleStatusChange(dev, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'DELETE_DEV') {
+                                    setDeleteTargetDev(dev);
+                                  } else {
+                                    handleStatusChange(dev, e.target.value);
+                                  }
+                                }}
                                 className="sort-select"
                                 style={{ padding: '5px 8px', fontSize: '0.75rem', height: '31px' }}
                               >
                                 <option value="Active" disabled>Status Action</option>
                                 <option value="On Hold">Put On Hold</option>
                                 <option value="Deactivated">Deactivate</option>
+                                <option value="DELETE_DEV">🗑️ Delete Developer</option>
                               </select>
                             </div>
                           )}
@@ -612,13 +643,20 @@ export default function DevelopersPage({
                             <div className="dev-status-select-wrap">
                               <select
                                 value="On Hold"
-                                onChange={(e) => handleStatusChange(dev, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'DELETE_DEV') {
+                                    setDeleteTargetDev(dev);
+                                  } else {
+                                    handleStatusChange(dev, e.target.value);
+                                  }
+                                }}
                                 className="sort-select"
                                 style={{ padding: '5px 8px', fontSize: '0.75rem', height: '31px' }}
                               >
                                 <option value="On Hold" disabled>Status Action</option>
                                 <option value="Active">Activate</option>
                                 <option value="Deactivated">Deactivate</option>
+                                <option value="DELETE_DEV">🗑️ Delete Developer</option>
                               </select>
                             </div>
                           )}
@@ -634,6 +672,18 @@ export default function DevelopersPage({
                               <span>Activate</span>
                             </button>
                           )}
+
+                          {/* Delete Developer Action */}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetDev(dev)}
+                            className="btn btn-delete-action"
+                            style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                            title="Delete Developer"
+                          >
+                            <Trash2 size={13} style={{ marginRight: '4px' }} />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -663,6 +713,16 @@ export default function DevelopersPage({
           />
         </div>
       )}
+
+      {/* Delete Developer Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTargetDev)}
+        item={deleteTargetDev}
+        itemType="developer"
+        assignedProjectsCount={deleteTargetDev ? getDevAssignedProjectsCount(deleteTargetDev) : 0}
+        onClose={() => setDeleteTargetDev(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
