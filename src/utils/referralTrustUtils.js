@@ -211,7 +211,7 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
     };
   }
 
-  if (cleanName.length < 2) {
+  if (cleanName.length < 3) {
     return {
       valid: false,
       error: 'Invalid'
@@ -230,18 +230,18 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
     };
   }
 
-  // Verify Name match against matched sponsor
-  const sponsorNameNorm = (matchedSponsor.name || '').trim().toLowerCase();
-  const sponsorFullNameNorm = (matchedSponsor.fullName || '').trim().toLowerCase();
+  // Strict full Name match against matched sponsor (exact name only, no partial substring)
+  const sponsorNameNorm = (matchedSponsor.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const sponsorFullNameNorm = (matchedSponsor.fullName || '').trim().replace(/\s+/g, ' ').toLowerCase();
   const sponsorSlug = formatProfileSlug(matchedSponsor.name).toLowerCase();
   const inputSlug = formatProfileSlug(cleanName).toLowerCase();
+  const normalizedInputName = cleanName.replace(/\s+/g, ' ');
 
+  // STRICT FULL EXACT MATCH ONLY (DO NOT match prefixes like "Da" for "Dahej Support")
   const isNameMatch = 
-    sponsorNameNorm === cleanName ||
-    sponsorFullNameNorm === cleanName ||
-    sponsorSlug === inputSlug ||
-    sponsorNameNorm.includes(cleanName) ||
-    cleanName.includes(sponsorNameNorm);
+    sponsorNameNorm === normalizedInputName ||
+    sponsorFullNameNorm === normalizedInputName ||
+    (sponsorSlug.length >= 3 && sponsorSlug === inputSlug);
 
   if (!isNameMatch) {
     return {

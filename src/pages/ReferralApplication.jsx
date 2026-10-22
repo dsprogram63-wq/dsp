@@ -777,7 +777,7 @@ export default function ReferralApplication({
     setIsSendingSponsorOtp(true);
     setSponsorStatusMsg({
       type: 'info',
-      text: `Sending 6-digit authorization OTP to ${maskEmailAddress(sponsor.email)}...`
+      text: "Sending 6-digit authorization OTP to your reference person's registered email..."
     });
 
     try {
@@ -793,7 +793,7 @@ export default function ReferralApplication({
       setSponsorTimer(60);
       setSponsorStatusMsg({
         type: 'success',
-        text: `Authorization OTP sent successfully to ${sponsor.name}'s email (${maskEmailAddress(sponsor.email)})! Ask your sponsor for the 6-digit code to authorize.`
+        text: "Authorization OTP sent successfully to your reference person's registered email! Please ask your sponsor for the 6-digit code to authorize."
       });
     } catch (err) {
       const errMsg = err.message || 'Failed to dispatch OTP to sponsor. Please check your internet connection.';
@@ -833,7 +833,7 @@ export default function ReferralApplication({
         setSponsorOtpCode('');
         setSponsorStatusMsg({
           type: 'success',
-          text: `✓ Referral Officially Authorized by ${sponsor.name} (${sponsor.trustId})!`
+          text: '✓ Referral Officially Authorized!'
         });
       } else {
         setSponsorStatusMsg({
@@ -1767,19 +1767,13 @@ export default function ReferralApplication({
                 <div className={`sponsor-status-card ${isSponsorVerified ? 'authorized' : 'matched'}`}>
                   <div className="sponsor-card-top">
                     <div className="sponsor-profile-chip">
-                      {sponsorValidationResult.sponsor.avatar ? (
-                        <img src={sponsorValidationResult.sponsor.avatar} alt={sponsorValidationResult.sponsor.name} className="sponsor-avatar-circle" />
-                      ) : (
-                        <div className="sponsor-avatar-circle">
-                          {sponsorValidationResult.sponsor.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <div className="sponsor-avatar-circle" style={{ background: '#E0F2FE', borderColor: '#0284C7', color: '#0A3D75' }}>
+                        <KeyRound size={18} />
+                      </div>
                       <div className="sponsor-info-col">
-                        <span className="sponsor-name-title">{sponsorValidationResult.sponsor.name}</span>
+                        <span className="sponsor-name-title">Referral Authorization</span>
                         <span className="sponsor-meta-sub">
-                          <span>{sponsorValidationResult.sponsor.roleTitle}</span>
-                          <span>•</span>
-                          <span className="sponsor-trust-tag">{sponsorValidationResult.sponsor.trustId}</span>
+                          <span>Verification Required</span>
                         </span>
                       </div>
                     </div>
@@ -1799,8 +1793,7 @@ export default function ReferralApplication({
                   {!isSponsorVerified ? (
                     <>
                       <p className="sponsor-email-hint">
-                        Registered Sponsor Email: <strong>{maskEmailAddress(sponsorValidationResult.sponsor.email)}</strong>.
-                        To prevent unauthorized use of members’ profiles, an authorization OTP will be sent to this email.
+                        An authorization OTP will be sent to your reference person's registered email. To prevent unauthorized use of members’ references, an authorization code from the sponsor is required.
                       </p>
 
                       {!sponsorOtpSent ? (
@@ -1818,7 +1811,7 @@ export default function ReferralApplication({
                       ) : (
                         <div className="sponsor-otp-input-card">
                           <div className="otp-box-header">
-                            <span>Enter 6-digit OTP received by <strong>{sponsorValidationResult.sponsor.name}</strong>:</span>
+                            <span>Enter 6-digit authorization OTP received by your sponsor:</span>
                             {sponsorTimer > 0 ? (
                               <span style={{ color: '#D97706', fontWeight: 600, fontSize: '0.78rem' }}>Resend in {sponsorTimer}s</span>
                             ) : (
@@ -1858,7 +1851,7 @@ export default function ReferralApplication({
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                       <p style={{ margin: 0, fontSize: '0.82rem', color: '#166534', fontWeight: 600 }}>
-                        ✓ {sponsorValidationResult.sponsor.name} has authorized this application via registered email verification ({maskEmailAddress(sponsorValidationResult.sponsor.email)}).
+                        ✓ Reference person has authorized this application via email verification.
                       </p>
                       <button
                         type="button"
