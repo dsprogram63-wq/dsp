@@ -153,11 +153,19 @@ export default function DevelopersPage({
       try {
         emailResult = await sendApprovalWelcomeEmail({
           member: dev,
+          toEmail: dev.email,
+          toName: dev.fullName || dev.name,
+          memberId: dev.id,
           password,
-          role: 'developer'
+          role: 'developer',
+          referralTrustId: dev.referralTrustId
         });
+        if (!emailResult?.success) {
+          throw new Error(emailResult?.error || 'Email dispatch failed.');
+        }
       } catch (err) {
         console.error('Welcome email dispatch error:', err);
+        throw new Error(`Failed to send welcome email to ${dev.email}: ${err.message || 'Please check email connection.'}`);
       }
     }
 

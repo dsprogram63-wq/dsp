@@ -111,11 +111,19 @@ export default function TesterDetailPage({
       try {
         emailResult = await sendApprovalWelcomeEmail({
           member: t,
+          toEmail: t.email,
+          toName: t.fullName || t.name,
+          memberId: t.id || t.testerId,
           password,
-          role: 'tester'
+          role: 'tester',
+          referralTrustId: t.referralTrustId
         });
+        if (!emailResult?.success) {
+          throw new Error(emailResult?.error || 'Email dispatch failed.');
+        }
       } catch (err) {
         console.error('Welcome email dispatch error:', err);
+        throw new Error(`Failed to send welcome email to ${t.email}: ${err.message || 'Please check email connection.'}`);
       }
     }
 

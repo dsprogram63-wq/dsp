@@ -1151,6 +1151,7 @@ export function buildApprovalWelcomeEmailHtml({
  * High-Level Helper: Send Approval Welcome Email with Login Credentials
  */
 export async function sendApprovalWelcomeEmail({
+  member,
   toEmail,
   toName = '',
   role = 'developer',
@@ -1160,44 +1161,56 @@ export async function sendApprovalWelcomeEmail({
   loginUrl = 'https://www.dsprogram.space/freelancer-login',
   senderProfile = SENDER_PROFILES.DEFAULT
 }) {
-  if (!toEmail) {
+  const cleanEmail = (toEmail || member?.email || '').trim().toLowerCase();
+  const cleanName = (toName || member?.fullName || member?.name || '').trim();
+  const cleanId = (memberId || member?.id || member?.testerId || member?.freelancerId || member?.developerId || '').trim();
+  const cleanPassword = (password || member?.password || '').trim();
+  const resolvedRole = (role || (member?.role && member.role.toLowerCase().includes('tester') ? 'tester' : 'developer'));
+  const cleanTrustId = (referralTrustId || member?.referralTrustId || member?.referralCode || '').trim();
+
+  if (!cleanEmail) {
     throw new Error('Recipient email is required.');
   }
 
-  const cleanEmail = toEmail.trim().toLowerCase();
-  const isTester = (role === 'tester' || role === 'qa');
+  if (!cleanPassword) {
+    throw new Error('Account password is required for approval email.');
+  }
+
+  const isTester = (resolvedRole === 'tester' || resolvedRole === 'qa');
   const roleTitle = isTester ? 'QA Tester' : 'Developer';
 
   // 1. Build rich HTML email
   const htmlContent = buildApprovalWelcomeEmailHtml({
-    toName,
+    toName: cleanName,
     toEmail: cleanEmail,
-    role,
-    memberId,
-    password,
-    referralTrustId,
+    role: resolvedRole,
+    memberId: cleanId,
+    password: cleanPassword,
+    referralTrustId: cleanTrustId,
     loginUrl
   });
 
   const subject = `🎉 Congratulations! Your Dahej Support ${roleTitle} Account is Approved - Login Credentials Inside`;
 
-  const textContent = `Hello ${toName || 'Member'},\n\n` +
+  const textContent = `Hello ${cleanName || 'Member'},\n\n` +
     `Congratulations! Your application for the Dahej Support ${roleTitle} Program has been reviewed and officially APPROVED.\n\n` +
     `YOUR PORTAL LOGIN CREDENTIALS:\n` +
     `Login URL: ${loginUrl}\n` +
     `Username / Email: ${cleanEmail}\n` +
-    `Member ID: ${memberId}\n` +
-    `Login Password: ${password}\n` +
-    (referralTrustId ? `Referrer Trust ID: ${referralTrustId}\n\n` : '\n') +
+    `Member ID: ${cleanId}\n` +
+    `Login Password: ${cleanPassword}\n` +
+    (cleanTrustId ? `Referrer Trust ID: ${cleanTrustId}\n\n` : '\n') +
     `Please visit ${loginUrl} to log in using the credentials above.\n\n` +
     `Best regards,\n` +
     `Dahej Support Operations Team\n` +
     `Official Email: work@dsprogram.space`;
 
+  console.log(`[Dahej Support Mailer] Sending approval credentials email to ${cleanEmail} for ${cleanName} (${cleanId})...`);
+
   return await sendTransactionalEmail({
     to: {
       email: cleanEmail,
-      name: toName || `${roleTitle} Member`
+      name: cleanName || `${roleTitle} Member`
     },
     subject,
     htmlContent,
