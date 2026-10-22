@@ -23,9 +23,8 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
-import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
-import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
+import { sendApprovalWelcomeEmail, sendRejectionNoticeEmail, saveMemberPassword } from '../../services/emailService';
 import './TesterDetailPage.css';
 
 export default function TesterDetailPage({ 
@@ -97,7 +96,18 @@ export default function TesterDetailPage({
     }
 
     if (newStatus === 'Rejected') {
-      showToast(`QA Tester "${t.name}" application rejected.`);
+      showToast(`QA Tester "${t.name}" application rejected. Sending status email...`);
+      sendRejectionNoticeEmail({
+        member: t,
+        toEmail: t.email,
+        toName: t.fullName || t.name,
+        memberId: t.id || t.testerId,
+        role: 'tester'
+      }).then((res) => {
+        if (res?.success) {
+          showToast(`✓ QA Tester "${t.name}" application rejected & notice email sent to ${t.email}`);
+        }
+      }).catch(err => console.error('Rejection email error:', err));
     } else {
       showToast(`QA Tester "${t.name}" status updated to "${newStatus}"`);
     }

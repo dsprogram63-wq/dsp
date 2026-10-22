@@ -22,7 +22,7 @@ import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
-import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
+import { sendApprovalWelcomeEmail, sendRejectionNoticeEmail, saveMemberPassword } from '../../services/emailService';
 import './TestersPage.css';
 
 export default function TestersPage({ 
@@ -130,7 +130,22 @@ export default function TestersPage({
     if (onUpdateTester) {
       onUpdateTester(updated);
     }
-    showToast(`QA Tester "${tester.name}" status updated to "${newStatus}"`);
+    if (newStatus === 'Rejected') {
+      showToast(`QA Tester "${tester.name}" application rejected. Sending status email...`);
+      sendRejectionNoticeEmail({
+        member: tester,
+        toEmail: tester.email,
+        toName: tester.fullName || tester.name,
+        memberId: tester.id || tester.testerId,
+        role: 'tester'
+      }).then((res) => {
+        if (res?.success) {
+          showToast(`✓ QA Tester "${tester.name}" application rejected & notice email sent to ${tester.email}`);
+        }
+      }).catch(err => console.error('Rejection email error:', err));
+    } else {
+      showToast(`QA Tester "${tester.name}" status updated to "${newStatus}"`);
+    }
   };
 
   const handleApprove = (tester) => {
@@ -193,7 +208,6 @@ export default function TestersPage({
 
   const handleReject = (tester) => {
     handleStatusChange(tester, 'Rejected');
-    showToast(`QA Tester "${tester.name}" application rejected.`);
   };
 
   const handleConfirmDelete = () => {

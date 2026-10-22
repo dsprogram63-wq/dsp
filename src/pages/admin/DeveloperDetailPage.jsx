@@ -31,7 +31,7 @@ import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { initialAdminProjects } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
-import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
+import { sendApprovalWelcomeEmail, sendRejectionNoticeEmail, saveMemberPassword } from '../../services/emailService';
 import './DeveloperDetailPage.css';
 
 export default function DeveloperDetailPage({ 
@@ -104,7 +104,18 @@ export default function DeveloperDetailPage({
     }
 
     if (newStatus === 'Rejected') {
-      showToast(`Developer "${developer.name}" application rejected.`);
+      showToast(`Developer "${developer.name}" application rejected. Sending status email...`);
+      sendRejectionNoticeEmail({
+        member: developer,
+        toEmail: developer.email,
+        toName: developer.fullName || developer.name,
+        memberId: developer.id,
+        role: 'developer'
+      }).then((res) => {
+        if (res?.success) {
+          showToast(`✓ Developer "${developer.name}" application rejected & notice email sent to ${developer.email}`);
+        }
+      }).catch(err => console.error('Rejection email error:', err));
     } else {
       showToast(`Developer "${developer.name}" status updated to "${newStatus}"`);
     }

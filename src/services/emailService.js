@@ -1251,4 +1251,225 @@ export async function sendApprovalWelcomeEmail({
   });
 }
 
+/**
+ * Builds rich, responsive HTML rejection notice email
+ */
+export function buildRejectionEmailHtml({
+  toName = '',
+  toEmail = '',
+  role = 'developer',
+  memberId = '',
+  reason = ''
+}) {
+  const isTester = (role === 'tester' || role === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+  const roleProgram = isTester ? 'QA Tester & Validation Network' : 'Freelancer & Developer Network';
+  const year = new Date().getFullYear();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Status Update - Dahej Support</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Main Container -->
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          
+          <!-- Top Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 60%, #174E82 100%); padding: 32px 36px; text-align: center; border-bottom: 3px solid #64748B;">
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;">
+                ${roleProgram}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              
+              <!-- Status Pill Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #F1F5F9; border: 1.5px solid #CBD5E1; color: #475569; font-size: 12px; font-weight: 800; letter-spacing: 0.6px; margin-bottom: 18px;">
+                APPLICATION STATUS UPDATE
+              </div>
+
+              <!-- Main Heading -->
+              <h2 style="margin: 0 0 14px 0; font-size: 22px; font-weight: 800; color: #0F172A; line-height: 1.35;">
+                Update Regarding Your ${roleTitle} Application
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.65; color: #334155;">
+                Dear <strong>${toName || 'Applicant'}</strong>,
+              </p>
+
+              <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.65; color: #334155;">
+                Thank you for your interest in joining the <strong>Dahej Support ${roleProgram}</strong> and for taking the time to share your background and application with our team.
+              </p>
+
+              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.65; color: #334155;">
+                Our technical and operational review committee has carefully evaluated your profile against our active project volume and current platform requirements. At this time, we regret to inform you that we are <strong>unable to proceed with your application</strong> for enrollment into the active workspace.
+              </p>
+
+              ${reason ? `
+              <div style="background-color: #F8FAFC; border-left: 4px solid #64748B; border-radius: 6px; padding: 14px 18px; margin: 0 0 22px 0;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Review Feedback / Note:
+                </p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1E293B;">
+                  ${reason}
+                </p>
+              </div>
+              ` : ''}
+
+              <!-- Application Details Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 16px 20px; border-bottom: 1px solid #E2E8F0; background-color: #F1F5F9;">
+                    <span style="font-size: 12px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px;">
+                      Application Summary
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 140px;">Applicant Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${toName || 'Applicant'}</td>
+                      </tr>
+                      ${memberId ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Application ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600; font-family: monospace;">${memberId}</td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Applied Role:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${roleTitle}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Application Status:</td>
+                        <td style="padding: 6px 0; color: #DC2626; font-weight: 700;">Not Approved (Current Cycle)</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Future Opportunities Box -->
+              <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E40AF;">
+                  What happens next?
+                </h4>
+                <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #1E3A8A;">
+                  We maintain your candidate record in our platform talent registry. If suitable new client requirements or specialized projects matching your domain become available, our talent leads may reach back out to you. You are also welcome to re-apply in our next enrollment cycle.
+                </p>
+              </div>
+
+              <p style="margin: 0 0 8px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                We wish you every success in your ongoing freelance and professional engagements.
+              </p>
+
+              <p style="margin: 20px 0 0 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                Warm regards,<br>
+                <strong style="color: #0F3E6D;">Dahej Support Network Operations Team</strong><br>
+                <span style="font-size: 12px; color: #94A3B8;">Dahej Support Services</span>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Official Support: <a href="mailto:work@dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">work@dsprogram.space</a> • Portal: <a href="https://www.dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">www.dsprogram.space</a>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                © ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * High-Level Helper: Send Rejection Notice Email via Brevo
+ */
+export async function sendRejectionNoticeEmail({
+  member,
+  toEmail,
+  toName = '',
+  role = 'developer',
+  memberId = '',
+  reason = '',
+  senderProfile = SENDER_PROFILES.DEFAULT
+}) {
+  const cleanEmail = (toEmail || member?.email || '').trim().toLowerCase();
+  const cleanName = (toName || member?.fullName || member?.name || '').trim();
+  const cleanId = (memberId || member?.id || member?.testerId || member?.freelancerId || member?.developerId || '').trim();
+  const resolvedRole = (role || (member?.role && member.role.toLowerCase().includes('tester') ? 'tester' : 'developer'));
+
+  if (!cleanEmail) {
+    console.warn('[Dahej Support Mailer] No email found for rejection notice dispatch.');
+    return { success: false, error: 'Recipient email is missing.' };
+  }
+
+  const isTester = (resolvedRole === 'tester' || resolvedRole === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+
+  const htmlContent = buildRejectionEmailHtml({
+    toName: cleanName,
+    toEmail: cleanEmail,
+    role: resolvedRole,
+    memberId: cleanId,
+    reason
+  });
+
+  const subject = `Update regarding your Dahej Support ${roleTitle} application`;
+
+  const textContent = `Dear ${cleanName || 'Applicant'},\n\n` +
+    `Thank you for your interest in joining the Dahej Support ${roleTitle} Network and taking the time to share your application.\n\n` +
+    `After careful review of your application against our current project requirements and platform capacity, we regret to inform you that we are unable to accept your application at this time.\n\n` +
+    (reason ? `Review Note: ${reason}\n\n` : '') +
+    `We maintain your profile in our records and encourage you to re-apply in future enrollment cycles as new client requirements open up.\n\n` +
+    `We wish you the best in your professional journey.\n\n` +
+    `Best regards,\n` +
+    `Dahej Support Operations Team\n` +
+    `Official Email: work@dsprogram.space`;
+
+  console.log(`[Dahej Support Mailer] Sending rejection notice email to ${cleanEmail} for ${cleanName} (${cleanId})...`);
+
+  try {
+    return await sendTransactionalEmail({
+      to: {
+        email: cleanEmail,
+        name: cleanName || `${roleTitle} Applicant`
+      },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile
+    });
+  } catch (err) {
+    console.error(`[Dahej Support Mailer] Failed to send rejection email to ${cleanEmail}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
 

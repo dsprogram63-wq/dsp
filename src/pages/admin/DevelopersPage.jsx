@@ -26,7 +26,7 @@ import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialDevelopers } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
-import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
+import { sendApprovalWelcomeEmail, sendRejectionNoticeEmail, saveMemberPassword } from '../../services/emailService';
 import './DevelopersPage.css';
 
 export default function DevelopersPage({ 
@@ -137,7 +137,23 @@ export default function DevelopersPage({
       onUpdateDeveloper(updated);
     }
     setOpenDropdownId(null);
-    showToast(`Developer "${dev.name}" status updated to "${newStatus}"`);
+
+    if (newStatus === 'Rejected') {
+      showToast(`Developer "${dev.name}" application rejected. Sending status email...`);
+      sendRejectionNoticeEmail({
+        member: dev,
+        toEmail: dev.email,
+        toName: dev.fullName || dev.name,
+        memberId: dev.id,
+        role: 'developer'
+      }).then((res) => {
+        if (res?.success) {
+          showToast(`✓ Developer "${dev.name}" application rejected & notice email sent to ${dev.email}`);
+        }
+      }).catch(err => console.error('Rejection email error:', err));
+    } else {
+      showToast(`Developer "${dev.name}" status updated to "${newStatus}"`);
+    }
   };
 
   const handleApprove = (dev) => {
@@ -200,7 +216,6 @@ export default function DevelopersPage({
 
   const handleReject = (dev) => {
     handleStatusChange(dev, 'Rejected');
-    showToast(`Developer "${dev.name}" application rejected.`);
   };
 
   const handleConfirmDelete = () => {
