@@ -127,7 +127,7 @@ export default function TesterDetailPage({
       }
     }
 
-    saveMemberPassword(t.id, t.email, password);
+    saveMemberPassword(t.id || t.testerId, t.email, password, t.testerId);
 
     const assignedTrustId = t.referralTrustId || getOrAssignReferralTrustId({ ...t, status: 'Active' });
 

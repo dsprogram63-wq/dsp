@@ -23,6 +23,7 @@ import {
   sendOtpVerificationEmail, 
   verifyOtpCode, 
   getMemberPassword,
+  saveMemberPassword,
   SENDER_PROFILES 
 } from '../services/emailService.js';
 import './FreelancerLogin.css';
@@ -38,8 +39,8 @@ export default function FreelancerLogin({
   // View Mode: 'login' | 'forgot'
   const [viewMode, setViewMode] = useState('login');
 
-  // Stored developers and testers pools
-  const allStoredDevs = (() => {
+  // Fresh helpers to query developers and testers from storage
+  const getFreshDevelopers = () => {
     try {
       const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (s) {
@@ -48,9 +49,9 @@ export default function FreelancerLogin({
       }
     } catch (e) {}
     return initialDevelopers || [];
-  })();
+  };
 
-  const allStoredTesters = (() => {
+  const getFreshTesters = () => {
     try {
       const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
       if (s) {
@@ -59,46 +60,33 @@ export default function FreelancerLogin({
       }
     } catch (e) {}
     return initialTesters || [];
-  })();
+  };
 
-  const savedDev = (() => {
-    try {
-      const s = localStorage.getItem('dahej_real_v2_freelancer_profile') || localStorage.getItem('dahej_freelancer_profile');
-      if (s) return JSON.parse(s);
-    } catch (e) {}
-    return null;
-  })();
-
-  const savedTester = (() => {
-    try {
-      const s = localStorage.getItem('dahej_real_v2_tester_profile') || localStorage.getItem('dahej_tester_profile');
-      if (s) return JSON.parse(s);
-    } catch (e) {}
-    return null;
-  })();
+  const allStoredDevs = getFreshDevelopers();
+  const allStoredTesters = getFreshTesters();
 
   const demoAccounts = {
     freelancer: {
-      email: savedDev?.email || allStoredDevs[0]?.email || 'developer@hit-support.com',
+      email: 'developer@hit-support.com',
       password: 'dev123',
-      name: savedDev?.fullName || savedDev?.name || allStoredDevs[0]?.name || 'Developer',
-      id: savedDev?.freelancerId || savedDev?.id || allStoredDevs[0]?.id || 'DEV-DEMO',
+      name: 'Developer Demo',
+      id: 'DEV-DEMO',
       roleTitle: 'The HIT Support Developer Program',
       dashboardRoute: 'portal/dashboard'
     },
     tester: {
-      email: savedTester?.email || allStoredTesters[0]?.email || 'tester@hit-support.com',
+      email: 'tester@hit-support.com',
       password: 'tester123',
-      name: savedTester?.fullName || savedTester?.name || allStoredTesters[0]?.name || 'QA Tester',
-      id: savedTester?.testerId || savedTester?.id || allStoredTesters[0]?.id || 'TST-DEMO',
+      name: 'QA Tester Demo',
+      id: 'TST-DEMO',
       roleTitle: 'The HIT Support Tester Program',
       dashboardRoute: 'tester/dashboard'
     }
   };
 
-  // Login Form States
-  const [identifier, setIdentifier] = useState(() => demoAccounts[defaultRole]?.email || '');
-  const [password, setPassword] = useState(() => demoAccounts[defaultRole]?.email ? (demoAccounts[defaultRole]?.password || 'dev123') : '');
+  // Login Form States (Clean empty defaults - requires actual user credentials)
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -127,16 +115,19 @@ export default function FreelancerLogin({
   useEffect(() => {
     if (defaultRole) {
       setSelectedRole(defaultRole);
-      setIdentifier(demoAccounts[defaultRole]?.email || '');
-      setPassword(demoAccounts[defaultRole]?.password || '');
+      setIdentifier('');
+      setPassword('');
+      setLoginOtpSent(false);
+      setLoginOtpCode('');
+      setNoticeMessage(null);
     }
   }, [defaultRole]);
 
   // Handle switching role tabs (Option 1: Freelancer vs Option 2: Tester)
   const handleRoleChange = (role) => {
     setSelectedRole(role);
-    setIdentifier(demoAccounts[role].email);
-    setPassword(demoAccounts[role].password);
+    setIdentifier('');
+    setPassword('');
     setLoginOtpSent(false);
     setLoginOtpCode('');
     setNoticeMessage(null);
@@ -166,7 +157,7 @@ export default function FreelancerLogin({
 
   // Step 1: Handle Login Send OTP via Brevo Mailer
   const handleSendLoginOtp = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const idTrimmed = identifier.trim();
     const passTrimmed = password.trim();
 
@@ -186,126 +177,145 @@ export default function FreelancerLogin({
       return;
     }
 
-    if (!passTrimmed || passTrimmed.length < 4) {
+    if (!passTrimmed) {
       setNoticeMessage({
         type: 'warning',
-        text: 'Password must be at least 4 characters.'
+        text: 'Please enter your password.'
       });
       return;
     }
 
-    // Resolve target email and name
-    let targetEmail = idTrimmed;
-    let targetName = 'Member';
     const idLower = idTrimmed.toLowerCase();
+    const currentDevs = getFreshDevelopers();
+    const currentTesters = getFreshTesters();
+
+    // Search across developers and testers lists
+    const matchedDev = currentDevs.find(d => 
+      (d.email && d.email.toLowerCase().trim() === idLower) || 
+      (d.id && d.id.toLowerCase().trim() === idLower) || 
+      (d.developerId && d.developerId.toLowerCase().trim() === idLower) ||
+      (d.freelancerId && d.freelancerId.toLowerCase().trim() === idLower) ||
+      (d.name && d.name.toLowerCase().trim() === idLower) ||
+      (d.fullName && d.fullName.toLowerCase().trim() === idLower)
+    );
+
+    const matchedTester = currentTesters.find(t => 
+      (t.email && t.email.toLowerCase().trim() === idLower) || 
+      (t.id && t.id.toLowerCase().trim() === idLower) || 
+      (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
+      (t.name && t.name.toLowerCase().trim() === idLower) ||
+      (t.fullName && t.fullName.toLowerCase().trim() === idLower)
+    );
+
+    // Determine candidate member and correct role tab
+    let member = null;
+    let actualRole = selectedRole;
 
     if (selectedRole === 'freelancer') {
-      const dev = allStoredDevs.find(d => 
-        (d.email && d.email.toLowerCase().trim() === idLower) || 
-        (d.id && d.id.toLowerCase().trim() === idLower) || 
-        (d.name && d.name.toLowerCase().trim() === idLower) ||
-        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
-      );
-
-      if (dev) {
-        if (dev.status === 'Pending') {
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved, your login password and welcome credentials will be sent to ${dev.email}.`
-          });
-          return;
-        }
-
-        if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
-          });
-          return;
-        }
-
-        if (dev.email) {
-          targetEmail = dev.email;
-          targetName = dev.fullName || dev.name || 'Developer';
-        }
-
-        // Verify assigned password
-        const storedPassword = getMemberPassword(dev.id) || getMemberPassword(dev.email) || dev.password;
-        const isPasswordValid = storedPassword 
-          ? (passTrimmed === storedPassword || passTrimmed === 'dev123') 
-          : (passTrimmed === 'dev123' || passTrimmed.length >= 4);
-
-        if (!isPasswordValid) {
-          setNoticeMessage({
-            type: 'error',
-            text: 'Incorrect password. Please enter the password assigned by Admin and sent to your email upon approval.'
-          });
-          return;
-        }
-      } else {
-        if (passTrimmed !== 'dev123' && !getMemberPassword(idLower)) {
-          setNoticeMessage({
-            type: 'error',
-            text: 'Developer account not found or incorrect credentials. Please check your registered email or ID.'
-          });
-          return;
-        }
+      if (matchedDev) {
+        member = matchedDev;
+        actualRole = 'freelancer';
+      } else if (matchedTester) {
+        // User is a registered QA Tester who entered email on freelancer tab: auto switch
+        setSelectedRole('tester');
+        member = matchedTester;
+        actualRole = 'tester';
       }
     } else {
-      const tester = allStoredTesters.find(t => 
-        (t.email && t.email.toLowerCase().trim() === idLower) || 
-        (t.id && t.id.toLowerCase().trim() === idLower) || 
-        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
-        (t.name && t.name.toLowerCase().trim() === idLower) ||
-        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
-      );
-
-      if (tester) {
-        if (tester.status === 'Pending') {
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: Account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved, your login password and welcome credentials will be sent to ${tester.email}.`
-          });
-          return;
-        }
-
-        if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: This QA tester account is currently ${tester.status}. Please contact platform administration.`
-          });
-          return;
-        }
-
-        if (tester.email) {
-          targetEmail = tester.email;
-          targetName = tester.fullName || tester.name || 'QA Tester';
-        }
-
-        // Verify assigned password
-        const testerId = tester.testerId || tester.id;
-        const storedPassword = getMemberPassword(testerId) || getMemberPassword(tester.email) || tester.password;
-        const isPasswordValid = storedPassword 
-          ? (passTrimmed === storedPassword || passTrimmed === 'tester123') 
-          : (passTrimmed === 'tester123' || passTrimmed.length >= 4);
-
-        if (!isPasswordValid) {
-          setNoticeMessage({
-            type: 'error',
-            text: 'Incorrect password. Please enter the password assigned by Admin and sent to your email upon approval.'
-          });
-          return;
-        }
-      } else {
-        if (passTrimmed !== 'tester123' && !getMemberPassword(idLower)) {
-          setNoticeMessage({
-            type: 'error',
-            text: 'QA Tester account not found or incorrect credentials. Please check your registered email or ID.'
-          });
-          return;
-        }
+      if (matchedTester) {
+        member = matchedTester;
+        actualRole = 'tester';
+      } else if (matchedDev) {
+        // User is a registered Developer who entered email on tester tab: auto switch
+        setSelectedRole('freelancer');
+        member = matchedDev;
+        actualRole = 'freelancer';
       }
     }
+
+    // If not found in either active database, check if it's the demo baseline account
+    if (!member) {
+      if (idLower === 'developer@hit-support.com') {
+        member = {
+          id: 'DEV-DEMO',
+          name: 'Developer Demo',
+          fullName: 'Developer Demo',
+          email: 'developer@hit-support.com',
+          status: 'Active',
+          isDemo: true
+        };
+        actualRole = 'freelancer';
+      } else if (idLower === 'tester@hit-support.com') {
+        member = {
+          id: 'TST-DEMO',
+          name: 'QA Tester Demo',
+          fullName: 'QA Tester Demo',
+          email: 'tester@hit-support.com',
+          status: 'Active',
+          isDemo: true
+        };
+        actualRole = 'tester';
+      } else {
+        setNoticeMessage({
+          type: 'error',
+          text: 'Account not found. Please check your registered email or ID.'
+        });
+        return;
+      }
+    }
+
+    // Check account status
+    if (member.status === 'Pending') {
+      setNoticeMessage({
+        type: 'warning',
+        text: `Access Denied: Account "${member.fullName || member.name}" (${member.id || member.testerId}) is PENDING Admin approval. Once approved, your login password will be sent to ${member.email}.`
+      });
+      return;
+    }
+
+    if (member.status === 'Deactivated' || member.status === 'Rejected') {
+      setNoticeMessage({
+        type: 'warning',
+        text: `Access Denied: This account is currently ${member.status}. Please contact platform administration.`
+      });
+      return;
+    }
+
+    // STRICT ADMIN PASSWORD VALIDATION:
+    // Only the password assigned by Admin upon approval is permitted!
+    // NO random text, and NO fallback generic passwords (dev123/tester123) for real approved accounts.
+    const memberId = member.id || member.testerId || member.developerId || member.freelancerId;
+    const memberEmail = (member.email || '').toLowerCase().trim();
+
+    const adminAssignedPassword = 
+      getMemberPassword(memberId) || 
+      getMemberPassword(memberEmail) || 
+      member.password || 
+      null;
+
+    const isSeedDemoAccount = member.isDemo || (
+      !adminAssignedPassword && (
+        memberEmail === 'developer@hit-support.com' ||
+        memberEmail === 'tester@hit-support.com' ||
+        memberId === 'DEV-452' ||
+        memberId === 'DEV-892' ||
+        memberId === 'TST-781'
+      )
+    );
+
+    const expectedPassword = adminAssignedPassword || (isSeedDemoAccount ? (actualRole === 'tester' ? 'tester123' : 'dev123') : null);
+
+    if (!expectedPassword || passTrimmed !== expectedPassword) {
+      setNoticeMessage({
+        type: 'error',
+        text: 'Incorrect password! Please enter the exact password assigned by Admin upon approval (sent to your registered email).'
+      });
+      return;
+    }
+
+    // Dispatch verification OTP to registered email
+    const targetEmail = member.email || idTrimmed;
+    const targetName = member.fullName || member.name || (actualRole === 'tester' ? 'QA Tester' : 'Developer');
 
     setIsSendingLoginOtp(true);
     setNoticeMessage({
@@ -317,8 +327,8 @@ export default function FreelancerLogin({
       await sendOtpVerificationEmail({
         toEmail: targetEmail,
         toName: targetName,
-        role: selectedRole === 'tester' ? 'tester' : 'developer',
-        senderProfile: selectedRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
+        role: actualRole === 'tester' ? 'tester' : 'developer',
+        senderProfile: actualRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
       });
 
       setLoginOtpSent(true);
@@ -352,25 +362,29 @@ export default function FreelancerLogin({
     }
 
     const idLower = (identifier || '').toLowerCase().trim();
-    let targetEmail = idLower;
-    if (selectedRole === 'freelancer') {
-      const dev = allStoredDevs.find(d => 
-        (d.email && d.email.toLowerCase().trim() === idLower) || 
-        (d.id && d.id.toLowerCase().trim() === idLower) || 
-        (d.name && d.name.toLowerCase().trim() === idLower) ||
-        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
-      );
-      if (dev && dev.email) targetEmail = dev.email.toLowerCase().trim();
-    } else {
-      const tester = allStoredTesters.find(t => 
-        (t.email && t.email.toLowerCase().trim() === idLower) || 
-        (t.id && t.id.toLowerCase().trim() === idLower) || 
-        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
-        (t.name && t.name.toLowerCase().trim() === idLower) ||
-        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
-      );
-      if (tester && tester.email) targetEmail = tester.email.toLowerCase().trim();
-    }
+    const currentDevs = getFreshDevelopers();
+    const currentTesters = getFreshTesters();
+
+    const matchedDev = currentDevs.find(d => 
+      (d.email && d.email.toLowerCase().trim() === idLower) || 
+      (d.id && d.id.toLowerCase().trim() === idLower) || 
+      (d.developerId && d.developerId.toLowerCase().trim() === idLower) ||
+      (d.freelancerId && d.freelancerId.toLowerCase().trim() === idLower) ||
+      (d.name && d.name.toLowerCase().trim() === idLower) ||
+      (d.fullName && d.fullName.toLowerCase().trim() === idLower)
+    );
+
+    const matchedTester = currentTesters.find(t => 
+      (t.email && t.email.toLowerCase().trim() === idLower) || 
+      (t.id && t.id.toLowerCase().trim() === idLower) || 
+      (t.testerId && t.testerId.toLowerCase().trim() === idLower) || 
+      (t.name && t.name.toLowerCase().trim() === idLower) ||
+      (t.fullName && t.fullName.toLowerCase().trim() === idLower)
+    );
+
+    let member = (selectedRole === 'freelancer' ? matchedDev : matchedTester) || matchedDev || matchedTester;
+    let actualRole = matchedTester && !matchedDev ? 'tester' : (matchedDev ? 'freelancer' : selectedRole);
+    const targetEmail = (member && member.email) ? member.email.toLowerCase().trim() : idLower;
 
     const verifyResult = verifyOtpCode(targetEmail, trimmedOtp);
     if (!verifyResult.success) {
@@ -383,163 +397,63 @@ export default function FreelancerLogin({
 
     setLoginSuccess(true);
     let matchedUser = null;
-    let actualRole = selectedRole;
 
-    if (selectedRole === 'freelancer') {
-      const dev = allStoredDevs.find(d => 
-        (d.email && d.email.toLowerCase().trim() === idLower) || 
-        (d.id && d.id.toLowerCase().trim() === idLower) || 
-        (d.name && d.name.toLowerCase().trim() === idLower) ||
-        (d.fullName && d.fullName.toLowerCase().trim() === idLower)
-      );
+    if (actualRole === 'freelancer' && member) {
+      let devCustom = null;
+      try {
+        const cust = localStorage.getItem(`dahej_profile_${member.id}`);
+        if (cust) devCustom = JSON.parse(cust);
+      } catch (e) {}
 
-      if (dev) {
-        if (dev.status === 'Pending') {
-          setLoginSuccess(false);
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved by an Admin in the Developer Directory, platform access will be unlocked.`
-          });
-          return;
-        }
-        if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
-          setLoginSuccess(false);
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
-          });
-          return;
-        }
+      const devRefCode = (member.referralCode && !member.referralCode.startsWith('REF-00') ? member.referralCode : null) ||
+        (member.referenceId && !member.referenceId.startsWith('REF-00') ? member.referenceId : null) ||
+        (devCustom && devCustom.referralCode && !devCustom.referralCode.startsWith('REF-00') ? devCustom.referralCode : null) ||
+        'DS-REF-8902';
+      const devRefName = member.referenceName || (devCustom && devCustom.referenceName) || 'Reference Verification';
 
-        let devCustom = null;
-        try {
-          const cust = localStorage.getItem(`dahej_profile_${dev.id}`);
-          if (cust) devCustom = JSON.parse(cust);
-        } catch (e) {}
+      matchedUser = {
+        name: (devCustom && (devCustom.name || devCustom.fullName)) || member.fullName || member.name,
+        email: (devCustom && devCustom.email) || member.email,
+        id: member.id || member.developerId || member.freelancerId,
+        roleTitle: member.primarySkill || 'Full Stack Developer',
+        avatar: (devCustom && devCustom.avatar) || member.avatar,
+        referralCode: devRefCode,
+        referenceId: devRefCode,
+        referenceName: devRefName
+      };
+    } else if (actualRole === 'tester' && member) {
+      let testerCustom = null;
+      try {
+        const cust = localStorage.getItem(`dahej_tester_profile_${member.id || member.testerId}`);
+        if (cust) testerCustom = JSON.parse(cust);
+      } catch (e) {}
 
-        const devRefCode = (dev.referralCode && !dev.referralCode.startsWith('REF-00') ? dev.referralCode : null) ||
-          (dev.referenceId && !dev.referenceId.startsWith('REF-00') ? dev.referenceId : null) ||
-          (devCustom && devCustom.referralCode && !devCustom.referralCode.startsWith('REF-00') ? devCustom.referralCode : null) ||
-          (devCustom && devCustom.referenceId && !devCustom.referenceId.startsWith('REF-00') ? devCustom.referenceId : null) ||
-          'DS-REF-8902';
-        const devRefName = dev.referenceName || (devCustom && devCustom.referenceName) || 'Reference Verification';
+      const testerRefCode = (member.referralCode && !member.referralCode.startsWith('REF-00') ? member.referralCode : null) ||
+        (member.referenceId && !member.referenceId.startsWith('REF-00') ? member.referenceId : null) ||
+        (testerCustom && testerCustom.referralCode && !testerCustom.referralCode.startsWith('REF-00') ? testerCustom.referralCode : null) ||
+        'DS-TST-201';
+      const testerRefName = member.referenceName || (testerCustom && testerCustom.referenceName) || 'Reference Verification';
 
-        matchedUser = {
-          name: (devCustom && (devCustom.name || devCustom.fullName)) || dev.name,
-          email: (devCustom && devCustom.email) || dev.email,
-          id: dev.id,
-          roleTitle: dev.primarySkill || 'Full Stack Developer',
-          avatar: (devCustom && devCustom.avatar) || dev.avatar,
-          referralCode: devRefCode,
-          referenceId: devRefCode,
-          referenceName: devRefName
-        };
-      } else if (savedDev && (
-        (savedDev.email && savedDev.email.toLowerCase().trim() === idLower) ||
-        (savedDev.freelancerId && savedDev.freelancerId.toLowerCase().trim() === idLower) ||
-        (savedDev.id && savedDev.id.toLowerCase().trim() === idLower) ||
-        (savedDev.fullName && savedDev.fullName.toLowerCase().trim() === idLower) ||
-        (savedDev.name && savedDev.name.toLowerCase().trim() === idLower)
-      )) {
-        matchedUser = {
-          name: savedDev.fullName || savedDev.name,
-          email: savedDev.email,
-          id: savedDev.freelancerId || savedDev.id || 'DEV-DEMO',
-          roleTitle: savedDev.program || 'The HIT Support Developer Program',
-          avatar: savedDev.avatar,
-          referralCode: savedDev.referralCode || savedDev.referenceId || 'DS-REF-8902',
-          referenceId: savedDev.referralCode || savedDev.referenceId || 'DS-REF-8902',
-          referenceName: savedDev.referenceName || 'Reference Verification'
-        };
-      } else {
-        matchedUser = {
-          name: demoAccounts.freelancer.name,
-          email: identifier,
-          id: 'DEV-DEMO',
-          roleTitle: demoAccounts.freelancer.roleTitle,
-          referralCode: 'DS-REF-8902',
-          referenceId: 'DS-REF-8902',
-          referenceName: 'Reference Verification'
-        };
-      }
+      matchedUser = {
+        name: (testerCustom && (testerCustom.name || testerCustom.fullName)) || member.fullName || member.name,
+        email: (testerCustom && testerCustom.email) || member.email,
+        id: member.id || member.testerId,
+        roleTitle: member.specialization || member.role || 'QA Specialist',
+        avatar: (testerCustom && testerCustom.avatar) || member.avatar,
+        referralCode: testerRefCode,
+        referenceId: testerRefCode,
+        referenceName: testerRefName
+      };
     } else {
-      const tester = allStoredTesters.find(t => 
-        (t.email && t.email.toLowerCase().trim() === idLower) || 
-        (t.id && t.id.toLowerCase().trim() === idLower) || 
-        (t.testerId && t.testerId.toLowerCase().trim() === idLower) ||
-        (t.name && t.name.toLowerCase().trim() === idLower) ||
-        (t.fullName && t.fullName.toLowerCase().trim() === idLower)
-      );
-
-      if (tester) {
-        if (tester.status === 'Pending') {
-          setLoginSuccess(false);
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: QA Tester account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved by an Admin in the QA Tester Directory, access will be unlocked.`
-          });
-          return;
-        }
-        if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
-          setLoginSuccess(false);
-          setNoticeMessage({
-            type: 'warning',
-            text: `Access Denied: This tester account is currently ${tester.status}. Please contact platform administration.`
-          });
-          return;
-        }
-
-        let testerCustom = null;
-        try {
-          const cust = localStorage.getItem(`dahej_tester_profile_${tester.id}`);
-          if (cust) testerCustom = JSON.parse(cust);
-        } catch (e) {}
-
-        const testerRefCode = (tester.referralCode && !tester.referralCode.startsWith('REF-00') ? tester.referralCode : null) ||
-          (tester.referenceId && !tester.referenceId.startsWith('REF-00') ? tester.referenceId : null) ||
-          (testerCustom && testerCustom.referralCode && !testerCustom.referralCode.startsWith('REF-00') ? testerCustom.referralCode : null) ||
-          (testerCustom && testerCustom.referenceId && !testerCustom.referenceId.startsWith('REF-00') ? testerCustom.referenceId : null) ||
-          'DS-TST-201';
-        const testerRefName = tester.referenceName || (testerCustom && testerCustom.referenceName) || 'Reference Verification';
-
-        matchedUser = {
-          name: (testerCustom && (testerCustom.name || testerCustom.fullName)) || tester.name,
-          email: (testerCustom && testerCustom.email) || tester.email,
-          id: tester.id,
-          roleTitle: tester.specialization || tester.role || 'QA Specialist',
-          avatar: (testerCustom && testerCustom.avatar) || tester.avatar,
-          referralCode: testerRefCode,
-          referenceId: testerRefCode,
-          referenceName: testerRefName
-        };
-      } else if (savedTester && (
-        (savedTester.email && savedTester.email.toLowerCase().trim() === idLower) ||
-        (savedTester.testerId && savedTester.testerId.toLowerCase().trim() === idLower) ||
-        (savedTester.id && savedTester.id.toLowerCase().trim() === idLower) ||
-        (savedTester.fullName && savedTester.fullName.toLowerCase().trim() === idLower) ||
-        (savedTester.name && savedTester.name.toLowerCase().trim() === idLower)
-      )) {
-        matchedUser = {
-          name: savedTester.fullName || savedTester.name,
-          email: savedTester.email,
-          id: savedTester.testerId || savedTester.id || 'TST-DEMO',
-          roleTitle: savedTester.program || 'The HIT Support Tester Program',
-          avatar: savedTester.avatar,
-          referralCode: savedTester.referralCode || savedTester.referenceId || 'DS-TST-201',
-          referenceId: savedTester.referralCode || savedTester.referenceId || 'DS-TST-201',
-          referenceName: savedTester.referenceName || 'Reference Verification'
-        };
-      } else {
-        matchedUser = {
-          name: demoAccounts.tester.name,
-          email: identifier,
-          id: 'TST-DEMO',
-          roleTitle: demoAccounts.tester.roleTitle,
-          referralCode: 'DS-TST-201',
-          referenceId: 'DS-TST-201',
-          referenceName: 'Reference Verification'
-        };
-      }
+      matchedUser = {
+        name: demoAccounts[actualRole].name,
+        email: targetEmail,
+        id: demoAccounts[actualRole].id,
+        roleTitle: demoAccounts[actualRole].roleTitle,
+        referralCode: actualRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902',
+        referenceId: actualRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902',
+        referenceName: 'Reference Verification'
+      };
     }
 
     setNoticeMessage({
@@ -556,7 +470,7 @@ export default function FreelancerLogin({
     }, 750);
   };
 
-  // 1-Click Quick Demo Login for a specific developer or tester
+  // Quick Select specific account from directory pills
   const handleSelectSpecificUser = (role, userObj) => {
     if (userObj.status === 'Pending') {
       setNoticeMessage({
@@ -566,47 +480,29 @@ export default function FreelancerLogin({
       return;
     }
     setSelectedRole(role);
-    setIdentifier(userObj.email);
-    setPassword('dev123');
+    setIdentifier(userObj.email || userObj.id);
+    setPassword(''); // Never auto-fill password; user must enter their admin password
+    setLoginOtpSent(false);
     setLoginOtpCode('');
-    setLoginOtpSent(true);
-    setLoginSuccess(true);
-
-    const activeRefCode = (userObj.referralCode && !userObj.referralCode.startsWith('REF-00') ? userObj.referralCode : null) ||
-      (userObj.referenceId && !userObj.referenceId.startsWith('REF-00') ? userObj.referenceId : null) ||
-      (role === 'tester' ? 'DS-TST-201' : 'DS-REF-8902');
-    const activeRefName = userObj.referenceName || 'Reference Verification';
-
-    const userPayload = {
-      name: userObj.name,
-      email: userObj.email,
-      id: userObj.id,
-      roleTitle: userObj.primarySkill || userObj.specialization || userObj.role || 'Member',
-      avatar: userObj.avatar,
-      referralCode: activeRefCode,
-      referenceId: activeRefCode,
-      referenceName: activeRefName
-    };
-
     setNoticeMessage({
-      type: 'success',
-      text: `Verified as ${userObj.name} (${userObj.id}). Redirecting...`
+      type: 'info',
+      text: `Selected "${userObj.name}". Please enter the password assigned by Admin upon approval.`
     });
-
-    setTimeout(() => {
-      if (onLoginSuccess) {
-        onLoginSuccess(role, userPayload);
-      } else {
-        onNavigate(role === 'tester' ? 'tester/dashboard' : 'portal/dashboard');
-      }
-    }, 600);
   };
 
-  // 1-Click Quick Demo Login for the default role
+  // 1-Click Quick Demo Login for the default demo accounts
   const handleQuickDemoLogin = (role) => {
     const targetRole = role || selectedRole;
     const account = demoAccounts[targetRole];
-    handleSelectSpecificUser(targetRole, account);
+    setSelectedRole(targetRole);
+    setIdentifier(account.email);
+    setPassword(account.password);
+    setLoginOtpSent(false);
+    setLoginOtpCode('');
+    setNoticeMessage({
+      type: 'info',
+      text: `Demo credentials auto-filled for ${targetRole === 'tester' ? 'QA Tester' : 'Freelancer'}. Click "Continue with OTP Verification" to proceed.`
+    });
   };
 
   // Handle Forgot Password Send OTP via Brevo
@@ -689,10 +585,38 @@ export default function FreelancerLogin({
       return;
     }
 
+    // Save the new password to dahej_member_passwords
+    saveMemberPassword(null, resetEmail.trim(), newPassword);
+
+    // Also update any matching dev or tester in localStorage
+    try {
+      const eLower = resetEmail.trim().toLowerCase();
+      const rawDevs = localStorage.getItem('dahej_real_v2_developers');
+      if (rawDevs) {
+        const devs = JSON.parse(rawDevs);
+        const idx = devs.findIndex(d => d.email && d.email.toLowerCase() === eLower);
+        if (idx !== -1) {
+          devs[idx].password = newPassword;
+          localStorage.setItem('dahej_real_v2_developers', JSON.stringify(devs));
+          saveMemberPassword(devs[idx].id, devs[idx].email, newPassword);
+        }
+      }
+      const rawTesters = localStorage.getItem('dahej_real_v2_testers');
+      if (rawTesters) {
+        const testers = JSON.parse(rawTesters);
+        const idx = testers.findIndex(t => t.email && t.email.toLowerCase() === eLower);
+        if (idx !== -1) {
+          testers[idx].password = newPassword;
+          localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
+          saveMemberPassword(testers[idx].id || testers[idx].testerId, testers[idx].email, newPassword);
+        }
+      }
+    } catch (e) {}
+
     setResetSuccess(true);
     setNoticeMessage({
       type: 'success',
-      text: 'Your password has been reset successfully! You can now login.'
+      text: 'Your password has been reset successfully! You can now login with your new password.'
     });
   };
 

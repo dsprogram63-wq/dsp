@@ -932,13 +932,14 @@ export async function sendSponsorAuthorizationOtpEmail({
  */
 const STORAGE_KEY_PASSWORDS = 'dahej_member_passwords';
 
-export function saveMemberPassword(id, email, password) {
+export function saveMemberPassword(id, email, password, altId = null) {
   if (!password) return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
     const registry = raw ? JSON.parse(raw) : {};
     if (id) registry[id.toString().trim().toLowerCase()] = password;
     if (email) registry[email.toString().trim().toLowerCase()] = password;
+    if (altId) registry[altId.toString().trim().toLowerCase()] = password;
     localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(registry));
   } catch (e) {
     console.error('Failed to save member password:', e);
@@ -947,14 +948,45 @@ export function saveMemberPassword(id, email, password) {
 
 export function getMemberPassword(idOrEmail) {
   if (!idOrEmail) return null;
+  const key = idOrEmail.toString().trim().toLowerCase();
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
-    if (!raw) return null;
-    const registry = JSON.parse(raw);
-    return registry[idOrEmail.toString().trim().toLowerCase()] || null;
-  } catch (e) {
-    return null;
-  }
+    if (raw) {
+      const registry = JSON.parse(raw);
+      if (registry[key]) return registry[key];
+    }
+  } catch (e) {}
+
+  // Fallback: check member objects in developers storage
+  try {
+    const rawDevs = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+    if (rawDevs) {
+      const devs = JSON.parse(rawDevs);
+      const found = devs.find(d => 
+        (d.email && d.email.toLowerCase() === key) ||
+        (d.id && d.id.toLowerCase() === key) ||
+        (d.developerId && d.developerId.toLowerCase() === key) ||
+        (d.freelancerId && d.freelancerId.toLowerCase() === key)
+      );
+      if (found && found.password) return found.password;
+    }
+  } catch (e) {}
+
+  // Fallback: check member objects in testers storage
+  try {
+    const rawTesters = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+    if (rawTesters) {
+      const testers = JSON.parse(rawTesters);
+      const found = testers.find(t => 
+        (t.email && t.email.toLowerCase() === key) ||
+        (t.id && t.id.toLowerCase() === key) ||
+        (t.testerId && t.testerId.toLowerCase() === key)
+      );
+      if (found && found.password) return found.password;
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 /**

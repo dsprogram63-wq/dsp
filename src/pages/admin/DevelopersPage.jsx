@@ -169,7 +169,7 @@ export default function DevelopersPage({
       }
     }
 
-    saveMemberPassword(dev.id, dev.email, password);
+    saveMemberPassword(dev.id || dev.developerId, dev.email, password, dev.developerId);
 
     const assignedCount = getDevAssignedProjectsCount(dev);
     const assignedTrustId = dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: 'Active' }, developers);

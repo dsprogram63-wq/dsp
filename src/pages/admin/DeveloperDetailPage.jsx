@@ -145,7 +145,7 @@ export default function DeveloperDetailPage({
       }
     }
 
-    saveMemberPassword(developer.id, developer.email, password);
+    saveMemberPassword(developer.id || developer.developerId, developer.email, password, developer.developerId);
 
     const assignedTrustId = developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: 'Active' });
 

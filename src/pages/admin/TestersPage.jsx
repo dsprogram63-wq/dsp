@@ -162,7 +162,7 @@ export default function TestersPage({
       }
     }
 
-    saveMemberPassword(tester.id, tester.email, password);
+    saveMemberPassword(tester.id || tester.testerId, tester.email, password, tester.testerId);
 
     const assignedCount = getTesterAssignedProjectsCount(tester);
     const assignedTrustId = tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: 'Active' }, testers);
