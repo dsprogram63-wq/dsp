@@ -18,9 +18,11 @@ import StatsCard from '../../components/portal/StatsCard';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
+import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
 import './TestersPage.css';
 
 export default function TestersPage({ 
@@ -35,6 +37,7 @@ export default function TestersPage({
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
   const [deleteTargetTester, setDeleteTargetTester] = useState(null);
+  const [approveTargetTester, setApproveTargetTester] = useState(null);
 
   const filterTabs = ['All', 'Pending', 'Active', 'On Hold', 'Deactivated'];
 
@@ -96,6 +99,11 @@ export default function TestersPage({
   };
 
   const handleStatusChange = (tester, newStatus) => {
+    if ((newStatus === 'Active' || newStatus === 'Approved') && tester.status === 'Pending') {
+      setApproveTargetTester(tester);
+      return;
+    }
+
     const assignedCount = getTesterAssignedProjectsCount(tester);
     let newAvailability = tester.availability;
     if (newStatus === 'Deactivated' || newStatus === 'Rejected') {
@@ -126,8 +134,53 @@ export default function TestersPage({
   };
 
   const handleApprove = (tester) => {
-    handleStatusChange(tester, 'Active');
-    showToast(`QA Tester "${tester.name}" approved successfully!`);
+    setApproveTargetTester(tester);
+  };
+
+  const handleConfirmApproveTester = async ({ password, sendEmail }) => {
+    if (!approveTargetTester) return;
+    const tester = approveTargetTester;
+    let emailResult = { success: false };
+
+    if (sendEmail) {
+      try {
+        emailResult = await sendApprovalWelcomeEmail({
+          member: tester,
+          password,
+          role: 'tester'
+        });
+      } catch (err) {
+        console.error('Welcome email dispatch error:', err);
+      }
+    }
+
+    saveMemberPassword(tester.id, tester.email, password);
+
+    const assignedCount = getTesterAssignedProjectsCount(tester);
+    const assignedTrustId = tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: 'Active' }, testers);
+
+    const updated = {
+      ...tester,
+      status: 'Active',
+      availability: assignedCount > 0 ? 'Busy' : 'Available',
+      password,
+      referralTrustId: assignedTrustId,
+      applicationMessage: '',
+      aboutSelf: ''
+    };
+
+    if (onUpdateTester) {
+      onUpdateTester(updated);
+    }
+
+    setApproveTargetTester(null);
+    showToast(
+      sendEmail
+        ? (emailResult.success 
+            ? `✓ QA Tester "${tester.name}" approved & login credentials sent to ${tester.email}!` 
+            : `✓ QA Tester "${tester.name}" approved! (Email delivery queued to ${tester.email})`)
+        : `✓ QA Tester "${tester.name}" approved with login password!`
+    );
   };
 
   const handleReject = (tester) => {
@@ -717,6 +770,15 @@ export default function TestersPage({
         assignedProjectsCount={deleteTargetTester ? getTesterAssignedProjectsCount(deleteTargetTester) : 0}
         onClose={() => setDeleteTargetTester(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Approve QA Tester Password & Welcome Email Modal */}
+      <ApproveMemberModal
+        isOpen={Boolean(approveTargetTester)}
+        member={approveTargetTester}
+        role="tester"
+        onClose={() => setApproveTargetTester(null)}
+        onConfirm={handleConfirmApproveTester}
       />
     </div>
   );

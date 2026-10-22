@@ -81,6 +81,37 @@ export const initialDevelopers = [
     currentProjects: [],
     projectHistory: [],
     earningsHistory: []
+  },
+  {
+    id: 'DEV-519',
+    developerId: 'DEV-519',
+    freelancerId: 'DEV-519',
+    name: 'Vikram Sharma',
+    fullName: 'Vikram Sharma',
+    email: 'vikram.dev@dahejsupport.com',
+    mobile: '+91 98980 12345',
+    primarySkill: 'Full Stack MERN Developer',
+    experience: '3+ Years',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=160',
+    referenceName: 'Patel Het',
+    referralCode: 'DS-REF-8902',
+    referenceId: 'DS-REF-8902',
+    joiningDate: '21 Oct 2026',
+    status: 'Pending',
+    availability: 'Available',
+    applicationMessage: 'Full stack developer ready to take on client web projects immediately.',
+    activeProjectsCount: 0,
+    completedProjectsCount: 0,
+    revisionProjectsCount: 0,
+    currentProgress: 0,
+    totalEarnings: '₹0',
+    totalEarningsNum: 0,
+    pendingPayouts: '₹0',
+    pendingPayoutsNum: 0,
+    rating: 5.0,
+    currentProjects: [],
+    projectHistory: [],
+    earningsHistory: []
   }
 ];
 

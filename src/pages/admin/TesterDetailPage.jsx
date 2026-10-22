@@ -22,8 +22,10 @@ import {
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { initialTesters } from '../../data/testerMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
+import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
 import './TesterDetailPage.css';
 
 export default function TesterDetailPage({ 
@@ -38,6 +40,7 @@ export default function TesterDetailPage({
   const [activeTab, setActiveTab] = useState('current');
   const [toastMessage, setToastMessage] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const t = tester || initialTesters[0];
 
   if (!t) {
@@ -62,6 +65,11 @@ export default function TesterDetailPage({
   };
 
   const handleStatusChange = (newStatus) => {
+    if ((newStatus === 'Active' || newStatus === 'Approved') && t.status === 'Pending') {
+      setIsApproveModalOpen(true);
+      return;
+    }
+
     let newAvailability = t.availability;
     if (newStatus === 'Deactivated' || newStatus === 'Rejected') {
       newAvailability = 'Inactive';
@@ -93,6 +101,50 @@ export default function TesterDetailPage({
     } else {
       showToast(`QA Tester "${t.name}" status updated to "${newStatus}"`);
     }
+  };
+
+  const handleConfirmApproveTester = async ({ password, sendEmail }) => {
+    if (!t) return;
+    let emailResult = { success: false };
+
+    if (sendEmail) {
+      try {
+        emailResult = await sendApprovalWelcomeEmail({
+          member: t,
+          password,
+          role: 'tester'
+        });
+      } catch (err) {
+        console.error('Welcome email dispatch error:', err);
+      }
+    }
+
+    saveMemberPassword(t.id, t.email, password);
+
+    const assignedTrustId = t.referralTrustId || getOrAssignReferralTrustId({ ...t, status: 'Active' });
+
+    const updated = {
+      ...t,
+      status: 'Active',
+      availability: 'Available',
+      password,
+      referralTrustId: assignedTrustId,
+      applicationMessage: '',
+      aboutSelf: ''
+    };
+
+    if (onUpdateTester) {
+      onUpdateTester(updated);
+    }
+
+    setIsApproveModalOpen(false);
+    showToast(
+      sendEmail
+        ? (emailResult.success 
+            ? `✓ QA Tester "${t.name}" approved & login credentials sent to ${t.email}!` 
+            : `✓ QA Tester "${t.name}" approved! (Email delivery queued to ${t.email})`)
+        : `✓ QA Tester "${t.name}" approved with login password!`
+    );
   };
 
   const handleConfirmDelete = () => {
@@ -129,7 +181,7 @@ export default function TesterDetailPage({
               <div style={{ display: 'inline-flex', gap: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => handleStatusChange('Active')}
+                  onClick={() => setIsApproveModalOpen(true)}
                   className="btn btn-orange-primary"
                   style={{ padding: '6px 14px', fontSize: '0.8rem' }}
                 >
@@ -568,6 +620,15 @@ export default function TesterDetailPage({
         assignedProjectsCount={Array.isArray(t.currentProjects) ? t.currentProjects.length : (t.activeTestingProjects || 0)}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Approve QA Tester Modal */}
+      <ApproveMemberModal
+        isOpen={isApproveModalOpen}
+        member={t}
+        role="tester"
+        onClose={() => setIsApproveModalOpen(false)}
+        onConfirm={handleConfirmApproveTester}
       />
     </div>
   );

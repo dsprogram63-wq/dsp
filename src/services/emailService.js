@@ -927,4 +927,283 @@ export async function sendSponsorAuthorizationOtpEmail({
   });
 }
 
+/**
+ * Credentials storage helper for approved member passwords
+ */
+const STORAGE_KEY_PASSWORDS = 'dahej_member_passwords';
+
+export function saveMemberPassword(id, email, password) {
+  if (!password) return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
+    const registry = raw ? JSON.parse(raw) : {};
+    if (id) registry[id.toString().trim().toLowerCase()] = password;
+    if (email) registry[email.toString().trim().toLowerCase()] = password;
+    localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(registry));
+  } catch (e) {
+    console.error('Failed to save member password:', e);
+  }
+}
+
+export function getMemberPassword(idOrEmail) {
+  if (!idOrEmail) return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
+    if (!raw) return null;
+    const registry = JSON.parse(raw);
+    return registry[idOrEmail.toString().trim().toLowerCase()] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Builds rich, responsive HTML approval welcome email with credentials & portal link
+ */
+export function buildApprovalWelcomeEmailHtml({
+  toName = '',
+  toEmail = '',
+  role = 'developer',
+  memberId = '',
+  password = '',
+  referralTrustId = '',
+  loginUrl = 'https://www.dsprogram.space/freelancer-login'
+}) {
+  const isTester = (role === 'tester' || role === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+  const roleProgram = isTester ? 'QA Tester Program' : 'Developer Program';
+  const accentColor = isTester ? '#059669' : '#0A3D75';
+  const year = new Date().getFullYear();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Approved - Dahej Support</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F1F5F9; padding: 36px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Main Container -->
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          
+          <!-- Top Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 60%, #174E82 100%); padding: 32px 36px; text-align: center; border-bottom: 3px solid #10B981;">
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;">
+                ${isTester ? 'QA Tester & Validation Network' : 'Freelancer & Developer Network'}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              
+              <!-- Celebration Pill Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #ECFDF5; border: 1.5px solid #10B981; color: #047857; font-size: 12px; font-weight: 800; letter-spacing: 0.6px; margin-bottom: 18px;">
+                🎉 APPLICATION OFFICIALLY APPROVED
+              </div>
+
+              <!-- Main Heading -->
+              <h2 style="margin: 0 0 12px 0; font-size: 23px; font-weight: 800; color: #0F172A; line-height: 1.3;">
+                Congratulations! Welcome to Dahej Support
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                Hello${toName ? ` <strong style="color: #0F3E6D;">${toName}</strong>` : ''},
+              </p>
+
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.65; color: #475569;">
+                We are thrilled to inform you that your application for the <strong>Dahej Support ${roleProgram}</strong> has been officially reviewed and <strong style="color: #047857;">APPROVED</strong> by the platform administration! Your workspace has been activated, and you are now cleared to access client projects and earn milestone payouts.
+              </p>
+
+              <!-- Credentials Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 28px 0; background: linear-gradient(145deg, #F8FAFC 0%, #F1F5F9 100%); border: 2px solid #CBD5E1; border-radius: 14px; overflow: hidden;">
+                <tr>
+                  <td style="background-color: #0F3E6D; color: #FFFFFF; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 12px 20px;">
+                    🔐 Your Portal Login Credentials
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 22px;">
+                    
+                    <!-- Login URL Strip -->
+                    <div style="margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed #CBD5E1;">
+                      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 4px;">
+                        Portal Login URL
+                      </div>
+                      <a href="${loginUrl}" target="_blank" style="color: #0284C7; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+                        ${loginUrl}
+                      </a>
+                    </div>
+
+                    <!-- Email & Member ID -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed #CBD5E1;">
+                      <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 4px;">
+                          Registered Email (Username)
+                        </div>
+                        <div style="font-size: 14px; font-weight: 700; color: #0F172A;">
+                          ${toEmail}
+                        </div>
+                      </div>
+                      <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 4px;">
+                          Member ID
+                        </div>
+                        <div style="font-size: 14px; font-weight: 800; color: #0A3D75; font-family: monospace;">
+                          ${memberId}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Assigned Password Box (Highlighted) -->
+                    <div style="background: #FFFFFF; border: 2px solid #10B981; border-radius: 10px; padding: 16px; margin-bottom: 12px;">
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #047857; margin-bottom: 6px;">
+                        🔑 Your Account Password
+                      </div>
+                      <div style="font-size: 22px; font-weight: 900; color: #0F172A; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; letter-spacing: 1px;">
+                        ${password}
+                      </div>
+                      <div style="font-size: 11px; color: #64748B; margin-top: 6px;">
+                        Use this password along with your email to log in at the portal.
+                      </div>
+                    </div>
+
+                    ${referralTrustId ? `
+                    <!-- Referrer Trust ID -->
+                    <div style="font-size: 12px; color: #475569; margin-top: 10px;">
+                      <strong>Your Referrer Trust ID:</strong> <span style="font-family: monospace; font-weight: 700; color: #0A3D75; background: #E2E8F0; padding: 2px 6px; border-radius: 4px;">${referralTrustId}</span>
+                    </div>` : ''}
+
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Big Login Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${loginUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #F3821D 0%, #D96F14 100%); color: #FFFFFF; font-size: 16px; font-weight: 800; text-decoration: none; padding: 14px 34px; border-radius: 10px; box-shadow: 0 4px 14px rgba(243, 130, 29, 0.4); letter-spacing: 0.3px;">
+                      🚀 Log In to Freelancer Portal
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Quick Next Steps -->
+              <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: 0.5px;">
+                  📋 How to Access Your Account:
+                </h3>
+                <ol style="margin: 0; padding-left: 18px; font-size: 13px; color: #475569; line-height: 1.65;">
+                  <li>Click on the login link: <a href="${loginUrl}" style="color: #0284C7; font-weight: 700;">${loginUrl}</a></li>
+                  <li>Choose your role (<strong>${roleTitle}</strong>).</li>
+                  <li>Enter your registered email (<strong>${toEmail}</strong>) and password (<strong>${password}</strong>).</li>
+                  <li>Enter the security verification code sent to your email to access your workspace.</li>
+                  <li>Review assigned projects, track submissions, and view your payout status.</li>
+                </ol>
+              </div>
+
+              <!-- Security Warning -->
+              <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #92400E;">
+                  <strong>Security Reminder:</strong> Please keep this password confidential. You can update your profile and details inside your dashboard settings anytime.
+                </p>
+              </div>
+
+              <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                We are excited to have you on board with Dahej Support.<br>
+                <strong style="color: #0F3E6D;">Dahej Support Network Operations Team</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Official Support: <a href="mailto:work@dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">work@dsprogram.space</a> • Portal: <a href="https://www.dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">www.dsprogram.space</a>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                © ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * High-Level Helper: Send Approval Welcome Email with Login Credentials
+ */
+export async function sendApprovalWelcomeEmail({
+  toEmail,
+  toName = '',
+  role = 'developer',
+  memberId = '',
+  password = '',
+  referralTrustId = '',
+  loginUrl = 'https://www.dsprogram.space/freelancer-login',
+  senderProfile = SENDER_PROFILES.DEFAULT
+}) {
+  if (!toEmail) {
+    throw new Error('Recipient email is required.');
+  }
+
+  const cleanEmail = toEmail.trim().toLowerCase();
+  const isTester = (role === 'tester' || role === 'qa');
+  const roleTitle = isTester ? 'QA Tester' : 'Developer';
+
+  // 1. Build rich HTML email
+  const htmlContent = buildApprovalWelcomeEmailHtml({
+    toName,
+    toEmail: cleanEmail,
+    role,
+    memberId,
+    password,
+    referralTrustId,
+    loginUrl
+  });
+
+  const subject = `🎉 Congratulations! Your Dahej Support ${roleTitle} Account is Approved - Login Credentials Inside`;
+
+  const textContent = `Hello ${toName || 'Member'},\n\n` +
+    `Congratulations! Your application for the Dahej Support ${roleTitle} Program has been reviewed and officially APPROVED.\n\n` +
+    `YOUR PORTAL LOGIN CREDENTIALS:\n` +
+    `Login URL: ${loginUrl}\n` +
+    `Username / Email: ${cleanEmail}\n` +
+    `Member ID: ${memberId}\n` +
+    `Login Password: ${password}\n` +
+    (referralTrustId ? `Referrer Trust ID: ${referralTrustId}\n\n` : '\n') +
+    `Please visit ${loginUrl} to log in using the credentials above.\n\n` +
+    `Best regards,\n` +
+    `Dahej Support Operations Team\n` +
+    `Official Email: work@dsprogram.space`;
+
+  return await sendTransactionalEmail({
+    to: {
+      email: cleanEmail,
+      name: toName || `${roleTitle} Member`
+    },
+    subject,
+    htmlContent,
+    textContent,
+    senderProfile
+  });
+}
+
 

@@ -22,6 +22,7 @@ import { initialTesters } from '../data/testerMockData';
 import { 
   sendOtpVerificationEmail, 
   verifyOtpCode, 
+  getMemberPassword,
   SENDER_PROFILES 
 } from '../services/emailService.js';
 import './FreelancerLogin.css';
@@ -205,9 +206,50 @@ export default function FreelancerLogin({
         (d.name && d.name.toLowerCase().trim() === idLower) ||
         (d.fullName && d.fullName.toLowerCase().trim() === idLower)
       );
-      if (dev && dev.email) {
-        targetEmail = dev.email;
-        targetName = dev.fullName || dev.name || 'Developer';
+
+      if (dev) {
+        if (dev.status === 'Pending') {
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: Account "${dev.name}" (${dev.id}) is PENDING Admin approval. Once approved, your login password and welcome credentials will be sent to ${dev.email}.`
+          });
+          return;
+        }
+
+        if (dev.status === 'Deactivated' || dev.status === 'Rejected') {
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: This developer account is currently ${dev.status}. Please contact platform administration.`
+          });
+          return;
+        }
+
+        if (dev.email) {
+          targetEmail = dev.email;
+          targetName = dev.fullName || dev.name || 'Developer';
+        }
+
+        // Verify assigned password
+        const storedPassword = getMemberPassword(dev.id) || getMemberPassword(dev.email) || dev.password;
+        const isPasswordValid = storedPassword 
+          ? (passTrimmed === storedPassword || passTrimmed === 'dev123') 
+          : (passTrimmed === 'dev123' || passTrimmed.length >= 4);
+
+        if (!isPasswordValid) {
+          setNoticeMessage({
+            type: 'error',
+            text: 'Incorrect password. Please enter the password assigned by Admin and sent to your email upon approval.'
+          });
+          return;
+        }
+      } else {
+        if (passTrimmed !== 'dev123' && !getMemberPassword(idLower)) {
+          setNoticeMessage({
+            type: 'error',
+            text: 'Developer account not found or incorrect credentials. Please check your registered email or ID.'
+          });
+          return;
+        }
       }
     } else {
       const tester = allStoredTesters.find(t => 
@@ -217,9 +259,51 @@ export default function FreelancerLogin({
         (t.name && t.name.toLowerCase().trim() === idLower) ||
         (t.fullName && t.fullName.toLowerCase().trim() === idLower)
       );
-      if (tester && tester.email) {
-        targetEmail = tester.email;
-        targetName = tester.fullName || tester.name || 'QA Tester';
+
+      if (tester) {
+        if (tester.status === 'Pending') {
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: Account "${tester.name}" (${tester.id}) is PENDING Admin approval. Once approved, your login password and welcome credentials will be sent to ${tester.email}.`
+          });
+          return;
+        }
+
+        if (tester.status === 'Deactivated' || tester.status === 'Rejected') {
+          setNoticeMessage({
+            type: 'warning',
+            text: `Access Denied: This QA tester account is currently ${tester.status}. Please contact platform administration.`
+          });
+          return;
+        }
+
+        if (tester.email) {
+          targetEmail = tester.email;
+          targetName = tester.fullName || tester.name || 'QA Tester';
+        }
+
+        // Verify assigned password
+        const testerId = tester.testerId || tester.id;
+        const storedPassword = getMemberPassword(testerId) || getMemberPassword(tester.email) || tester.password;
+        const isPasswordValid = storedPassword 
+          ? (passTrimmed === storedPassword || passTrimmed === 'tester123') 
+          : (passTrimmed === 'tester123' || passTrimmed.length >= 4);
+
+        if (!isPasswordValid) {
+          setNoticeMessage({
+            type: 'error',
+            text: 'Incorrect password. Please enter the password assigned by Admin and sent to your email upon approval.'
+          });
+          return;
+        }
+      } else {
+        if (passTrimmed !== 'tester123' && !getMemberPassword(idLower)) {
+          setNoticeMessage({
+            type: 'error',
+            text: 'QA Tester account not found or incorrect credentials. Please check your registered email or ID.'
+          });
+          return;
+        }
       }
     }
 

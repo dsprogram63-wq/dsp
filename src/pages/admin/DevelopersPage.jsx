@@ -22,9 +22,11 @@ import StatsCard from '../../components/portal/StatsCard';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { exportToCSV } from '../../utils/exportUtils';
 import { initialDevelopers } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
+import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
 import './DevelopersPage.css';
 
 export default function DevelopersPage({ 
@@ -40,6 +42,7 @@ export default function DevelopersPage({
   const [toastMessage, setToastMessage] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [deleteTargetDev, setDeleteTargetDev] = useState(null);
+  const [approveTargetDev, setApproveTargetDev] = useState(null);
 
   const filterTabs = ['All', 'Pending', 'Active', 'On Hold', 'Deactivated'];
 
@@ -101,6 +104,12 @@ export default function DevelopersPage({
   };
 
   const handleStatusChange = (dev, newStatus) => {
+    if ((newStatus === 'Active' || newStatus === 'Approved') && dev.status === 'Pending') {
+      setApproveTargetDev(dev);
+      setOpenDropdownId(null);
+      return;
+    }
+
     const assignedCount = getDevAssignedProjectsCount(dev);
     let newAvailability = dev.availability;
     if (newStatus === 'Deactivated' || newStatus === 'Rejected') {
@@ -132,8 +141,53 @@ export default function DevelopersPage({
   };
 
   const handleApprove = (dev) => {
-    handleStatusChange(dev, 'Active');
-    showToast(`Developer "${dev.name}" approved successfully!`);
+    setApproveTargetDev(dev);
+  };
+
+  const handleConfirmApproveDev = async ({ password, sendEmail }) => {
+    if (!approveTargetDev) return;
+    const dev = approveTargetDev;
+    let emailResult = { success: false };
+
+    if (sendEmail) {
+      try {
+        emailResult = await sendApprovalWelcomeEmail({
+          member: dev,
+          password,
+          role: 'developer'
+        });
+      } catch (err) {
+        console.error('Welcome email dispatch error:', err);
+      }
+    }
+
+    saveMemberPassword(dev.id, dev.email, password);
+
+    const assignedCount = getDevAssignedProjectsCount(dev);
+    const assignedTrustId = dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: 'Active' }, developers);
+
+    const updated = {
+      ...dev,
+      status: 'Active',
+      availability: assignedCount > 0 ? 'Busy' : 'Available',
+      password,
+      referralTrustId: assignedTrustId,
+      applicationMessage: '',
+      aboutSelf: ''
+    };
+
+    if (onUpdateDeveloper) {
+      onUpdateDeveloper(updated);
+    }
+
+    setApproveTargetDev(null);
+    showToast(
+      sendEmail
+        ? (emailResult.success 
+            ? `✓ Developer "${dev.name}" approved & login credentials sent to ${dev.email}!` 
+            : `✓ Developer "${dev.name}" approved! (Email delivery queued to ${dev.email})`)
+        : `✓ Developer "${dev.name}" approved with login password!`
+    );
   };
 
   const handleReject = (dev) => {
@@ -722,6 +776,15 @@ export default function DevelopersPage({
         assignedProjectsCount={deleteTargetDev ? getDevAssignedProjectsCount(deleteTargetDev) : 0}
         onClose={() => setDeleteTargetDev(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Approve Developer Password & Welcome Email Modal */}
+      <ApproveMemberModal
+        isOpen={Boolean(approveTargetDev)}
+        member={approveTargetDev}
+        role="developer"
+        onClose={() => setApproveTargetDev(null)}
+        onConfirm={handleConfirmApproveDev}
       />
     </div>
   );

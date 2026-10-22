@@ -69,6 +69,7 @@ import {
   isProjectAssignedToTester,
   toTesterSafeProject 
 } from './services/testerApiService';
+import { saveMemberPassword } from './services/emailService';
 
 export default function App() {
   // Authentication session from LocalStorage
@@ -532,14 +533,24 @@ export default function App() {
     }));
   };
 
-  // Admin developer update (auto-cleans applicationMessage upon approval)
+  // Admin developer update (auto-cleans applicationMessage upon approval, saves password & persists)
   const handleUpdateDeveloper = (updatedDev) => {
     const isApproved = updatedDev.status === 'Active' || updatedDev.status === 'Approved';
     const sanitizedDev = {
       ...updatedDev,
       ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
     };
-    setDevelopers(prev => prev.map(d => d.id === sanitizedDev.id ? sanitizedDev : d));
+    if (sanitizedDev.password) {
+      saveMemberPassword(sanitizedDev.id, sanitizedDev.email, sanitizedDev.password);
+    }
+    setDevelopers(prev => {
+      const updated = prev.map(d => d.id === sanitizedDev.id ? sanitizedDev : d);
+      try {
+        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
+        localStorage.setItem('dahej_developers', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Admin delete developer (permanently removes developer and purges cached profiles, trust IDs & unassigns projects)
@@ -826,14 +837,24 @@ export default function App() {
     }));
   };
 
-  // Admin tester update (auto-cleans applicationMessage upon approval)
+  // Admin tester update (auto-cleans applicationMessage upon approval, saves password & persists)
   const handleUpdateTester = (updatedTester) => {
     const isApproved = updatedTester.status === 'Active' || updatedTester.status === 'Approved';
     const sanitizedTester = {
       ...updatedTester,
       ...(isApproved ? { applicationMessage: '', aboutSelf: '' } : {})
     };
-    setTesters(prev => prev.map(t => t.id === sanitizedTester.id ? sanitizedTester : t));
+    if (sanitizedTester.password) {
+      saveMemberPassword(sanitizedTester.id, sanitizedTester.email, sanitizedTester.password);
+    }
+    setTesters(prev => {
+      const updated = prev.map(t => t.id === sanitizedTester.id ? sanitizedTester : t);
+      try {
+        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
+        localStorage.setItem('dahej_testers', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Admin delete tester (permanently removes QA tester and purges cached profiles, trust IDs & unassigns projects)

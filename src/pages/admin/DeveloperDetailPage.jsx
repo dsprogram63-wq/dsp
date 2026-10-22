@@ -28,8 +28,10 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import AssignmentModal from '../../components/admin/AssignmentModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ApproveMemberModal from '../../components/admin/ApproveMemberModal';
 import { initialAdminProjects } from '../../data/adminMockData';
 import { getOrAssignReferralTrustId } from '../../utils/referralTrustUtils';
+import { sendApprovalWelcomeEmail, saveMemberPassword } from '../../services/emailService';
 import './DeveloperDetailPage.css';
 
 export default function DeveloperDetailPage({ 
@@ -46,6 +48,7 @@ export default function DeveloperDetailPage({
   const [selectedProjectToAssign, setSelectedProjectToAssign] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
 
   if (!developer) {
     return (
@@ -69,6 +72,11 @@ export default function DeveloperDetailPage({
   };
 
   const handleStatusChange = (newStatus) => {
+    if ((newStatus === 'Active' || newStatus === 'Approved') && developer.status === 'Pending') {
+      setIsApproveModalOpen(true);
+      return;
+    }
+
     let newAvailability = developer.availability;
     if (newStatus === 'Deactivated' || newStatus === 'Rejected') {
       newAvailability = 'Inactive';
@@ -113,6 +121,50 @@ export default function DeveloperDetailPage({
     }
   };
 
+  const handleConfirmApproveDev = async ({ password, sendEmail }) => {
+    if (!developer) return;
+    let emailResult = { success: false };
+
+    if (sendEmail) {
+      try {
+        emailResult = await sendApprovalWelcomeEmail({
+          member: developer,
+          password,
+          role: 'developer'
+        });
+      } catch (err) {
+        console.error('Welcome email dispatch error:', err);
+      }
+    }
+
+    saveMemberPassword(developer.id, developer.email, password);
+
+    const assignedTrustId = developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: 'Active' });
+
+    const updated = {
+      ...developer,
+      status: 'Active',
+      availability: 'Available',
+      password,
+      referralTrustId: assignedTrustId,
+      applicationMessage: '',
+      aboutSelf: ''
+    };
+
+    if (onUpdateDeveloper) {
+      onUpdateDeveloper(updated);
+    }
+
+    setIsApproveModalOpen(false);
+    showToast(
+      sendEmail
+        ? (emailResult.success 
+            ? `✓ Developer "${developer.name}" approved & login credentials sent to ${developer.email}!` 
+            : `✓ Developer "${developer.name}" approved! (Email delivery queued to ${developer.email})`)
+        : `✓ Developer "${developer.name}" approved with login password!`
+    );
+  };
+
   const handleConfirmDelete = () => {
     if (onDeleteDeveloper && developer) {
       onDeleteDeveloper(developer.id);
@@ -147,7 +199,7 @@ export default function DeveloperDetailPage({
               <div style={{ display: 'inline-flex', gap: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => handleStatusChange('Active')}
+                  onClick={() => setIsApproveModalOpen(true)}
                   className="btn btn-orange-primary"
                   style={{ padding: '6px 14px', fontSize: '0.8rem' }}
                 >
@@ -642,6 +694,15 @@ export default function DeveloperDetailPage({
         assignedProjectsCount={Array.isArray(developer.currentProjects) ? developer.currentProjects.length : (developer.activeProjectsCount || 0)}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Approve Developer Modal */}
+      <ApproveMemberModal
+        isOpen={isApproveModalOpen}
+        member={developer}
+        role="developer"
+        onClose={() => setIsApproveModalOpen(false)}
+        onConfirm={handleConfirmApproveDev}
       />
     </div>
   );
