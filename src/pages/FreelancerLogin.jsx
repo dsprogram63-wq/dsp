@@ -308,7 +308,7 @@ export default function FreelancerLogin({
     if (!expectedPassword || passTrimmed !== expectedPassword) {
       setNoticeMessage({
         type: 'error',
-        text: 'Incorrect password! Please enter the exact password assigned by Admin upon approval (sent to your registered email).'
+        text: 'Incorrect password.'
       });
       return;
     }
