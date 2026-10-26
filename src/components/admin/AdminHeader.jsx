@@ -287,7 +287,7 @@ export default function AdminHeader({
             <div className="header-popover profile-popover">
               <div className="profile-popover-head">
                 <span className="popover-user-name">{profile?.name || 'Keval Patel'}</span>
-                <span className="popover-user-email">{profile?.email || 'admin@dahejsupport.com'}</span>
+                <span className="popover-user-email">{profile?.email || 'dahejsupport@gmail.com'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
                   <span className="popover-fl-id" style={{ background: '#EBF3FA', color: '#0A3D75', margin: 0 }}>
                     ID: {profile?.id || 'DS-ADM-001'}

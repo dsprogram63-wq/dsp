@@ -293,7 +293,7 @@ export default function AdminDashboard({
         </div>
 
         <p className="trust-id-help-text">
-          Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to developers and QA testers applying to the program. When they apply, an authorization OTP will be sent to your admin email (<strong>admin@dahejsupport.com</strong>) to approve their reference.
+          Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to developers and QA testers applying to the program. When they apply, an authorization OTP will be sent to your admin email (<strong>dahejsupport@gmail.com</strong>) to approve their reference.
         </p>
       </div>
 

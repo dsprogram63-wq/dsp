@@ -25,7 +25,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [viewMode, setViewMode] = useState('login');
 
   // Login Form States
-  const [adminEmail, setAdminEmail] = useState('admin@dahejsupport.com');
+  const [adminEmail, setAdminEmail] = useState('dahejsupport@gmail.com');
   const [adminPassword, setAdminPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -38,7 +38,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Forgot Password States
-  const [resetEmail, setResetEmail] = useState('admin@dahejsupport.com');
+  const [resetEmail, setResetEmail] = useState('dahejsupport@gmail.com');
   const [resetOtpSent, setResetOtpSent] = useState(false);
   const [resetOtpCode, setResetOtpCode] = useState('');
   const [resetOtpTimer, setResetOtpTimer] = useState(0);
@@ -170,7 +170,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
 
   // Quick 1-Click Demo Login
   const handleQuickDemoAdminLogin = () => {
-    setAdminEmail('admin@dahejsupport.com');
+    setAdminEmail('dahejsupport@gmail.com');
     setAdminPassword('admin123');
     setOtpCode('');
     setOtpSent(true);
@@ -185,7 +185,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
         role: 'admin',
         user: {
           name: 'Keval Patel',
-          email: 'admin@dahejsupport.com',
+          email: 'dahejsupport@gmail.com',
           id: 'DS-ADM-001',
           roleTitle: 'Chief Operations Administrator'
         }
@@ -359,7 +359,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
             <div className="admin-demo-creds-row">
               <div className="admin-demo-cred">
                 <span className="demo-lbl">Mail:</span>
-                <span className="demo-val">admin@dahejsupport.com</span>
+                <span className="demo-val">dahejsupport@gmail.com</span>
               </div>
               <div className="admin-demo-cred">
                 <span className="demo-lbl">Pass:</span>
@@ -404,7 +404,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                     id="adminEmail"
                     type="email"
                     className="admin-input-field"
-                    placeholder="admin@dahejsupport.com"
+                    placeholder="dahejsupport@gmail.com"
                     value={adminEmail}
                     onChange={(e) => {
                       setAdminEmail(e.target.value);
@@ -569,7 +569,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                     id="resetEmail"
                     type="email"
                     className="admin-input-field"
-                    placeholder="admin@dahejsupport.com"
+                    placeholder="dahejsupport@gmail.com"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     disabled={resetOtpSent}

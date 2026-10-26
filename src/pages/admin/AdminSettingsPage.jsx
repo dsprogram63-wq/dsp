@@ -317,7 +317,7 @@ export default function AdminSettingsPage() {
           </div>
 
           <p className="trust-id-help-text">
-            Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to candidates applying to the Developer or QA Tester Program. When they apply, an authorization OTP will be sent to your administrator email (<strong>admin@dahejsupport.com</strong>) to approve their reference.
+            Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to candidates applying to the Developer or QA Tester Program. When they apply, an authorization OTP will be sent to your administrator email (<strong>dahejsupport@gmail.com</strong>) to approve their reference.
           </p>
         </div>
         </>

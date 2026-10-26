@@ -2,7 +2,7 @@
 
 export const initialAdminProfile = {
   name: 'Keval Patel',
-  email: 'admin@dahejsupport.com',
+  email: 'dahejsupport@gmail.com',
   role: 'Master Admin / Operations Lead',
   avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=160',
   id: 'DS-ADM-001',
