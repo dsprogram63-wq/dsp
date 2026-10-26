@@ -303,6 +303,11 @@ export default function App() {
               (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : null) ||
               'DS-TST-201';
 
+            // Self-heal status and referralTrustId for all registered testers
+            const isInactive = t.status === 'Deactivated' || t.status === 'Rejected';
+            const fixedStatus = isInactive ? t.status : 'Active';
+            const trustId = t.referralTrustId || (!isInactive ? getOrAssignReferralTrustId({ ...t, status: 'Active' }, parsed) : '');
+
             // Proactively heal any cached custom tester profile in localStorage
             try {
               if (t.id) {
@@ -310,10 +315,22 @@ export default function App() {
                 const testerProf = localStorage.getItem(testerKey);
                 if (testerProf) {
                   const p = JSON.parse(testerProf);
+                  let changed = false;
                   if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
                     p.referralCode = actualCode;
                     p.referenceId = actualCode;
                     p.referenceName = t.referenceName || p.referenceName || 'Reference Verification';
+                    changed = true;
+                  }
+                  if (trustId && (!p.referralTrustId || p.referralTrustId !== trustId)) {
+                    p.referralTrustId = trustId;
+                    changed = true;
+                  }
+                  if (fixedStatus && p.status !== fixedStatus) {
+                    p.status = fixedStatus;
+                    changed = true;
+                  }
+                  if (changed) {
                     localStorage.setItem(testerKey, JSON.stringify(p));
                   }
                 }
@@ -322,6 +339,8 @@ export default function App() {
 
             return {
               ...t,
+              status: fixedStatus,
+              referralTrustId: trustId || t.referralTrustId,
               referralCode: actualCode,
               referenceId: actualCode,
               referenceName: t.referenceName || 'Reference Verification'
@@ -769,6 +788,16 @@ export default function App() {
       'DS-TST-201';
     const activeTesterRefName = matchedTester.referenceName || (authUser && authUser.referenceName) || 'Reference Verification';
 
+    const activeTesterTrustId = matchedTester.referralTrustId ||
+      (authUser && authUser.referralTrustId) ||
+      getOrAssignReferralTrustId({
+        id: authId,
+        testerId: authId,
+        name: sanitizedName,
+        fullName: sanitizedName,
+        status: 'Active'
+      }, testers);
+
     const newProfile = {
       fullName: sanitizedName,
       name: sanitizedName,
@@ -777,6 +806,8 @@ export default function App() {
       // Permanent immutable fields strictly preserved
       testerId: authId,
       id: authId,
+      status: matchedTester.status || 'Active',
+      referralTrustId: activeTesterTrustId,
       joiningDate: matchedTester.joiningDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: matchedTester.experienceAtJoining !== undefined ? matchedTester.experienceAtJoining : (matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: matchedTester.experienceReferenceDate || matchedTester.joiningDate || '2025-02-10',
@@ -809,6 +840,8 @@ export default function App() {
           email: sanitizedEmail,
           mobile: sanitizedMobile,
           avatar: updatedAvatar,
+          status: matchedTester.status || 'Active',
+          referralTrustId: activeTesterTrustId,
           referralCode: activeTesterRefCode,
           referenceId: activeTesterRefCode,
           referenceName: activeTesterRefName
@@ -1005,7 +1038,14 @@ export default function App() {
       projectHistory: [],
       earningsHistory: []
     };
-    setDevelopers(prev => [newDev, ...prev]);
+    setDevelopers(prev => {
+      const updated = [newDev, ...prev.filter(d => d.id !== newId)];
+      try {
+        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
+        localStorage.setItem('dahej_developers', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Referral / QA Tester registration handler (dynamically adds to Pending Testers with saved avatar)
@@ -1054,7 +1094,14 @@ export default function App() {
       testingHistory: [],
       earningsHistory: []
     };
-    setTesters(prev => [newTester, ...prev]);
+    setTesters(prev => {
+      const updated = [newTester, ...prev.filter(t => t.id !== newId)];
+      try {
+        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
+        localStorage.setItem('dahej_testers', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Unified Navigation router
@@ -1343,12 +1390,43 @@ export default function App() {
       } catch (e) {}
     }
 
+    const activeTesterTrustId = (matchedTester && matchedTester.referralTrustId) ||
+      (savedCustomTesterProfile && savedCustomTesterProfile.referralTrustId) ||
+      (authTesterUser && authTesterUser.referralTrustId) ||
+      getOrAssignReferralTrustId({
+        id: finalTesterId,
+        testerId: finalTesterId,
+        name: finalTesterName,
+        fullName: finalTesterName,
+        status: 'Active'
+      }, testers);
+
+    // Synchronize referralTrustId in savedCustomTesterProfile if missing
+    if (finalTesterId) {
+      try {
+        const curProf = savedCustomTesterProfile || {};
+        if (!curProf.referralTrustId || curProf.referralTrustId !== activeTesterTrustId) {
+          localStorage.setItem(`dahej_tester_profile_${finalTesterId}`, JSON.stringify({
+            ...curProf,
+            name: finalTesterName,
+            fullName: finalTesterName,
+            testerId: finalTesterId,
+            id: finalTesterId,
+            referralTrustId: activeTesterTrustId,
+            status: 'Active'
+          }));
+        }
+      } catch (e) {}
+    }
+
     const currentLoggedInTester = {
       id: finalTesterId,
       testerId: finalTesterId,
       fullName: finalTesterName,
       name: finalTesterName,
       email: finalTesterEmail,
+      status: 'Active',
+      referralTrustId: activeTesterTrustId,
       mobile: (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || (matchedTester && matchedTester.mobile) || '',
       joiningDate: (matchedTester && matchedTester.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester && matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),

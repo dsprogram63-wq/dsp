@@ -1272,9 +1272,14 @@ export function buildRejectionEmailHtml({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Application Status Update - Dahej Support</title>
+  <title>Application Status Notice - Dahej Support</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+  <!-- Hidden Inbox Preheader -->
+  <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Official update regarding your application for the Dahej Support ${roleProgram}.
+  </div>
+
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 12px;">
     <tr>
       <td align="center">
@@ -1299,7 +1304,7 @@ export function buildRejectionEmailHtml({
               
               <!-- Status Pill Badge -->
               <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #F1F5F9; border: 1.5px solid #CBD5E1; color: #475569; font-size: 12px; font-weight: 800; letter-spacing: 0.6px; margin-bottom: 18px;">
-                APPLICATION STATUS UPDATE
+                APPLICATION STATUS NOTICE
               </div>
 
               <!-- Main Heading -->
@@ -1316,7 +1321,7 @@ export function buildRejectionEmailHtml({
               </p>
 
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.65; color: #334155;">
-                Our technical and operational review committee has carefully evaluated your profile against our active project volume and current platform requirements. At this time, we regret to inform you that we are <strong>unable to proceed with your application</strong> for enrollment into the active workspace.
+                Our technical and operational review committee has carefully evaluated your profile against our active project volume and current platform requirements. At this time, we regret to inform you that we are <strong>unable to proceed with your enrollment</strong> into the active cohort.
               </p>
 
               ${reason ? `
@@ -1358,7 +1363,7 @@ export function buildRejectionEmailHtml({
                       </tr>
                       <tr>
                         <td style="padding: 6px 0; color: #64748B;">Application Status:</td>
-                        <td style="padding: 6px 0; color: #DC2626; font-weight: 700;">Not Approved (Current Cycle)</td>
+                        <td style="padding: 6px 0; color: #B91C1C; font-weight: 700;">Application Reviewed &bull; Not Selected (Current Cycle)</td>
                       </tr>
                     </table>
                   </td>
@@ -1391,10 +1396,13 @@ export function buildRejectionEmailHtml({
           <tr>
             <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
               <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
-                Official Support: <a href="mailto:work@dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">work@dsprogram.space</a> • Portal: <a href="https://www.dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">www.dsprogram.space</a>
+                Official Support: <a href="mailto:work@dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">work@dsprogram.space</a> &bull; Portal: <a href="https://www.dsprogram.space" style="color: #0F3E6D; font-weight: 700; text-decoration: none;">www.dsprogram.space</a>
               </p>
-              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
-                © ${year} Dahej Support Freelancer Network. All rights reserved.
+              <p style="margin: 0 0 4px 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+              <p style="margin: 6px 0 0 0; font-size: 11px; color: #94A3B8; line-height: 1.5;">
+                Note: This is an official automated update. If this email appears in your Spam or Junk folder, please mark it as &ldquo;Report as not spam&rdquo; to ensure you receive future talent pool invitations.
               </p>
             </td>
           </tr>
@@ -1420,7 +1428,7 @@ export async function sendRejectionNoticeEmail({
   reason = '',
   senderProfile = SENDER_PROFILES.DEFAULT
 }) {
-  const cleanEmail = (toEmail || member?.email || '').trim().toLowerCase();
+  const cleanEmail = (toEmail || member?.email || member?.verifiedEmail || member?.contactEmail || '').trim().toLowerCase();
   const cleanName = (toName || member?.fullName || member?.name || '').trim();
   const cleanId = (memberId || member?.id || member?.testerId || member?.freelancerId || member?.developerId || '').trim();
   const resolvedRole = (role || (member?.role && member.role.toLowerCase().includes('tester') ? 'tester' : 'developer'));
@@ -1441,22 +1449,23 @@ export async function sendRejectionNoticeEmail({
     reason
   });
 
-  const subject = `Update regarding your Dahej Support ${roleTitle} application`;
+  const subject = `Notice: Dahej Support ${roleTitle} Application Status [ID: ${cleanId || 'Review'}]`;
 
   const textContent = `Dear ${cleanName || 'Applicant'},\n\n` +
     `Thank you for your interest in joining the Dahej Support ${roleTitle} Network and taking the time to share your application.\n\n` +
-    `After careful review of your application against our current project requirements and platform capacity, we regret to inform you that we are unable to accept your application at this time.\n\n` +
+    `After careful review of your application against our current project requirements and platform capacity, we regret to inform you that we are unable to accept your application into the active cohort at this time.\n\n` +
     (reason ? `Review Note: ${reason}\n\n` : '') +
-    `We maintain your profile in our records and encourage you to re-apply in future enrollment cycles as new client requirements open up.\n\n` +
-    `We wish you the best in your professional journey.\n\n` +
+    `We maintain your profile in our platform talent registry and encourage you to re-apply in future enrollment cycles as new client requirements open up.\n\n` +
+    `We wish you every success in your professional journey.\n\n` +
     `Best regards,\n` +
     `Dahej Support Operations Team\n` +
-    `Official Email: work@dsprogram.space`;
+    `Official Email: work@dsprogram.space\n` +
+    `Portal: https://www.dsprogram.space`;
 
   console.log(`[Dahej Support Mailer] Sending rejection notice email to ${cleanEmail} for ${cleanName} (${cleanId})...`);
 
   try {
-    return await sendTransactionalEmail({
+    const res = await sendTransactionalEmail({
       to: {
         email: cleanEmail,
         name: cleanName || `${roleTitle} Applicant`
@@ -1466,8 +1475,199 @@ export async function sendRejectionNoticeEmail({
       textContent,
       senderProfile
     });
+    return { success: true, messageId: res.messageId };
   } catch (err) {
     console.error(`[Dahej Support Mailer] Failed to send rejection email to ${cleanEmail}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Builds HTML Email for Project Submission Revision / Changes Requested
+ */
+export function buildProjectRevisionEmailHtml({
+  projectName,
+  projectId,
+  developerName,
+  revisionReason,
+  revisionTask,
+  revisionDocument,
+  freelancerPayout
+}) {
+  const year = new Date().getFullYear();
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Action Required: Project Revision Requested</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Action Required: Revisions have been requested for project ${projectName} [${projectId}].
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Project Delivery & Quality Review
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; font-size: 12px; font-weight: 800; margin-bottom: 18px;">
+                ⚠️ ACTION REQUIRED &bull; REVISION REQUESTED
+              </div>
+              <h2 style="margin: 0 0 14px 0; font-size: 20px; font-weight: 800; color: #0F172A;">
+                Revisions Requested for ${projectName}
+              </h2>
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                Hello <strong>${developerName || 'Developer'}</strong>,
+              </p>
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+                Your submission for project <strong>${projectName} (${projectId})</strong> has been reviewed by the Dahej Support Review Committee. A few items require correction before client approval and payout disbursement.
+              </p>
+
+              <!-- Feedback Box -->
+              <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: #92400E; text-transform: uppercase;">
+                  Review Feedback / Revision Notes:
+                </p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #78350F;">
+                  ${revisionReason || 'Please review defect items and update the submission.'}
+                </p>
+                ${revisionTask ? `
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #92400E;">
+                  <strong>Required Changes:</strong> ${revisionTask}
+                </p>
+                ` : ''}
+              </div>
+
+              <!-- Project Summary -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B; width: 140px;">Project:</td>
+                        <td style="padding: 5px 0; color: #0F172A; font-weight: 700;">${projectName} (${projectId})</td>
+                      </tr>
+                      ${freelancerPayout ? `
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B;">Pending Payout:</td>
+                        <td style="padding: 5px 0; color: #0A3D75; font-weight: 700;">${freelancerPayout}</td>
+                      </tr>
+                      ` : ''}
+                      ${revisionDocument ? `
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B;">Attached Guideline:</td>
+                        <td style="padding: 5px 0; color: #0F172A; font-weight: 600;">${typeof revisionDocument === 'object' ? revisionDocument.name : revisionDocument}</td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Please log in to your Freelancer Workspace to review the full defect checklist, complete the required updates, and resubmit for final approval.
+              </p>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="https://www.dsprogram.space/freelancer-login" style="display: inline-block; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px;">
+                  Open Freelancer Workspace &rarr;
+                </a>
+              </div>
+
+              <p style="margin: 20px 0 0 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                Best regards,<br>
+                <strong style="color: #0F3E6D;">Dahej Support Project Operations</strong>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 16px 36px; text-align: center;">
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * High-Level Helper: Send Project Revision Notice Email via Brevo
+ */
+export async function sendProjectRevisionNoticeEmail({
+  project,
+  revisionData = {},
+  senderProfile = SENDER_PROFILES.DEFAULT
+}) {
+  const cleanEmail = (project?.developerEmail || '').trim().toLowerCase();
+  const cleanName = (project?.developer || 'Developer').trim();
+
+  if (!cleanEmail) {
+    console.warn('[Dahej Support Mailer] No developer email found for revision notice dispatch.');
+    return { success: false, error: 'Developer email is missing on project.' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const revisionReason = revisionData.adminRejectionComment || revisionData.revisionReason || 'Changes requested by review committee';
+  const revisionTask = revisionData.revisionTask || '';
+  const revisionDocument = revisionData.adminRejectionDocument || null;
+  const freelancerPayout = project?.freelancerPayout || '';
+
+  const htmlContent = buildProjectRevisionEmailHtml({
+    projectName,
+    projectId,
+    developerName: cleanName,
+    revisionReason,
+    revisionTask,
+    revisionDocument,
+    freelancerPayout
+  });
+
+  const subject = `Action Required: Revision Requested on Project [${projectId}] - ${projectName}`;
+
+  const textContent = `Hello ${cleanName},\n\n` +
+    `Revisions have been requested for your project submission: ${projectName} (${projectId}).\n\n` +
+    `Feedback: ${revisionReason}\n` +
+    (revisionTask ? `Tasks: ${revisionTask}\n\n` : '\n') +
+    `Please log in to your Freelancer Workspace (https://www.dsprogram.space/freelancer-login) to complete the updates and resubmit.\n\n` +
+    `Best regards,\n` +
+    `Dahej Support Operations`;
+
+  console.log(`[Dahej Support Mailer] Sending project revision notice to ${cleanEmail} for project ${projectId}...`);
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: {
+        email: cleanEmail,
+        name: cleanName
+      },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile
+    });
+    return { success: true, messageId: res.messageId };
+  } catch (err) {
+    console.error(`[Dahej Support Mailer] Failed to send project revision email to ${cleanEmail}:`, err);
     return { success: false, error: err.message };
   }
 }

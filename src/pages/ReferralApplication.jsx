@@ -402,10 +402,8 @@ export default function ReferralApplication({
 
   // When initialRole prop changes externally
   useEffect(() => {
-    if (initialRole) {
-      const track = (initialRole === 'tester' || initialRole === 'qa') ? 'tester' : 'developer';
-      setSelectedRole(track);
-    }
+    const track = (initialRole === 'tester' || initialRole === 'qa') ? 'tester' : 'developer';
+    setSelectedRole(track);
   }, [initialRole]);
 
   // Countdown timer for Candidate Email OTP & Sponsor OTP across both tracks independently

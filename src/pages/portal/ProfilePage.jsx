@@ -69,7 +69,13 @@ export default function ProfilePage({
   const [copiedTrustId, setCopiedTrustId] = useState(false);
 
   // Reffer Trustable ID for approved developer
-  const myReferralTrustId = getOrAssignReferralTrustId(currentProfile);
+  const myReferralTrustId = currentProfile.referralTrustId || getOrAssignReferralTrustId({
+    ...currentProfile,
+    status: currentProfile.status || 'Active',
+    freelancerId: currentProfile.freelancerId || currentProfile.id || formData.freelancerId,
+    name: formData.fullName || currentProfile.name || currentProfile.fullName,
+    fullName: formData.fullName || currentProfile.name || currentProfile.fullName
+  });
 
   const handleCopyTrustId = () => {
     if (!myReferralTrustId) return;

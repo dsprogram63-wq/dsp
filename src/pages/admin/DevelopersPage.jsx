@@ -139,18 +139,23 @@ export default function DevelopersPage({
     setOpenDropdownId(null);
 
     if (newStatus === 'Rejected') {
-      showToast(`Developer "${dev.name}" application rejected. Sending status email...`);
+      showToast(`Developer "${dev.name}" rejected. Dispatching status notice to ${dev.email}...`);
       sendRejectionNoticeEmail({
         member: dev,
         toEmail: dev.email,
         toName: dev.fullName || dev.name,
-        memberId: dev.id,
+        memberId: dev.id || dev.developerId,
         role: 'developer'
       }).then((res) => {
         if (res?.success) {
-          showToast(`✓ Developer "${dev.name}" application rejected & notice email sent to ${dev.email}`);
+          showToast(`✓ Rejection email dispatched to ${dev.email} (Please check Inbox & Spam folder)`);
+        } else {
+          showToast(`⚠️ Could not send rejection email: ${res?.error || 'Dispatch error'}`);
         }
-      }).catch(err => console.error('Rejection email error:', err));
+      }).catch(err => {
+        console.error('Rejection email error:', err);
+        showToast(`⚠️ Rejection email error: ${err.message || 'Dispatch error'}`);
+      });
     } else {
       showToast(`Developer "${dev.name}" status updated to "${newStatus}"`);
     }
@@ -165,6 +170,9 @@ export default function DevelopersPage({
     const dev = approveTargetDev;
     let emailResult = { success: false };
 
+    const assignedCount = getDevAssignedProjectsCount(dev);
+    const assignedTrustId = dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: 'Active' }, developers);
+
     if (sendEmail) {
       try {
         emailResult = await sendApprovalWelcomeEmail({
@@ -174,7 +182,7 @@ export default function DevelopersPage({
           memberId: dev.id,
           password,
           role: 'developer',
-          referralTrustId: dev.referralTrustId
+          referralTrustId: assignedTrustId
         });
         if (!emailResult?.success) {
           throw new Error(emailResult?.error || 'Email dispatch failed.');
@@ -186,9 +194,6 @@ export default function DevelopersPage({
     }
 
     saveMemberPassword(dev.id || dev.developerId, dev.email, password, dev.developerId);
-
-    const assignedCount = getDevAssignedProjectsCount(dev);
-    const assignedTrustId = dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: 'Active' }, developers);
 
     const updated = {
       ...dev,

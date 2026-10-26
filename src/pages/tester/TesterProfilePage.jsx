@@ -67,8 +67,18 @@ export default function TesterProfilePage({
   const [toastMessage, setToastMessage] = useState(null);
   const [copiedTrustId, setCopiedTrustId] = useState(false);
 
-  // Reffer Trustable ID for approved QA tester
-  const myReferralTrustId = getOrAssignReferralTrustId(currentProfile);
+  // Reffer Trustable ID for QA tester
+  const resolvedTesterId = currentProfile.testerId || currentProfile.id || formData.testerId || 'TST-321';
+  const resolvedName = formData.fullName || currentProfile.fullName || currentProfile.name || 'QA Tester';
+
+  const myReferralTrustId = currentProfile.referralTrustId || getOrAssignReferralTrustId({
+    ...currentProfile,
+    id: resolvedTesterId,
+    testerId: resolvedTesterId,
+    name: resolvedName,
+    fullName: resolvedName,
+    status: 'Active'
+  });
 
   const handleCopyTrustId = () => {
     if (!myReferralTrustId) return;

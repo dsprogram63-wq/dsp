@@ -131,7 +131,7 @@ export default function TestersPage({
       onUpdateTester(updated);
     }
     if (newStatus === 'Rejected') {
-      showToast(`QA Tester "${tester.name}" application rejected. Sending status email...`);
+      showToast(`QA Tester "${tester.name}" rejected. Dispatching status notice to ${tester.email}...`);
       sendRejectionNoticeEmail({
         member: tester,
         toEmail: tester.email,
@@ -140,9 +140,14 @@ export default function TestersPage({
         role: 'tester'
       }).then((res) => {
         if (res?.success) {
-          showToast(`✓ QA Tester "${tester.name}" application rejected & notice email sent to ${tester.email}`);
+          showToast(`✓ Rejection email dispatched to ${tester.email} (Please check Inbox & Spam folder)`);
+        } else {
+          showToast(`⚠️ Could not send rejection email: ${res?.error || 'Dispatch error'}`);
         }
-      }).catch(err => console.error('Rejection email error:', err));
+      }).catch(err => {
+        console.error('Rejection email error:', err);
+        showToast(`⚠️ Rejection email error: ${err.message || 'Dispatch error'}`);
+      });
     } else {
       showToast(`QA Tester "${tester.name}" status updated to "${newStatus}"`);
     }
@@ -157,6 +162,9 @@ export default function TestersPage({
     const tester = approveTargetTester;
     let emailResult = { success: false };
 
+    const assignedCount = getTesterAssignedProjectsCount(tester);
+    const assignedTrustId = tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: 'Active' }, testers);
+
     if (sendEmail) {
       try {
         emailResult = await sendApprovalWelcomeEmail({
@@ -166,7 +174,7 @@ export default function TestersPage({
           memberId: tester.id || tester.testerId,
           password,
           role: 'tester',
-          referralTrustId: tester.referralTrustId
+          referralTrustId: assignedTrustId
         });
         if (!emailResult?.success) {
           throw new Error(emailResult?.error || 'Email dispatch failed.');
@@ -178,9 +186,6 @@ export default function TestersPage({
     }
 
     saveMemberPassword(tester.id || tester.testerId, tester.email, password, tester.testerId);
-
-    const assignedCount = getTesterAssignedProjectsCount(tester);
-    const assignedTrustId = tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: 'Active' }, testers);
 
     const updated = {
       ...tester,

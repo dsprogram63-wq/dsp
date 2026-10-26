@@ -96,7 +96,7 @@ export default function TesterDetailPage({
     }
 
     if (newStatus === 'Rejected') {
-      showToast(`QA Tester "${t.name}" application rejected. Sending status email...`);
+      showToast(`QA Tester "${t.name}" rejected. Dispatching status notice to ${t.email}...`);
       sendRejectionNoticeEmail({
         member: t,
         toEmail: t.email,
@@ -105,9 +105,14 @@ export default function TesterDetailPage({
         role: 'tester'
       }).then((res) => {
         if (res?.success) {
-          showToast(`✓ QA Tester "${t.name}" application rejected & notice email sent to ${t.email}`);
+          showToast(`✓ Rejection email dispatched to ${t.email} (Please check Inbox & Spam folder)`);
+        } else {
+          showToast(`⚠️ Could not send rejection email: ${res?.error || 'Dispatch error'}`);
         }
-      }).catch(err => console.error('Rejection email error:', err));
+      }).catch(err => {
+        console.error('Rejection email error:', err);
+        showToast(`⚠️ Rejection email error: ${err.message || 'Dispatch error'}`);
+      });
     } else {
       showToast(`QA Tester "${t.name}" status updated to "${newStatus}"`);
     }
@@ -116,6 +121,8 @@ export default function TesterDetailPage({
   const handleConfirmApproveTester = async ({ password, sendEmail }) => {
     if (!t) return;
     let emailResult = { success: false };
+
+    const assignedTrustId = t.referralTrustId || getOrAssignReferralTrustId({ ...t, status: 'Active' });
 
     if (sendEmail) {
       try {
@@ -126,7 +133,7 @@ export default function TesterDetailPage({
           memberId: t.id || t.testerId,
           password,
           role: 'tester',
-          referralTrustId: t.referralTrustId
+          referralTrustId: assignedTrustId
         });
         if (!emailResult?.success) {
           throw new Error(emailResult?.error || 'Email dispatch failed.');
@@ -138,8 +145,6 @@ export default function TesterDetailPage({
     }
 
     saveMemberPassword(t.id || t.testerId, t.email, password, t.testerId);
-
-    const assignedTrustId = t.referralTrustId || getOrAssignReferralTrustId({ ...t, status: 'Active' });
 
     const updated = {
       ...t,

@@ -26,6 +26,7 @@ import {
   saveMemberPassword,
   SENDER_PROFILES 
 } from '../services/emailService.js';
+import { getOrAssignReferralTrustId } from '../utils/referralTrustUtils.js';
 import './FreelancerLogin.css';
 
 export default function FreelancerLogin({ 
@@ -434,24 +435,41 @@ export default function FreelancerLogin({
         'DS-TST-201';
       const testerRefName = member.referenceName || (testerCustom && testerCustom.referenceName) || 'Reference Verification';
 
+      const testerTrustId = member.referralTrustId ||
+        (testerCustom && testerCustom.referralTrustId) ||
+        getOrAssignReferralTrustId({
+          id: member.id || member.testerId,
+          testerId: member.testerId || member.id,
+          name: member.name || member.fullName,
+          status: member.status || 'Active'
+        }, allStoredTesters);
+
       matchedUser = {
         name: (testerCustom && (testerCustom.name || testerCustom.fullName)) || member.fullName || member.name,
         email: (testerCustom && testerCustom.email) || member.email,
         id: member.id || member.testerId,
+        testerId: member.testerId || member.id,
         roleTitle: member.specialization || member.role || 'QA Specialist',
         avatar: (testerCustom && testerCustom.avatar) || member.avatar,
+        status: member.status || 'Active',
+        referralTrustId: testerTrustId,
         referralCode: testerRefCode,
         referenceId: testerRefCode,
         referenceName: testerRefName
       };
     } else {
+      const isTester = actualRole === 'tester';
       matchedUser = {
         name: demoAccounts[actualRole].name,
         email: targetEmail,
         id: demoAccounts[actualRole].id,
+        testerId: isTester ? demoAccounts[actualRole].id : undefined,
+        freelancerId: !isTester ? demoAccounts[actualRole].id : undefined,
         roleTitle: demoAccounts[actualRole].roleTitle,
-        referralCode: actualRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902',
-        referenceId: actualRole === 'tester' ? 'DS-TST-201' : 'DS-REF-8902',
+        status: 'Active',
+        referralTrustId: isTester ? 'RFF-TesterDemo-901' : 'RFF-DeveloperDemo-892',
+        referralCode: isTester ? 'DS-TST-201' : 'DS-REF-8902',
+        referenceId: isTester ? 'DS-TST-201' : 'DS-REF-8902',
         referenceName: 'Reference Verification'
       };
     }

@@ -26,6 +26,7 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import RevisionModal from '../../components/admin/RevisionModal';
 import ApproveModal from '../../components/admin/ApproveModal';
 import EmptyState from '../../components/portal/EmptyState';
+import { sendProjectRevisionNoticeEmail } from '../../services/emailService';
 import './ProjectReviewPage.css';
 
 export default function ProjectReviewPage({ 
@@ -145,8 +146,20 @@ export default function ProjectReviewPage({
         }
       ]
     });
+    // Dispatch real email notice to Developer
+    if (project.developerEmail) {
+      sendProjectRevisionNoticeEmail({
+        project,
+        revisionData: revData
+      }).then(res => {
+        if (res?.success) {
+          showToast(`✓ Changes requested & notice email sent to ${project.developerEmail} (Check Spam folder)`);
+        }
+      }).catch(err => console.error('Project revision email error:', err));
+    }
+
     showToast('Changes requested. Developer & QA Tester have been notified.');
-    setTimeout(() => onNavigate('admin/submitted-projects'), 800);
+    setTimeout(() => onNavigate('admin/submitted-projects'), 1200);
   };
 
   const handleApproveProject = (projectId) => {

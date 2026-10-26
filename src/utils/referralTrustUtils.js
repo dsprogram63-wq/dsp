@@ -93,43 +93,61 @@ export function saveTrustRegistry(registry) {
 export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   if (!member) return '';
   
-  // Only Approved / Active members can hold an active Referrer Trust ID
+  // Explicitly deactivated or rejected accounts cannot hold a Referrer Trust ID
   const statusLower = (member.status || '').toLowerCase();
-  const isExplicitlyInactive = statusLower === 'pending' || statusLower === 'rejected' || statusLower === 'deactivated';
-  if (isExplicitlyInactive) return '';
+  if (statusLower === 'rejected' || statusLower === 'deactivated') return '';
 
-  const isActive = statusLower === 'active' || statusLower === 'approved' || (!member.status && (member.referralTrustId || member.freelancerId || member.id === 'DEV-452' || member.id === 'DEV-892' || member.id === 'TST-781'));
-  if (!isActive) return '';
+  const memberId = member.id || member.developerId || member.testerId || member.freelancerId;
+  if (!memberId && !member.name && !member.fullName) return '';
 
-  const memberId = member.id || member.developerId || member.testerId;
   const registry = getTrustRegistry();
 
   if (member.referralTrustId && member.referralTrustId.startsWith('RFF-')) {
-    registry[memberId] = member.referralTrustId;
-    saveTrustRegistry(registry);
+    if (memberId) {
+      registry[memberId] = member.referralTrustId;
+      saveTrustRegistry(registry);
+    }
     return member.referralTrustId;
   }
 
-  if (registry[memberId] && registry[memberId].startsWith('RFF-')) {
+  if (memberId && registry[memberId] && registry[memberId].startsWith('RFF-')) {
     return registry[memberId];
   }
 
   // Pre-seed known core members with canonical IDs
-  if (memberId === 'DEV-452' || (member.name && member.name.toLowerCase() === 'patel het')) {
+  if (memberId === 'DEV-452' || (member.name && member.name.toLowerCase() === 'patel het' && (!memberId || memberId.startsWith('DEV-')))) {
     const canonical = 'RFF-PatelHet-523';
-    registry[memberId] = canonical;
+    if (memberId) registry[memberId] = canonical;
+    saveTrustRegistry(registry);
+    return canonical;
+  }
+  if (memberId === 'TST-317' || (member.name && member.name.toLowerCase() === 'patel het' && memberId?.startsWith('TST-'))) {
+    const canonical = 'RFF-PatelHet-317';
+    if (memberId) registry[memberId] = canonical;
     saveTrustRegistry(registry);
     return canonical;
   }
   if (memberId === 'DEV-892' || (member.name && member.name.toLowerCase() === 'saheb')) {
     const canonical = 'RFF-Saheb-892';
-    registry[memberId] = canonical;
+    if (memberId) registry[memberId] = canonical;
     saveTrustRegistry(registry);
     return canonical;
   }
   if (memberId === 'TST-781' || (member.name && member.name.toLowerCase() === 'hetvi')) {
     const canonical = 'RFF-Hetvi-781';
-    registry[memberId] = canonical;
+    if (memberId) registry[memberId] = canonical;
+    saveTrustRegistry(registry);
+    return canonical;
+  }
+  if (memberId === 'DEV-DEMO' || (member.name && member.name.toLowerCase() === 'developer demo')) {
+    const canonical = 'RFF-DeveloperDemo-892';
+    if (memberId) registry[memberId] = canonical;
+    saveTrustRegistry(registry);
+    return canonical;
+  }
+  if (memberId === 'TST-DEMO' || (member.name && member.name.toLowerCase().includes('tester demo'))) {
+    const canonical = 'RFF-TesterDemo-901';
+    if (memberId) registry[memberId] = canonical;
     saveTrustRegistry(registry);
     return canonical;
   }
@@ -142,11 +160,25 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   const usedNumbers = extractUsed3Digits(allUsedIds);
 
   const cleanName = formatProfileSlug(member.name || member.fullName);
-  const unique3 = generateUnique3Digit(usedNumbers);
+
+  // Preferred 3 digits from member ID if available and unused (e.g., TST-321 -> 321)
+  const idDigitsMatch = memberId ? String(memberId).match(/-(\d{3})$/) : null;
+  const preferredDigits = idDigitsMatch ? parseInt(idDigitsMatch[1], 10) : null;
+  
+  let unique3;
+  if (preferredDigits && !usedNumbers.has(preferredDigits)) {
+    unique3 = preferredDigits;
+    usedNumbers.add(preferredDigits);
+  } else {
+    unique3 = generateUnique3Digit(usedNumbers);
+  }
+
   const newTrustId = `RFF-${cleanName}-${unique3}`;
 
-  registry[memberId] = newTrustId;
-  saveTrustRegistry(registry);
+  if (memberId) {
+    registry[memberId] = newTrustId;
+    saveTrustRegistry(registry);
+  }
   return newTrustId;
 }
 
@@ -159,11 +191,11 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
 
   const processMember = (m, roleType) => {
     if (!m) return;
-    const isApproved = m.status === 'Active' || m.status === 'Approved';
-    if (!isApproved) return;
+    const statusLower = (m.status || '').toLowerCase();
+    if (statusLower === 'rejected' || statusLower === 'deactivated') return;
 
-    const id = m.id || m.developerId || m.testerId;
-    if (seenIds.has(id)) return;
+    const id = m.id || m.developerId || m.testerId || m.freelancerId;
+    if (!id || seenIds.has(id)) return;
     seenIds.add(id);
 
     const trustId = getOrAssignReferralTrustId(m, [...developers, ...testers]);
@@ -183,6 +215,23 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
 
   developers.forEach(d => processMember(d, 'developer'));
   testers.forEach(t => processMember(t, 'tester'));
+
+  // Ensure default canonical sponsors are always present even before any dynamic loads
+  const fallbackSeeds = [
+    { id: 'DEV-452', name: 'Patel Het', fullName: 'Patel Het', email: 'patelhet@dahejsupport.com', role: 'developer', roleTitle: 'Frontend Developer', trustId: 'RFF-PatelHet-523' },
+    { id: 'TST-781', name: 'Hetvi', fullName: 'Hetvi', email: 'hetvi@dahejsupport.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-Hetvi-781' },
+    { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' },
+    { id: 'DEV-892', name: 'Saheb', fullName: 'Saheb', email: 'saheb@dahejsupport.com', role: 'developer', roleTitle: 'Senior Full Stack Engineer', trustId: 'RFF-Saheb-892' },
+    { id: 'TST-DEMO', name: 'QA Tester Demo', fullName: 'QA Tester Demo', email: 'tester@hit-support.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-TesterDemo-901' },
+    { id: 'DEV-DEMO', name: 'Developer Demo', fullName: 'Developer Demo', email: 'developer@hit-support.com', role: 'developer', roleTitle: 'Full Stack Developer', trustId: 'RFF-DeveloperDemo-892' }
+  ];
+
+  fallbackSeeds.forEach(seed => {
+    if (!seenIds.has(seed.id)) {
+      seenIds.add(seed.id);
+      sponsors.push(seed);
+    }
+  });
 
   return sponsors;
 }

@@ -104,18 +104,23 @@ export default function DeveloperDetailPage({
     }
 
     if (newStatus === 'Rejected') {
-      showToast(`Developer "${developer.name}" application rejected. Sending status email...`);
+      showToast(`Developer "${developer.name}" rejected. Dispatching status notice to ${developer.email}...`);
       sendRejectionNoticeEmail({
         member: developer,
         toEmail: developer.email,
         toName: developer.fullName || developer.name,
-        memberId: developer.id,
+        memberId: developer.id || developer.developerId,
         role: 'developer'
       }).then((res) => {
         if (res?.success) {
-          showToast(`✓ Developer "${developer.name}" application rejected & notice email sent to ${developer.email}`);
+          showToast(`✓ Rejection email dispatched to ${developer.email} (Please check Inbox & Spam folder)`);
+        } else {
+          showToast(`⚠️ Could not send rejection email: ${res?.error || 'Dispatch error'}`);
         }
-      }).catch(err => console.error('Rejection email error:', err));
+      }).catch(err => {
+        console.error('Rejection email error:', err);
+        showToast(`⚠️ Rejection email error: ${err.message || 'Dispatch error'}`);
+      });
     } else {
       showToast(`Developer "${developer.name}" status updated to "${newStatus}"`);
     }
@@ -136,6 +141,8 @@ export default function DeveloperDetailPage({
     if (!developer) return;
     let emailResult = { success: false };
 
+    const assignedTrustId = developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: 'Active' });
+
     if (sendEmail) {
       try {
         emailResult = await sendApprovalWelcomeEmail({
@@ -145,7 +152,7 @@ export default function DeveloperDetailPage({
           memberId: developer.id,
           password,
           role: 'developer',
-          referralTrustId: developer.referralTrustId
+          referralTrustId: assignedTrustId
         });
         if (!emailResult?.success) {
           throw new Error(emailResult?.error || 'Email dispatch failed.');
@@ -157,8 +164,6 @@ export default function DeveloperDetailPage({
     }
 
     saveMemberPassword(developer.id || developer.developerId, developer.email, password, developer.developerId);
-
-    const assignedTrustId = developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: 'Active' });
 
     const updated = {
       ...developer,
