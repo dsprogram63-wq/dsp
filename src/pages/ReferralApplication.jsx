@@ -37,6 +37,11 @@ import {
 } from '../utils/referralTrustUtils.js';
 import { initialDevelopers } from '../data/adminMockData.js';
 import { initialTesters } from '../data/testerMockData.js';
+import { 
+  checkEmailAvailability, 
+  checkMobileAvailability, 
+  checkUsernameAvailability 
+} from '../utils/memberUniqueness.js';
 import './ReferralApplication.css';
 
 const DEFAULT_DEV_AVATAR = '';
@@ -443,16 +448,22 @@ export default function ReferralApplication({
     switch (name) {
       case 'fullName':
         if (!trimmed) {
-          return 'Full Name is required.';
+          return 'Username / Full Name is required.';
         }
         if (trimmed.length < 3) {
-          return 'Full Name must be at least 3 characters.';
+          return 'Username must be at least 3 characters.';
         }
         if (trimmed.length > 50) {
-          return 'Full Name cannot exceed 50 characters.';
+          return 'Username cannot exceed 50 characters.';
         }
         if (!/^[a-zA-Z\s.'-]+$/.test(trimmed)) {
-          return 'Full Name can only contain letters, spaces, dots, and hyphens (no numbers or symbols).';
+          return 'Username can only contain letters, spaces, dots, and hyphens (no numbers or symbols).';
+        }
+        {
+          const check = checkUsernameAvailability(trimmed);
+          if (!check.available) {
+            return check.message;
+          }
         }
         return '';
 
@@ -463,6 +474,12 @@ export default function ReferralApplication({
         // RFC standard email format check
         if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
           return 'Please enter a valid email address (e.g. name@example.com).';
+        }
+        {
+          const check = checkEmailAvailability(trimmed);
+          if (!check.available) {
+            return check.message;
+          }
         }
         return '';
 
@@ -479,6 +496,12 @@ export default function ReferralApplication({
         }
         if (!/^[6-9]\d{9}$/.test(digits)) {
           return '10-digit mobile number must start with 6, 7, 8, or 9.';
+        }
+        {
+          const check = checkMobileAvailability(digits);
+          if (!check.available) {
+            return check.message;
+          }
         }
         return '';
       }
@@ -630,8 +653,13 @@ export default function ReferralApplication({
       [name]: newVal
     }));
 
-    // Real-time error validation if field was touched
-    if (touched[name]) {
+    // Real-time error validation if field was touched or has significant input
+    const shouldValidateRealtime = touched[name] || 
+      (name === 'fullName' && sanitizedValue.trim().length >= 3) || 
+      (name === 'email' && sanitizedValue.includes('@')) || 
+      (name === 'mobileNumber' && sanitizedValue.length === 10);
+
+    if (shouldValidateRealtime) {
       const errorMsg = validateField(name, newVal);
       setErrors(prev => ({ ...prev, [name]: errorMsg }));
     }
@@ -652,6 +680,14 @@ export default function ReferralApplication({
       setTouched(prev => ({ ...prev, email: true }));
       setErrors(prev => ({ ...prev, email: emailErr }));
       alert(emailErr);
+      return;
+    }
+
+    const emailCheck = checkEmailAvailability(formData.email);
+    if (!emailCheck.available) {
+      setTouched(prev => ({ ...prev, email: true }));
+      setErrors(prev => ({ ...prev, email: emailCheck.message }));
+      alert(emailCheck.message);
       return;
     }
 
@@ -1088,6 +1124,8 @@ export default function ReferralApplication({
       if (onApplyTester) {
         onApplyTester({
           ...formData,
+          username: (formData.fullName || '').trim(),
+          name: (formData.fullName || '').trim(),
           referralCode: activeReferralCode,
           referenceId: activeReferralCode,
           referenceName: activeReferenceName,
@@ -1105,6 +1143,8 @@ export default function ReferralApplication({
       if (onApplyDeveloper) {
         onApplyDeveloper({
           ...formData,
+          username: (formData.fullName || '').trim(),
+          name: (formData.fullName || '').trim(),
           referralCode: activeReferralCode,
           referenceId: activeReferralCode,
           referenceName: activeReferenceName,
@@ -1343,12 +1383,12 @@ export default function ReferralApplication({
               <div className="form-group">
                 <label htmlFor="fullName" className="form-label">
                   <span className="form-label-left">
-                    Full Name <span className="required-star">*</span>
+                    Username / Full Name <span className="required-star">*</span>
                   </span>
                   {touched.fullName && !errors.fullName && formData.fullName.trim() && (
                     <span className="field-valid-badge">
                       <Check size={11} strokeWidth={3} />
-                      <span>Valid</span>
+                      <span>Unique & Available</span>
                     </span>
                   )}
                 </label>
@@ -1357,7 +1397,7 @@ export default function ReferralApplication({
                   name="fullName"
                   type="text"
                   className={`form-input ${touched.fullName && errors.fullName ? 'is-invalid' : touched.fullName && formData.fullName.trim() ? 'is-valid' : ''}`}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. johndoe or John Doe"
                   value={formData.fullName}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -1371,7 +1411,7 @@ export default function ReferralApplication({
                     <span>{errors.fullName}</span>
                   </div>
                 )}
-                <span className="field-hint-text">Letters only, min 3 characters</span>
+                <span className="field-hint-text">Letters only, min 3 characters (must be unique)</span>
               </div>
 
               <div className="form-group">
