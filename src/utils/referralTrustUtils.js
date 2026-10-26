@@ -115,6 +115,19 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   }
 
   // Pre-seed known core members with canonical IDs
+  if (
+    memberId === 'DS-ADM-001' || 
+    memberId === 'ADMIN' || 
+    member.role === 'admin' || 
+    (member.name && (member.name.toLowerCase() === 'dahej support' || member.name.toLowerCase() === 'keval patel'))
+  ) {
+    const canonical = 'RFF-DahejSupport-269';
+    if (memberId) registry[memberId] = canonical;
+    registry['DS-ADM-001'] = canonical;
+    registry['ADMIN'] = canonical;
+    saveTrustRegistry(registry);
+    return canonical;
+  }
   if (memberId === 'DEV-452' || (member.name && member.name.toLowerCase() === 'patel het' && (!memberId || memberId.startsWith('DEV-')))) {
     const canonical = 'RFF-PatelHet-523';
     if (memberId) registry[memberId] = canonical;
@@ -218,6 +231,8 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
 
   // Ensure default canonical sponsors are always present even before any dynamic loads
   const fallbackSeeds = [
+    { id: 'DS-ADM-001', name: 'Dahej Support', fullName: 'Dahej Support', email: 'admin@dahejsupport.com', role: 'admin', roleTitle: 'Platform Administrator / Master Sponsor', trustId: 'RFF-DahejSupport-269' },
+    { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'admin@dahejsupport.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' },
     { id: 'DEV-452', name: 'Patel Het', fullName: 'Patel Het', email: 'patelhet@dahejsupport.com', role: 'developer', roleTitle: 'Frontend Developer', trustId: 'RFF-PatelHet-523' },
     { id: 'TST-781', name: 'Hetvi', fullName: 'Hetvi', email: 'hetvi@dahejsupport.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-Hetvi-781' },
     { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' },
@@ -286,8 +301,21 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   const inputSlug = formatProfileSlug(cleanName).toLowerCase();
   const normalizedInputName = cleanName.replace(/\s+/g, ' ');
 
-  // STRICT FULL EXACT MATCH ONLY (DO NOT match prefixes like "Da" for "Dahej Support")
+  // Admin aliases support (Dahej Support, Keval Patel, Admin)
+  const isAdminMatch = matchedSponsor.role === 'admin' && (
+    normalizedInputName === 'dahej support' ||
+    normalizedInputName === 'keval patel' ||
+    normalizedInputName === 'admin' ||
+    normalizedInputName === 'administrator' ||
+    normalizedInputName === 'platform administrator' ||
+    inputSlug === 'dahejsupport' ||
+    inputSlug === 'kevalpatel' ||
+    inputSlug === 'admin'
+  );
+
+  // STRICT FULL EXACT MATCH ONLY
   const isNameMatch = 
+    isAdminMatch ||
     sponsorNameNorm === normalizedInputName ||
     sponsorFullNameNorm === normalizedInputName ||
     (sponsorSlug.length >= 3 && sponsorSlug === inputSlug);

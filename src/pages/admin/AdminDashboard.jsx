@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   FolderKanban, 
   Clock, 
@@ -12,7 +12,9 @@ import {
   CheckSquare2, 
   AlertOctagon,
   CheckCheck,
-  FileCheck2
+  FileCheck2,
+  Copy,
+  Check
 } from 'lucide-react';
 import StatsCard from '../../components/portal/StatsCard';
 import { initialAdminProjects, initialDevelopers } from '../../data/adminMockData';
@@ -25,6 +27,17 @@ export default function AdminDashboard({
   testers = initialTesters,
   onNavigate 
 }) {
+  const [copiedTrustId, setCopiedTrustId] = useState(false);
+  const adminTrustId = 'RFF-DahejSupport-269';
+
+  const handleCopyAdminTrustId = () => {
+    try {
+      navigator.clipboard?.writeText(adminTrustId);
+    } catch (e) {}
+    setCopiedTrustId(true);
+    setTimeout(() => setCopiedTrustId(false), 2500);
+  };
+
   const formatINR = (num) => '₹' + (num || 0).toLocaleString('en-IN');
 
   // ==========================================
@@ -252,6 +265,38 @@ export default function AdminDashboard({
 
   return (
     <div className="admin-dashboard-container">
+      {/* Admin Referral Authority Trust ID Banner */}
+      <div className="trust-id-showcase-box" style={{ marginTop: 0 }}>
+        <div className="trust-id-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} color="#38BDF8" />
+            <span style={{ fontSize: '0.9rem', fontWeight: '800', letterSpacing: '0.3px' }}>
+              Your Reffer Trustable ID
+            </span>
+          </div>
+          <span className="trust-id-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.35)', color: '#38BDF8' }}>
+            Master Authority Sponsor
+          </span>
+        </div>
+
+        <div className="trust-id-value-card">
+          <span className="trust-id-code">{adminTrustId}</span>
+          <button
+            type="button"
+            className="btn-copy-trust-id"
+            onClick={handleCopyAdminTrustId}
+            title="Copy Admin Referrer ID to share with new applicants"
+          >
+            {copiedTrustId ? <Check size={14} color="#16A34A" /> : <Copy size={14} />}
+            <span>{copiedTrustId ? 'Copied!' : 'Copy Referrer ID'}</span>
+          </button>
+        </div>
+
+        <p className="trust-id-help-text">
+          Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to developers and QA testers applying to the program. When they apply, an authorization OTP will be sent to your admin email (<strong>admin@dahejsupport.com</strong>) to approve their reference.
+        </p>
+      </div>
+
       {/* Quick Actions Bar */}
       <div className="admin-quick-actions-bar">
         <div className="quick-action-label">Quick Management Actions:</div>

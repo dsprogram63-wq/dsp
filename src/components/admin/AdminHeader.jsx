@@ -12,7 +12,8 @@ import {
   FolderKanban, 
   Users, 
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Copy
 } from 'lucide-react';
 import { initialAdminNotifications, initialAdminProjects, initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
@@ -29,6 +30,7 @@ export default function AdminHeader({
   onOpenMobileSidebar,
   onNavigate
 }) {
+  const [copiedHeaderTrustId, setCopiedHeaderTrustId] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -286,9 +288,37 @@ export default function AdminHeader({
               <div className="profile-popover-head">
                 <span className="popover-user-name">{profile?.name || 'Keval Patel'}</span>
                 <span className="popover-user-email">{profile?.email || 'admin@dahejsupport.com'}</span>
-                <span className="popover-fl-id" style={{ background: '#EBF3FA', color: '#0A3D75' }}>
-                  ID: {profile?.id || 'DS-ADM-001'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
+                  <span className="popover-fl-id" style={{ background: '#EBF3FA', color: '#0A3D75', margin: 0 }}>
+                    ID: {profile?.id || 'DS-ADM-001'}
+                  </span>
+                  <span style={{ fontSize: '0.68rem', fontWeight: '800', background: 'rgba(56, 189, 248, 0.12)', color: '#0284C7', padding: '2px 8px', borderRadius: '12px' }}>
+                    Sponsor Active
+                  </span>
+                </div>
+
+                <div style={{ marginTop: '10px', padding: '8px 10px', background: 'linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Admin Referrer ID</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', fontWeight: '800', color: '#38BDF8' }}>RFF-DahejSupport-269</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      try {
+                        navigator.clipboard?.writeText('RFF-DahejSupport-269');
+                      } catch (err) {}
+                      setCopiedHeaderTrustId(true);
+                      setTimeout(() => setCopiedHeaderTrustId(false), 2000);
+                    }}
+                    style={{ background: '#FFFFFF', border: 'none', borderRadius: '4px', padding: '4px 8px', color: '#0A2540', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                    title="Copy Admin Referrer ID"
+                  >
+                    {copiedHeaderTrustId ? <Check size={12} color="#16A34A" /> : <Copy size={12} />}
+                    <span>{copiedHeaderTrustId ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
               </div>
 
               <ul className="profile-popover-menu">

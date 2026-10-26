@@ -15,7 +15,9 @@ import {
   RefreshCw,
   User,
   Shield,
-  Activity
+  Activity,
+  Copy,
+  Check
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
@@ -27,6 +29,7 @@ const initialLoginLogs = [];
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
   const [toastMessage, setToastMessage] = useState(null);
+  const [copiedSettingsTrustId, setCopiedSettingsTrustId] = useState(false);
 
   // General Settings state with LocalStorage persistence
   const [generalSettings, setGeneralSettings] = useState(() => {
@@ -196,6 +199,7 @@ export default function AdminSettingsPage() {
 
       {/* 1. GENERAL OPERATIONS */}
       {activeTab === 'general' && (
+        <>
         <form onSubmit={handleSaveGeneralSettings} className="portal-card">
           <div className="portal-card-header">
             <h2 className="portal-card-title">
@@ -277,6 +281,46 @@ export default function AdminSettingsPage() {
             </button>
           </div>
         </form>
+
+        {/* Administrator Referral Authority Card */}
+        <div className="trust-id-showcase-box" style={{ marginTop: '20px' }}>
+          <div className="trust-id-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color="#38BDF8" />
+              <span style={{ fontSize: '0.9rem', fontWeight: '800', letterSpacing: '0.3px' }}>
+                Your Reffer Trustable ID
+              </span>
+            </div>
+            <span className="trust-id-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.35)', color: '#38BDF8' }}>
+              Master Authority Sponsor
+            </span>
+          </div>
+
+          <div className="trust-id-value-card">
+            <span className="trust-id-code">RFF-DahejSupport-269</span>
+            <button
+              type="button"
+              className="btn-copy-trust-id"
+              onClick={() => {
+                try {
+                  navigator.clipboard?.writeText('RFF-DahejSupport-269');
+                } catch (e) {}
+                setCopiedSettingsTrustId(true);
+                showToast('Admin Referrer ID "RFF-DahejSupport-269" copied to clipboard!');
+                setTimeout(() => setCopiedSettingsTrustId(false), 2500);
+              }}
+              title="Copy Admin Referrer ID to share with new applicants"
+            >
+              {copiedSettingsTrustId ? <Check size={14} color="#16A34A" /> : <Copy size={14} />}
+              <span>{copiedSettingsTrustId ? 'Copied!' : 'Copy Referrer ID'}</span>
+            </button>
+          </div>
+
+          <p className="trust-id-help-text">
+            Give this ID and Reference Name (<strong>Dahej Support</strong> or <strong>Keval Patel</strong>) to candidates applying to the Developer or QA Tester Program. When they apply, an authorization OTP will be sent to your administrator email (<strong>admin@dahejsupport.com</strong>) to approve their reference.
+          </p>
+        </div>
+        </>
       )}
 
       {/* 2. LOGIN LOGS (NEW SECTION) */}
