@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { sendOtpVerificationEmail, verifyOtpCode } from '../../services/emailService.js';
+import { recordLoginEvent } from '../../utils/loginLogger.js';
 import './AdminLoginPage.css';
 
 export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
@@ -137,6 +138,14 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
 
     const verifyResult = verifyOtpCode(adminEmail.trim(), cleanOtp);
     if (!verifyResult.success) {
+      recordLoginEvent({
+        user: 'Keval Patel',
+        email: adminEmail.trim(),
+        role: 'Master Admin',
+        status: 'Failed',
+        authMethod: 'Email + Password + OTP',
+        reason: verifyResult.error || 'Invalid 2FA OTP code'
+      });
       setNoticeMessage({
         type: 'error',
         text: verifyResult.error || 'Invalid 2FA OTP code. Please enter the code from your email.'
@@ -145,6 +154,13 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
     }
 
     setLoginSuccess(true);
+    recordLoginEvent({
+      user: 'Keval Patel',
+      email: adminEmail.trim(),
+      role: 'Master Admin',
+      status: 'Success',
+      authMethod: 'Email + Password + OTP'
+    });
     setNoticeMessage({
       type: 'success',
       text: 'Administrator credentials & 2FA OTP verified! Launching Admin Operations Panel...'
@@ -175,6 +191,13 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
     setOtpCode('');
     setOtpSent(true);
     setLoginSuccess(true);
+    recordLoginEvent({
+      user: 'Keval Patel',
+      email: 'dahejsupport@gmail.com',
+      role: 'Master Admin',
+      status: 'Success',
+      authMethod: '1-Click Demo Quick Login'
+    });
     setNoticeMessage({
       type: 'success',
       text: 'Admin authorization granted! Redirecting to Admin Dashboard...'

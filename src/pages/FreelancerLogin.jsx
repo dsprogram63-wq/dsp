@@ -27,6 +27,7 @@ import {
   SENDER_PROFILES 
 } from '../services/emailService.js';
 import { getOrAssignReferralTrustId } from '../utils/referralTrustUtils.js';
+import { recordLoginEvent } from '../utils/loginLogger.js';
 import './FreelancerLogin.css';
 
 export default function FreelancerLogin({ 
@@ -307,6 +308,14 @@ export default function FreelancerLogin({
     const expectedPassword = adminAssignedPassword || (isSeedDemoAccount ? (actualRole === 'tester' ? 'tester123' : 'dev123') : null);
 
     if (!expectedPassword || passTrimmed !== expectedPassword) {
+      recordLoginEvent({
+        user: member ? (member.fullName || member.name) : idTrimmed,
+        email: (member && member.email) || idTrimmed,
+        role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
+        status: 'Failed',
+        authMethod: 'Email + Password',
+        reason: 'Incorrect Password'
+      });
       setNoticeMessage({
         type: 'error',
         text: 'Incorrect password.'
@@ -389,6 +398,14 @@ export default function FreelancerLogin({
 
     const verifyResult = verifyOtpCode(targetEmail, trimmedOtp);
     if (!verifyResult.success) {
+      recordLoginEvent({
+        user: member ? (member.fullName || member.name) : targetEmail,
+        email: targetEmail,
+        role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
+        status: 'Failed',
+        authMethod: 'Email + Password + OTP',
+        reason: verifyResult.error || 'Invalid or Expired OTP'
+      });
       setNoticeMessage({
         type: 'error',
         text: verifyResult.error || 'Invalid OTP. Please check the code in your email.'
@@ -477,6 +494,14 @@ export default function FreelancerLogin({
     setNoticeMessage({
       type: 'success',
       text: `Authentication successful as ${matchedUser.name}! Launching ${actualRole === 'tester' ? 'QA Tester' : 'Freelancer'} Workspace...`
+    });
+
+    recordLoginEvent({
+      user: matchedUser.name,
+      email: matchedUser.email,
+      role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
+      status: 'Success',
+      authMethod: 'Email + Password + OTP'
     });
 
     setTimeout(() => {

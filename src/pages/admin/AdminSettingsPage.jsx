@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   Bell, 
@@ -22,9 +22,8 @@ import {
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
 import { exportToCSV } from '../../utils/exportUtils';
+import { getLoginLogs } from '../../utils/loginLogger';
 import '../portal/SettingsPage.css';
-
-const initialLoginLogs = [];
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
@@ -66,10 +65,23 @@ export default function AdminSettingsPage() {
   });
 
   // Login logs state & filters
-  const [logsList, setLogsList] = useState(initialLoginLogs);
+  const [logsList, setLogsList] = useState(getLoginLogs);
   const [logSearch, setLogSearch] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
+
+  // Reactively sync logs whenever any login event occurs across windows/tabs
+  useEffect(() => {
+    const syncLogs = () => {
+      setLogsList(getLoginLogs());
+    };
+    window.addEventListener('dahej_login_logs_updated', syncLogs);
+    window.addEventListener('storage', syncLogs);
+    return () => {
+      window.removeEventListener('dahej_login_logs_updated', syncLogs);
+      window.removeEventListener('storage', syncLogs);
+    };
+  }, []);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -151,7 +163,9 @@ export default function AdminSettingsPage() {
   };
 
   const handleRefreshLogs = () => {
-    showToast('Login logs refreshed to latest events.');
+    const fresh = getLoginLogs();
+    setLogsList(fresh);
+    showToast(`Login logs refreshed (${fresh.length} security events tracked).`);
   };
 
   const successCount = logsList.filter(l => l.status === 'Success').length;
