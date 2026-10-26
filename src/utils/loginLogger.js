@@ -52,18 +52,146 @@ export function getClientDeviceDetails() {
   };
 }
 
+export const STORAGE_KEY_VERIFIED_LOCATION = 'dahej_verified_device_location';
+
+/**
+ * Retrieve any currently verified location from storage
+ */
+export function getVerifiedLocation() {
+  try {
+    const session = sessionStorage.getItem(STORAGE_KEY_VERIFIED_LOCATION);
+    if (session) {
+      const parsed = JSON.parse(session);
+      if (parsed && parsed.latitude && parsed.longitude) return parsed;
+    }
+  } catch (e) {}
+
+  try {
+    const local = localStorage.getItem(STORAGE_KEY_CACHED_IP);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (parsed && parsed.latitude && parsed.longitude) return parsed;
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Mandatory Exact Device Location Requester
+ * Prompts native browser Geolocation permission dialog.
+ * If user DENIES or geolocation is unavailable, rejects with Error.
+ * If ALLOWED, captures high-accuracy coordinates, reverses geocode to exact locality/city,
+ * fetches public IP, caches result, and returns location data.
+ */
+export async function requireExactDeviceLocation() {
+  if (typeof window === 'undefined' || !navigator || !navigator.geolocation) {
+    const err = new Error('Geolocation is not supported by your browser. Please use Chrome, Edge, or Safari.');
+    err.code = 0;
+    throw err;
+  }
+
+  // 1. Fetch public IP
+  let publicIp = '42.104.160.78';
+  try {
+    const ipRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
+    if (ipRes.ok) {
+      const data = await ipRes.json();
+      if (data && data.ip) publicIp = data.ip;
+    }
+  } catch (e) {
+    try {
+      const ipapiRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(2000) });
+      if (ipapiRes.ok) {
+        const d = await ipapiRes.json();
+        if (d && d.ip) publicIp = d.ip;
+      }
+    } catch (err) {}
+  }
+
+  // 2. Request native browser GPS permission
+  const position = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (geoErr) => {
+        let msg = 'Exact device location access is mandatory to login.';
+        if (geoErr.code === 1) { // PERMISSION_DENIED
+          msg = 'Location Access Denied: Browser location permission is required for security verification. Please click the lock icon in your browser address bar, Allow Location, and try again.';
+        } else if (geoErr.code === 2) { // POSITION_UNAVAILABLE
+          msg = 'Device location is currently unavailable. Please ensure GPS/Location service is enabled on your device.';
+        } else if (geoErr.code === 3) { // TIMEOUT
+          msg = 'Location request timed out. Please check your network and retry.';
+        }
+        const error = new Error(msg);
+        error.code = geoErr.code;
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
+    );
+  });
+
+  const { latitude, longitude, accuracy } = position.coords;
+
+  // 3. Reverse geocode to exact locality/city & state
+  let locationName = `${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
+  try {
+    const geoRes = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+      { signal: AbortSignal.timeout(3500) }
+    );
+    if (geoRes.ok) {
+      const gData = await geoRes.json();
+      const parts = [
+        gData.locality || gData.city || gData.principalSubdivisionDistrict,
+        gData.principalSubdivision || gData.countryName
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        locationName = parts.join(', ');
+      }
+    }
+  } catch (e) {}
+
+  const formattedLat = `${Math.abs(latitude).toFixed(4)}° ${latitude >= 0 ? 'N' : 'S'}`;
+  const formattedLng = `${Math.abs(longitude).toFixed(4)}° ${longitude >= 0 ? 'E' : 'W'}`;
+
+  const verifiedLocation = {
+    latitude: formattedLat,
+    longitude: formattedLng,
+    rawLatitude: latitude,
+    rawLongitude: longitude,
+    accuracy: `${Math.round(accuracy)}m`,
+    location: locationName,
+    ipAddress: publicIp,
+    timestamp: Date.now()
+  };
+
+  try {
+    sessionStorage.setItem(STORAGE_KEY_VERIFIED_LOCATION, JSON.stringify(verifiedLocation));
+    localStorage.setItem(STORAGE_KEY_CACHED_IP, JSON.stringify(verifiedLocation));
+  } catch (e) {}
+
+  return verifiedLocation;
+}
+
 /**
  * Get or fetch client IP and geolocation
  */
 let cachedNetworkInfo = null;
 
 export async function fetchClientNetworkInfo() {
+  const verified = getVerifiedLocation();
+  if (verified) return verified;
   if (cachedNetworkInfo) return cachedNetworkInfo;
 
   try {
     const saved = localStorage.getItem(STORAGE_KEY_CACHED_IP);
     if (saved) {
       cachedNetworkInfo = JSON.parse(saved);
+      if (cachedNetworkInfo) return cachedNetworkInfo;
     }
   } catch (e) {}
 
@@ -94,7 +222,7 @@ export async function fetchClientNetworkInfo() {
 
   if (!cachedNetworkInfo) {
     cachedNetworkInfo = {
-      ipAddress: '103.241.22.84',
+      ipAddress: '42.104.160.78',
       location: 'Bharuch, Gujarat',
       longitude: '72.9959° E',
       latitude: '21.7051° N'
@@ -201,11 +329,12 @@ export function recordLoginEvent({
   role = 'Developer', // 'Master Admin' | 'Developer' | 'QA Tester' | 'Unknown'
   status = 'Success', // 'Success' | 'Failed'
   authMethod = 'Email + Password + OTP',
-  reason = ''
+  reason = '',
+  locationData = null
 }) {
   const deviceDetails = getClientDeviceDetails();
   
-  let net = cachedNetworkInfo;
+  let net = locationData || getVerifiedLocation() || cachedNetworkInfo;
   if (!net) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_CACHED_IP);
@@ -214,7 +343,7 @@ export function recordLoginEvent({
   }
   if (!net) {
     net = {
-      ipAddress: '103.241.22.84',
+      ipAddress: '42.104.160.78',
       location: 'Bharuch, Gujarat',
       longitude: '72.9959° E',
       latitude: '21.7051° N'

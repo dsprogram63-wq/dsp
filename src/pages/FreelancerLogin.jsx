@@ -27,7 +27,7 @@ import {
   SENDER_PROFILES 
 } from '../services/emailService.js';
 import { getOrAssignReferralTrustId } from '../utils/referralTrustUtils.js';
-import { recordLoginEvent } from '../utils/loginLogger.js';
+import { recordLoginEvent, requireExactDeviceLocation, getVerifiedLocation } from '../utils/loginLogger.js';
 import './FreelancerLogin.css';
 
 export default function FreelancerLogin({ 
@@ -323,14 +323,40 @@ export default function FreelancerLogin({
       return;
     }
 
+    // STRICT SECURITY REQUIREMENT: Mandatory Device GPS Location Access
+    setIsSendingLoginOtp(true);
+    setNoticeMessage({
+      type: 'info',
+      text: '📡 Verifying device GPS location access for security...'
+    });
+
+    let verifiedLocation = null;
+    try {
+      verifiedLocation = await requireExactDeviceLocation();
+    } catch (geoErr) {
+      setIsSendingLoginOtp(false);
+      recordLoginEvent({
+        user: member ? (member.fullName || member.name) : idTrimmed,
+        email: (member && member.email) || idTrimmed,
+        role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
+        status: 'Failed',
+        authMethod: 'Email + Password',
+        reason: 'Location Access Denied (GPS Required)'
+      });
+      setNoticeMessage({
+        type: 'error',
+        text: 'Access Blocked: Exact device location access is mandatory for security. Please allow location permissions in your browser address bar and try again.'
+      });
+      return;
+    }
+
     // Dispatch verification OTP to registered email
     const targetEmail = member.email || idTrimmed;
     const targetName = member.fullName || member.name || (actualRole === 'tester' ? 'QA Tester' : 'Developer');
 
-    setIsSendingLoginOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `Dispatching 6-Digit security OTP to ${targetEmail}...`
+      text: `✓ Location verified (${verifiedLocation.location || verifiedLocation.latitude}). Dispatching 6-Digit security OTP to ${targetEmail}...`
     });
 
     try {
@@ -360,7 +386,7 @@ export default function FreelancerLogin({
   };
 
   // Step 2: Handle Login Verify OTP & Complete
-  const handleVerifyAndLogin = (e) => {
+  const handleVerifyAndLogin = async (e) => {
     if (e) e.preventDefault();
     const trimmedOtp = (loginOtpCode || '').trim();
     if (!trimmedOtp || trimmedOtp.length !== 6) {
@@ -496,12 +522,34 @@ export default function FreelancerLogin({
       text: `Authentication successful as ${matchedUser.name}! Launching ${actualRole === 'tester' ? 'QA Tester' : 'Freelancer'} Workspace...`
     });
 
+    let verifiedLoc = getVerifiedLocation();
+    if (!verifiedLoc) {
+      try {
+        verifiedLoc = await requireExactDeviceLocation();
+      } catch (geoErr) {
+        recordLoginEvent({
+          user: (member && (member.fullName || member.name)) || targetEmail,
+          email: targetEmail,
+          role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
+          status: 'Failed',
+          authMethod: 'Security OTP',
+          reason: 'Location Access Denied (GPS Required)'
+        });
+        setNoticeMessage({
+          type: 'error',
+          text: 'Access Blocked: Exact device location access is mandatory for security.'
+        });
+        return;
+      }
+    }
+
     recordLoginEvent({
       user: matchedUser.name,
       email: matchedUser.email,
       role: actualRole === 'tester' ? 'QA Tester' : 'Developer',
       status: 'Success',
-      authMethod: 'Email + Password + OTP'
+      authMethod: 'Email + Password + OTP',
+      locationData: verifiedLoc
     });
 
     setTimeout(() => {

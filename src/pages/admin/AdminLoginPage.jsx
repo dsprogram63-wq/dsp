@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { sendOtpVerificationEmail, verifyOtpCode } from '../../services/emailService.js';
-import { recordLoginEvent } from '../../utils/loginLogger.js';
+import { recordLoginEvent, requireExactDeviceLocation, getVerifiedLocation } from '../../utils/loginLogger.js';
 import './AdminLoginPage.css';
 
 export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
@@ -93,10 +93,36 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
+    // STRICT SECURITY REQUIREMENT: Mandatory Device GPS Location Access
     setIsSendingOtp(true);
     setNoticeMessage({
       type: 'info',
-      text: `Dispatching 6-Digit security OTP to ${adminEmail.trim()}...`
+      text: '📡 Verifying Administrator GPS location permission...'
+    });
+
+    let verifiedLocation = null;
+    try {
+      verifiedLocation = await requireExactDeviceLocation();
+    } catch (geoErr) {
+      setIsSendingOtp(false);
+      recordLoginEvent({
+        user: 'Keval Patel',
+        email: adminEmail.trim(),
+        role: 'Master Admin',
+        status: 'Failed',
+        authMethod: 'Email + Password',
+        reason: 'Location Access Denied (GPS Required)'
+      });
+      setNoticeMessage({
+        type: 'error',
+        text: 'Access Blocked: Exact device location access is mandatory for Administrator security. Please allow location access in your browser address bar and try again.'
+      });
+      return;
+    }
+
+    setNoticeMessage({
+      type: 'info',
+      text: `✓ Location verified (${verifiedLocation.location || verifiedLocation.latitude}). Dispatching 6-Digit security OTP to ${adminEmail.trim()}...`
     });
 
     try {
@@ -125,7 +151,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   };
 
   // Step 2: Verify OTP and Login
-  const handleVerifyAndLogin = (e) => {
+  const handleVerifyAndLogin = async (e) => {
     if (e) e.preventDefault();
     const cleanOtp = (otpCode || '').trim();
     if (!cleanOtp || cleanOtp.length !== 6) {
@@ -153,13 +179,35 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
+    let verifiedLoc = getVerifiedLocation();
+    if (!verifiedLoc) {
+      try {
+        verifiedLoc = await requireExactDeviceLocation();
+      } catch (geoErr) {
+        recordLoginEvent({
+          user: 'Keval Patel',
+          email: adminEmail.trim(),
+          role: 'Master Admin',
+          status: 'Failed',
+          authMethod: 'Email + Password + OTP',
+          reason: 'Location Access Denied (GPS Required)'
+        });
+        setNoticeMessage({
+          type: 'error',
+          text: 'Access Blocked: Administrator location verification is mandatory.'
+        });
+        return;
+      }
+    }
+
     setLoginSuccess(true);
     recordLoginEvent({
       user: 'Keval Patel',
       email: adminEmail.trim(),
       role: 'Master Admin',
       status: 'Success',
-      authMethod: 'Email + Password + OTP'
+      authMethod: 'Email + Password + OTP',
+      locationData: verifiedLoc
     });
     setNoticeMessage({
       type: 'success',
@@ -185,7 +233,31 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   };
 
   // Quick 1-Click Demo Login
-  const handleQuickDemoAdminLogin = () => {
+  const handleQuickDemoAdminLogin = async () => {
+    setNoticeMessage({
+      type: 'info',
+      text: '📡 Verifying device GPS location access for Administrator login...'
+    });
+
+    let verifiedLocation = null;
+    try {
+      verifiedLocation = await requireExactDeviceLocation();
+    } catch (geoErr) {
+      recordLoginEvent({
+        user: 'Keval Patel',
+        email: 'dahejsupport@gmail.com',
+        role: 'Master Admin',
+        status: 'Failed',
+        authMethod: '1-Click Demo Quick Login',
+        reason: 'Location Access Denied (GPS Required)'
+      });
+      setNoticeMessage({
+        type: 'error',
+        text: 'Access Blocked: Exact device location access is mandatory. Please allow location permissions in your browser address bar and try again.'
+      });
+      return;
+    }
+
     setAdminEmail('dahejsupport@gmail.com');
     setAdminPassword('admin123');
     setOtpCode('');
@@ -196,11 +268,12 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       email: 'dahejsupport@gmail.com',
       role: 'Master Admin',
       status: 'Success',
-      authMethod: '1-Click Demo Quick Login'
+      authMethod: '1-Click Demo Quick Login',
+      locationData: verifiedLocation
     });
     setNoticeMessage({
       type: 'success',
-      text: 'Admin authorization granted! Redirecting to Admin Dashboard...'
+      text: `Admin authorization granted (${verifiedLocation.location || verifiedLocation.latitude})! Redirecting to Admin Dashboard...`
     });
 
     setTimeout(() => {

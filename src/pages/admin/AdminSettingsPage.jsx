@@ -493,6 +493,11 @@ export default function AdminSettingsPage() {
                               <Globe size={13} color="#0A3D75" />
                               <span>{log.ipAddress}</span>
                             </div>
+                            {log.location && (
+                              <div style={{ fontSize: '0.73rem', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>
+                                {log.location}
+                              </div>
+                            )}
                           </td>
 
                           <td>
@@ -530,6 +535,11 @@ export default function AdminSettingsPage() {
                               {isSuccess ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
                               <span>{log.status}</span>
                             </span>
+                            {log.reason && (
+                              <div style={{ fontSize: '0.71rem', color: '#DC2626', marginTop: '3px', fontWeight: 600 }}>
+                                {log.reason}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
