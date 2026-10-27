@@ -1,58 +1,16 @@
 // Persistent Baseline Data for Dahej Support Tester Panel & QA System
 
 export const initialTesterProfile = {
-  name: 'Hetvi',
-  email: 'hetvi@dahejsupport.com',
-  id: 'TST-781',
-  role: 'Dedicated QA Specialist',
+  name: 'Patel Het',
+  email: 'dahejsupport@gmail.com',
+  id: 'TST-317',
+  role: 'QA / Software Tester',
   status: 'Active',
-  referralTrustId: 'RFF-Hetvi-781',
-  avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160'
+  referralTrustId: 'RFF-PatelHet-317',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
 };
 
 export const initialTesters = [
-  {
-    id: 'TST-781',
-    testerId: 'TST-781',
-    name: 'Hetvi',
-    fullName: 'Hetvi',
-    email: 'hetvi@dahejsupport.com',
-    mobile: '+91 97234 87654',
-    role: 'QA / Software Tester',
-    specialization: 'Web & Functional QA Testing',
-    testingTools: 'Postman, Cypress, Jira',
-    experience: '3+ Years',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160',
-    referralTrustId: 'RFF-Hetvi-781',
-    referenceName: 'Reference Verification',
-    referralCode: 'DS-TST-201',
-    referenceId: 'DS-TST-201',
-    joiningDate: '10 Oct 2026',
-    status: 'Active',
-    availability: 'Busy',
-    activeTestingProjects: 1,
-    completedTesting: 0,
-    approvedCount: 0,
-    returnedCount: 0,
-    issuesRaised: 0,
-    totalPayouts: '₹0',
-    totalPayoutsNum: 0,
-    pendingPayouts: '₹5,000',
-    pendingPayoutsNum: 5000,
-    rating: 5.0,
-    currentProjects: [
-      {
-        id: 'DS-WEB-6883',
-        name: 'Framing Site',
-        clientName: 'Framing Site Client',
-        status: 'Active',
-        testingStatus: 'Pending',
-        progress: 20
-      }
-    ],
-    testingHistory: [],
-    earningsHistory: []
-  },
   {
     id: 'TST-317',
     testerId: 'TST-317',
@@ -74,12 +32,21 @@ export const initialTesters = [
     availability: 'Available',
     applicationMessage: '',
     aboutSelf: '',
-    activeTestingProjects: 0,
+    activeTestingProjects: 1,
     completedTesting: 0,
     totalPayouts: '₹0',
     pendingPayouts: '₹0',
     rating: 5.0,
-    currentProjects: [],
+    currentProjects: [
+      {
+        id: 'DS-WEB-7169',
+        name: 'Restaurant site',
+        clientName: 'The Grand Palace Dining',
+        status: 'In Progress',
+        testingStatus: 'Pending',
+        progress: 0
+      }
+    ],
     testingHistory: [],
     earningsHistory: []
   },

@@ -13,6 +13,95 @@ const STORAGE_FILE_PATH = 'live_state/platform_data.json';
 // In-memory cache of the latest live state
 let memoryCloudState = null;
 
+const MOCK_DEV_IDS = new Set(['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
+const MOCK_TESTER_IDS = new Set(['TST-781', 'TST-DEMO']);
+const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
+
+export function sanitizeLivePlatformState(state) {
+  if (!state || typeof state !== 'object') return state;
+
+  if (Array.isArray(state.developers)) {
+    state.developers = state.developers
+      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com')
+      .map(d => {
+        if (d.id === 'DEV-512' || d.email === 'hetgraphura@gmail.com') {
+          return {
+            ...d,
+            id: 'DEV-512',
+            developerId: 'DEV-512',
+            freelancerId: 'DEV-512',
+            name: d.name || 'Patel Het Bh',
+            fullName: d.fullName || 'Patel Het Bh',
+            email: 'hetgraphura@gmail.com',
+            referralTrustId: 'RFF-PatelHetBh-512',
+            referenceName: 'Dahej Support',
+            referenceId: 'RFF-DahejSupport-269',
+            referralCode: 'RFF-DahejSupport-269',
+            status: 'Active'
+          };
+        }
+        return d;
+      });
+  }
+
+  if (Array.isArray(state.testers)) {
+    state.testers = state.testers
+      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com')
+      .map(t => {
+        if (t.id === 'TST-317' || t.email === 'dahejsupport@gmail.com') {
+          return {
+            ...t,
+            id: 'TST-317',
+            testerId: 'TST-317',
+            name: t.name || 'Patel Het',
+            fullName: t.fullName || 'Patel Het',
+            email: 'dahejsupport@gmail.com',
+            referralTrustId: 'RFF-PatelHet-317',
+            status: 'Active',
+            activeTestingProjects: 1,
+            currentProjects: [{
+              id: 'DS-WEB-7169',
+              name: 'Restaurant site',
+              clientName: 'The Grand Palace Dining',
+              status: 'In Progress',
+              testingStatus: 'Pending',
+              progress: 0
+            }]
+          };
+        }
+        return t;
+      });
+  }
+
+  if (Array.isArray(state.adminProjects)) {
+    state.adminProjects = state.adminProjects
+      .filter(p => p && !MOCK_PROJECT_IDS.has(p.id))
+      .map(p => {
+        if (p.id === 'DS-WEB-7169') {
+          return {
+            ...p,
+            developer: 'Patel Het Bh',
+            developerId: 'DEV-512',
+            developerEmail: 'hetgraphura@gmail.com',
+            developerSkill: 'Full Stack Developer (React & Node)',
+            tester: 'Patel Het',
+            testerId: 'TST-317',
+            testerEmail: 'dahejsupport@gmail.com',
+            testerSpecialization: 'Functional QA Testing',
+            testerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
+          };
+        }
+        return p;
+      });
+  }
+
+  if (Array.isArray(state.projects)) {
+    state.projects = state.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+  }
+
+  return state;
+}
+
 /**
  * Determine live sync endpoints
  */
@@ -107,20 +196,7 @@ export async function fetchLivePlatformData() {
   }
 
   if (liveData) {
-    if (Array.isArray(liveData.developers)) {
-      liveData.developers = liveData.developers.map(d => {
-        if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
-          return {
-            ...d,
-            referralTrustId: 'RFF-PatelHetBh-512',
-            referenceName: 'Dahej Support',
-            referenceId: 'RFF-DahejSupport-269',
-            referralCode: 'RFF-DahejSupport-269'
-          };
-        }
-        return d;
-      });
-    }
+    liveData = sanitizeLivePlatformState(liveData);
     memoryCloudState = liveData;
     syncLiveStateToLocalStorage(liveData);
     return liveData;
@@ -257,28 +333,38 @@ export function syncLiveStateToLocalStorage(data) {
   if (!data || typeof window === 'undefined') return;
 
   try {
-    if (Array.isArray(data.developers) && data.developers.length > 0) {
-      localStorage.setItem('dahej_real_v2_developers', JSON.stringify(data.developers));
-      localStorage.setItem('dahej_developers', JSON.stringify(data.developers));
+    const clean = sanitizeLivePlatformState(data);
+
+    if (Array.isArray(clean.developers)) {
+      localStorage.setItem('dahej_real_v2_developers', JSON.stringify(clean.developers));
+      localStorage.setItem('dahej_developers', JSON.stringify(clean.developers));
     }
-    if (Array.isArray(data.adminProjects) && data.adminProjects.length > 0) {
-      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(data.adminProjects));
-      localStorage.setItem('dahej_admin_projects', JSON.stringify(data.adminProjects));
+    if (Array.isArray(clean.adminProjects)) {
+      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(clean.adminProjects));
+      localStorage.setItem('dahej_admin_projects', JSON.stringify(clean.adminProjects));
     }
-    if (Array.isArray(data.projects) && data.projects.length > 0) {
-      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(data.projects));
-      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(data.projects));
+    if (Array.isArray(clean.projects)) {
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(clean.projects));
+      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(clean.projects));
     }
-    if (Array.isArray(data.testers) && data.testers.length > 0) {
-      localStorage.setItem('dahej_real_v2_testers', JSON.stringify(data.testers));
-      localStorage.setItem('dahej_testers', JSON.stringify(data.testers));
+    if (Array.isArray(clean.testers)) {
+      localStorage.setItem('dahej_real_v2_testers', JSON.stringify(clean.testers));
+      localStorage.setItem('dahej_testers', JSON.stringify(clean.testers));
     }
-    if (data.passwords && typeof data.passwords === 'object') {
+    if (clean.passwords && typeof clean.passwords === 'object') {
       const existing = localStorage.getItem('dahej_member_passwords');
       const parsed = existing ? JSON.parse(existing) : {};
-      const merged = { ...parsed, ...data.passwords };
+      const merged = { ...parsed, ...clean.passwords };
       localStorage.setItem('dahej_member_passwords', JSON.stringify(merged));
     }
+
+    // Purge any stale mock profiles from localStorage
+    ['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
+      try { localStorage.removeItem(`dahej_profile_${id}`); } catch(e) {}
+    });
+    ['TST-781', 'TST-DEMO'].forEach(id => {
+      try { localStorage.removeItem(`dahej_tester_profile_${id}`); } catch(e) {}
+    });
 
     // Proactively heal DEV-512 cached custom profiles in localStorage
     try {

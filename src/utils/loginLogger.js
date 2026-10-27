@@ -264,8 +264,8 @@ function getBaselineHistoricalLogs() {
     {
       id: 'LOG-741902',
       timestamp: formatLogTimestamp(new Date(Date.now() - 1000 * 60 * 120)),
-      user: 'Patel Het',
-      email: 'patelhet@dahejsupport.com',
+      user: 'Patel Het Bh',
+      email: 'hetgraphura@gmail.com',
       role: 'Developer',
       status: 'Success',
       authMethod: 'Email + Password + OTP',

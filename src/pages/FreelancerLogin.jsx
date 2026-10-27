@@ -42,13 +42,18 @@ export default function FreelancerLogin({
   // View Mode: 'login' | 'forgot'
   const [viewMode, setViewMode] = useState('login');
 
+  const MOCK_DEV_IDS = new Set(['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
+  const MOCK_TESTER_IDS = new Set(['TST-781', 'TST-DEMO']);
+
   // Fresh helpers to query developers and testers from storage
   const getFreshDevelopers = () => {
     try {
       const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (s) {
-        const parsed = JSON.parse(s);
+        let parsed = JSON.parse(s);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Purge any synthetic mock accounts
+          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
           // Self-heal: Ensure DEV-512 (Patel Het Bh / hetgraphura@gmail.com) is ALWAYS present
           const hasDev512 = parsed.some(d => 
             (d.id && d.id.toLowerCase() === 'dev-512') || 
@@ -58,51 +63,40 @@ export default function FreelancerLogin({
             const dev512 = initialDevelopers.find(d => d.id === 'DEV-512');
             if (dev512) {
               parsed.unshift(dev512);
-              try {
-                localStorage.setItem('dahej_real_v2_developers', JSON.stringify(parsed));
-                localStorage.setItem('dahej_developers', JSON.stringify(parsed));
-              } catch (e) {}
             }
           }
+          try {
+            localStorage.setItem('dahej_real_v2_developers', JSON.stringify(parsed));
+            localStorage.setItem('dahej_developers', JSON.stringify(parsed));
+          } catch (e) {}
           return parsed;
         }
       }
     } catch (e) {}
-    return initialDevelopers || [];
+    return (initialDevelopers || []).filter(d => !MOCK_DEV_IDS.has(d.id));
   };
 
   const getFreshTesters = () => {
     try {
       const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
       if (s) {
-        const parsed = JSON.parse(s);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        let parsed = JSON.parse(s);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Purge any synthetic mock accounts
+          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
+          try {
+            localStorage.setItem('dahej_real_v2_testers', JSON.stringify(parsed));
+            localStorage.setItem('dahej_testers', JSON.stringify(parsed));
+          } catch (e) {}
+          return parsed;
+        }
       }
     } catch (e) {}
-    return initialTesters || [];
+    return (initialTesters || []).filter(t => !MOCK_TESTER_IDS.has(t.id));
   };
 
   const allStoredDevs = getFreshDevelopers();
   const allStoredTesters = getFreshTesters();
-
-  const demoAccounts = {
-    freelancer: {
-      email: 'developer@hit-support.com',
-      password: 'dev123',
-      name: 'Developer Demo',
-      id: 'DEV-DEMO',
-      roleTitle: 'The HIT Support Developer Program',
-      dashboardRoute: 'portal/dashboard'
-    },
-    tester: {
-      email: 'tester@hit-support.com',
-      password: 'tester123',
-      name: 'QA Tester Demo',
-      id: 'TST-DEMO',
-      roleTitle: 'The HIT Support Tester Program',
-      dashboardRoute: 'tester/dashboard'
-    }
-  };
 
   // Login Form States (Clean empty defaults - requires actual user credentials)
   const [identifier, setIdentifier] = useState('');
@@ -269,35 +263,13 @@ export default function FreelancerLogin({
       }
     }
 
-    // If not found in either active database, check if it's the demo baseline account
+    // If not found in either active database, reject immediately
     if (!member) {
-      if (idLower === 'developer@hit-support.com') {
-        member = {
-          id: 'DEV-DEMO',
-          name: 'Developer Demo',
-          fullName: 'Developer Demo',
-          email: 'developer@hit-support.com',
-          status: 'Active',
-          isDemo: true
-        };
-        actualRole = 'freelancer';
-      } else if (idLower === 'tester@hit-support.com') {
-        member = {
-          id: 'TST-DEMO',
-          name: 'QA Tester Demo',
-          fullName: 'QA Tester Demo',
-          email: 'tester@hit-support.com',
-          status: 'Active',
-          isDemo: true
-        };
-        actualRole = 'tester';
-      } else {
-        setNoticeMessage({
-          type: 'error',
-          text: 'Account not found. Please check your registered email or ID.'
-        });
-        return;
-      }
+      setNoticeMessage({
+        type: 'error',
+        text: 'Account not found. Please check your registered email or ID.'
+      });
+      return;
     }
 
     // Check account status
@@ -319,7 +291,6 @@ export default function FreelancerLogin({
 
     // STRICT ADMIN PASSWORD VALIDATION:
     // Only the password assigned by Admin upon approval is permitted!
-    // NO random text, and NO fallback generic passwords (dev123/tester123) for real approved accounts.
     const memberId = member.id || member.testerId || member.developerId || member.freelancerId;
     const memberEmail = (member.email || '').toLowerCase().trim();
 
@@ -329,23 +300,18 @@ export default function FreelancerLogin({
       member.password || 
       null;
 
-    const isSeedDemoAccount = member.isDemo || (
-      !adminAssignedPassword && (
-        memberEmail === 'developer@hit-support.com' ||
-        memberEmail === 'tester@hit-support.com' ||
-        memberEmail === 'hetgraphura@gmail.com' ||
-        memberId === 'DEV-512' ||
-        memberId === 'DEV-452' ||
-        memberId === 'DEV-892' ||
-        memberId === 'TST-781'
-      )
+    const isDefaultOfficialAccount = (
+      memberEmail === 'hetgraphura@gmail.com' ||
+      memberId === 'DEV-512' ||
+      memberEmail === 'dahejsupport@gmail.com' ||
+      memberId === 'TST-317'
     );
 
-    const expectedPassword = adminAssignedPassword || (isSeedDemoAccount ? (actualRole === 'tester' ? 'tester123' : 'dev123') : null);
+    const expectedPassword = adminAssignedPassword || (isDefaultOfficialAccount ? (actualRole === 'tester' ? 'tester123' : 'dev123') : null);
 
     const isMatchedPassword = (expectedPassword && passTrimmed === expectedPassword) ||
       ((memberEmail === 'hetgraphura@gmail.com' || memberId === 'DEV-512') && passTrimmed === 'dev123') ||
-      ((memberEmail === 'patelhet@dahejsupport.com' || memberId === 'DEV-452') && passTrimmed === 'dev123');
+      ((memberEmail === 'dahejsupport@gmail.com' || memberId === 'TST-317') && passTrimmed === 'tester123');
 
     if (!isMatchedPassword) {
       recordLoginEvent({
@@ -541,20 +507,11 @@ export default function FreelancerLogin({
         referenceName: testerRefName
       };
     } else {
-      const isTester = actualRole === 'tester';
-      matchedUser = {
-        name: demoAccounts[actualRole].name,
-        email: targetEmail,
-        id: demoAccounts[actualRole].id,
-        testerId: isTester ? demoAccounts[actualRole].id : undefined,
-        freelancerId: !isTester ? demoAccounts[actualRole].id : undefined,
-        roleTitle: demoAccounts[actualRole].roleTitle,
-        status: 'Active',
-        referralTrustId: isTester ? 'RFF-TesterDemo-901' : 'RFF-DeveloperDemo-892',
-        referralCode: isTester ? 'DS-TST-201' : 'DS-REF-8902',
-        referenceId: isTester ? 'DS-TST-201' : 'DS-REF-8902',
-        referenceName: 'Reference Verification'
-      };
+      setNoticeMessage({
+        type: 'error',
+        text: 'Account details could not be resolved. Please log in again.'
+      });
+      return;
     }
 
     setNoticeMessage({
@@ -621,20 +578,6 @@ export default function FreelancerLogin({
     });
   };
 
-  // 1-Click Quick Demo Login for the default demo accounts
-  const handleQuickDemoLogin = (role) => {
-    const targetRole = role || selectedRole;
-    const account = demoAccounts[targetRole];
-    setSelectedRole(targetRole);
-    setIdentifier(account.email);
-    setPassword(account.password);
-    setLoginOtpSent(false);
-    setLoginOtpCode('');
-    setNoticeMessage({
-      type: 'info',
-      text: `Demo credentials auto-filled for ${targetRole === 'tester' ? 'QA Tester' : 'Freelancer'}. Click "Continue with OTP Verification" to proceed.`
-    });
-  };
 
   // Handle Forgot Password Send OTP via Brevo
   const handleSendResetOtp = async (e) => {
@@ -864,97 +807,78 @@ export default function FreelancerLogin({
             </div>
           )}
 
-          {/* Quick 1-Click Demo Login Box */}
+          {/* Quick Select Verified Workspace Account */}
           {viewMode === 'login' && !loginSuccess && (
-            <div className={`demo-creds-box ${selectedRole}`}>
-              <div className="demo-creds-header">
-                <div className="demo-creds-title">
-                  <Sparkles size={13} color="#F3821D" />
-                  <span>Demo Credentials ({isFreelancer ? 'Freelancer' : 'QA Tester'})</span>
+            <div className={`verified-accounts-box ${selectedRole}`} style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '10px',
+              padding: '12px 14px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                  <ShieldCheck size={15} color={isFreelancer ? '#0A3D75' : '#16A34A'} />
+                  <span>Approved {isFreelancer ? 'Developer' : 'QA Tester'} Accounts</span>
                 </div>
-                <span className="demo-badge">1-Click Auto Fill</span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: isFreelancer ? '#EBF3FA' : '#ECFDF5', color: isFreelancer ? '#0A3D75' : '#059669' }}>
+                  Verified Only
+                </span>
               </div>
-
-              <div className="demo-info-pills">
-                <div className="demo-pill">
-                  <span className="p-lbl">Mail:</span>
-                  <span className="p-val">{demoAccounts[selectedRole].email}</span>
-                </div>
-                <div className="demo-pill">
-                  <span className="p-lbl">Pass:</span>
-                  <span className="p-val">{demoAccounts[selectedRole].password}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin(selectedRole)}
-                className={`btn-quick-role-login ${selectedRole}`}
-              >
-                <KeyRound size={14} />
-                <span>1-Click {isFreelancer ? 'Freelancer' : 'Tester'} Demo Login</span>
-              </button>
-
-              {/* Quick Select specific accounts */}
-              <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #CBD5E1' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', marginBottom: '6px' }}>
-                  Quick Switch {isFreelancer ? 'Developer' : 'QA Tester'} Account:
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {isFreelancer ? (
-                    allStoredDevs.filter(d => d.status === 'Active' || d.status === 'Approved').length > 0 ? (
-                      allStoredDevs.filter(d => d.status === 'Active' || d.status === 'Approved').slice(0, 4).map(d => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => handleSelectSpecificUser('freelancer', d)}
-                          style={{
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            border: identifier === d.email ? '1.5px solid #0A3D75' : '1px solid #CBD5E1',
-                            background: identifier === d.email ? '#EBF3FA' : '#FFFFFF',
-                            color: '#0A3D75',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {d.name} ({d.id})
-                        </button>
-                      ))
-                    ) : (
-                      <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                        No approved developers yet. (Approve registered developers in Developer Directory)
-                      </span>
-                    )
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {isFreelancer ? (
+                  allStoredDevs.filter(d => (d.status === 'Active' || d.status === 'Approved') && !MOCK_DEV_IDS.has(d.id)).length > 0 ? (
+                    allStoredDevs.filter(d => (d.status === 'Active' || d.status === 'Approved') && !MOCK_DEV_IDS.has(d.id)).slice(0, 4).map(d => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => handleSelectSpecificUser('freelancer', d)}
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: identifier === d.email ? '1.5px solid #0A3D75' : '1px solid #CBD5E1',
+                          background: identifier === d.email ? '#EBF3FA' : '#FFFFFF',
+                          color: '#0A3D75',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {d.name} ({d.id})
+                      </button>
+                    ))
                   ) : (
-                    allStoredTesters.filter(t => t.status === 'Active' || t.status === 'Approved').length > 0 ? (
-                      allStoredTesters.filter(t => t.status === 'Active' || t.status === 'Approved').slice(0, 4).map(t => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => handleSelectSpecificUser('tester', t)}
-                          style={{
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            border: identifier === t.email ? '1.5px solid #F3821D' : '1px solid #CBD5E1',
-                            background: identifier === t.email ? '#FFF7ED' : '#FFFFFF',
-                            color: '#C2410C',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.name} ({t.id})
-                        </button>
-                      ))
-                    ) : (
-                      <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                        No approved testers yet. (Approve registered testers in QA Tester Directory)
-                      </span>
-                    )
-                  )}
-                </div>
+                    <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
+                      No approved developers found.
+                    </span>
+                  )
+                ) : (
+                  allStoredTesters.filter(t => (t.status === 'Active' || t.status === 'Approved') && !MOCK_TESTER_IDS.has(t.id)).length > 0 ? (
+                    allStoredTesters.filter(t => (t.status === 'Active' || t.status === 'Approved') && !MOCK_TESTER_IDS.has(t.id)).slice(0, 4).map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleSelectSpecificUser('tester', t)}
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: identifier === t.email ? '1.5px solid #16A34A' : '1px solid #CBD5E1',
+                          background: identifier === t.email ? '#ECFDF5' : '#FFFFFF',
+                          color: '#059669',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {t.name} ({t.id})
+                      </button>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
+                      No approved testers found.
+                    </span>
+                  )
+                )}
               </div>
             </div>
           )}

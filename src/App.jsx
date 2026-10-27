@@ -227,13 +227,18 @@ export default function App() {
 
   const [routeState, setRouteState] = useState(getInitialState);
   
+  const MOCK_DEV_IDS = new Set(['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
+  const MOCK_TESTER_IDS = new Set(['TST-781', 'TST-DEMO']);
+  const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
+
   // State for Freelancer Portal (Persistent across sessions & reloads)
   const [projects, setProjects] = useState(() => {
     try {
       const saved = localStorage.getItem('dahej_real_v2_freelancer_projects') || localStorage.getItem('dahej_freelancer_projects');
       if (saved) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
           if (!has7169) {
             const p7169 = initialProjects.find(p => p.id === 'DS-WEB-7169');
@@ -254,8 +259,25 @@ export default function App() {
     try {
       const saved = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
       if (saved) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(p => {
+            if (p.id === 'DS-WEB-7169') {
+              return {
+                ...p,
+                developer: 'Patel Het Bh',
+                developerId: 'DEV-512',
+                developerEmail: 'hetgraphura@gmail.com',
+                developerSkill: 'Full Stack Developer (React & Node)',
+                tester: 'Patel Het',
+                testerId: 'TST-317',
+                testerEmail: 'dahejsupport@gmail.com',
+                testerSpecialization: 'Functional QA Testing',
+                testerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
+              };
+            }
+            return p;
+          });
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
           if (!has7169) {
             const p7169 = initialAdminProjects.find(p => p.id === 'DS-WEB-7169');
@@ -276,10 +298,18 @@ export default function App() {
       // Pre-seed password for DEV-512
       saveMemberPassword('DEV-512', 'hetgraphura@gmail.com', 'dev123');
 
+      // Purge mock profiles from localStorage
+      ['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
+        try { localStorage.removeItem(`dahej_profile_${id}`); } catch(e) {}
+      });
+
       const saved = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (saved !== null) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
+          // Filter out synthetic mock accounts
+          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
+
           if (parsed.length === 0) return initialDevelopers;
 
           // Self-heal: Ensure DEV-512 is ALWAYS in developers
@@ -317,7 +347,7 @@ export default function App() {
           return parsed.map(d => {
             const actualCode = (d.referralCode && !d.referralCode.startsWith('REF-00') ? d.referralCode : null) ||
               (d.referenceId && !d.referenceId.startsWith('REF-00') ? d.referenceId : null) ||
-              'DS-REF-8902';
+              'RFF-DahejSupport-269';
 
             // Proactively heal any cached custom profile in localStorage
             try {
@@ -330,7 +360,7 @@ export default function App() {
                   if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
                     p.referralCode = actualCode;
                     p.referenceId = actualCode;
-                    p.referenceName = d.referenceName || p.referenceName || 'Reference Verification';
+                    p.referenceName = d.referenceName || p.referenceName || 'Dahej Support';
                     changed = true;
                   }
                   if (d.id === 'DEV-512' && (p.referralTrustId === 'RFF-DahejSupport-269' || p.referralTrustId === 'RFF-PatelHet-512')) {
@@ -348,7 +378,7 @@ export default function App() {
               ...d,
               referralCode: actualCode,
               referenceId: actualCode,
-              referenceName: d.referenceName || 'Reference Verification'
+              referenceName: d.referenceName || 'Dahej Support'
             };
           });
         }
@@ -362,18 +392,39 @@ export default function App() {
   // State for Testers (Persistent across sessions & reloads)
   const [testers, setTesters] = useState(() => {
     try {
+      // Pre-seed password for TST-317
+      saveMemberPassword('TST-317', 'dahejsupport@gmail.com', 'tester123');
+
+      // Purge mock tester profiles from localStorage
+      ['TST-781', 'TST-DEMO'].forEach(id => {
+        try { localStorage.removeItem(`dahej_tester_profile_${id}`); } catch(e) {}
+      });
+
       const saved = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
       if (saved !== null) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          if (parsed.length === 0) return [];
+          // Filter out synthetic mock testers
+          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
+
+          if (parsed.length === 0) return initialTesters;
+
+          // Self-heal: Ensure TST-317 is ALWAYS present
+          const tst317Seed = initialTesters.find(t => t.id === 'TST-317');
+          const hasTst317 = parsed.some(t => 
+            (t.id && t.id.toLowerCase() === 'tst-317') || 
+            (t.email && t.email.toLowerCase().trim() === 'dahejsupport@gmail.com')
+          );
+          if (!hasTst317 && tst317Seed) {
+            parsed = [tst317Seed, ...parsed];
+          }
+
           return parsed.map(t => {
             const actualCode = (t.referralCode && !t.referralCode.startsWith('REF-00') ? t.referralCode : null) ||
               (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : null) ||
-              'DS-TST-201';
+              'DS-REF-552';
 
-            // Self-heal status and referralTrustId for all registered testers
-            const isInactive = t.status === 'Deactivated' || t.status === 'Rejected';
+            const isInactive = t.status === 'Deactivated' || t.status === 'Rejected' || t.status === 'Pending';
             const fixedStatus = isInactive ? t.status : 'Active';
             const trustId = t.referralTrustId || (!isInactive ? getOrAssignReferralTrustId({ ...t, status: 'Active' }, parsed) : '');
 
@@ -388,7 +439,7 @@ export default function App() {
                   if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
                     p.referralCode = actualCode;
                     p.referenceId = actualCode;
-                    p.referenceName = t.referenceName || p.referenceName || 'Reference Verification';
+                    p.referenceName = t.referenceName || p.referenceName || 'Reddy';
                     changed = true;
                   }
                   if (trustId && (!p.referralTrustId || p.referralTrustId !== trustId)) {
@@ -406,13 +457,33 @@ export default function App() {
               }
             } catch (err) {}
 
+            if (t.id === 'TST-317') {
+              return {
+                ...t,
+                status: 'Active',
+                referralTrustId: 'RFF-PatelHet-317',
+                activeTestingProjects: 1,
+                currentProjects: [{
+                  id: 'DS-WEB-7169',
+                  name: 'Restaurant site',
+                  clientName: 'The Grand Palace Dining',
+                  status: 'In Progress',
+                  testingStatus: 'Pending',
+                  progress: 0
+                }],
+                referralCode: actualCode,
+                referenceId: actualCode,
+                referenceName: t.referenceName || 'Reddy'
+              };
+            }
+
             return {
               ...t,
               status: fixedStatus,
               referralTrustId: trustId || t.referralTrustId,
               referralCode: actualCode,
               referenceId: actualCode,
-              referenceName: t.referenceName || 'Reference Verification'
+              referenceName: t.referenceName || 'Reddy'
             };
           });
         }
@@ -433,15 +504,19 @@ export default function App() {
   useEffect(() => {
     fetchLivePlatformData().then(liveData => {
       if (liveData) {
-        if (Array.isArray(liveData.developers) && liveData.developers.length > 0) {
+        if (Array.isArray(liveData.developers)) {
           setDevelopers(prev => {
+            const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id));
             const map = new Map();
-            prev.forEach(d => { if (d?.id) map.set(d.id, d); });
-            liveData.developers.forEach(d => {
+            prev.filter(d => d && !MOCK_DEV_IDS.has(d.id)).forEach(d => { if (d?.id) map.set(d.id, d); });
+            cleanIncoming.forEach(d => {
               if (d?.id) {
                 const merged = { ...(map.get(d.id) || {}), ...d };
-                if (merged.id === 'DEV-512' && (merged.referralTrustId === 'RFF-DahejSupport-269' || merged.referralTrustId === 'RFF-PatelHet-512')) {
+                if (merged.id === 'DEV-512') {
                   merged.referralTrustId = 'RFF-PatelHetBh-512';
+                  merged.referenceName = 'Dahej Support';
+                  merged.referenceId = 'RFF-DahejSupport-269';
+                  merged.referralCode = 'RFF-DahejSupport-269';
                 }
                 map.set(d.id, merged);
               }
@@ -449,27 +524,53 @@ export default function App() {
             return Array.from(map.values());
           });
         }
-        if (Array.isArray(liveData.adminProjects) && liveData.adminProjects.length > 0) {
+        if (Array.isArray(liveData.adminProjects)) {
           setAdminProjects(prev => {
+            const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
             const map = new Map();
-            prev.forEach(p => { if (p?.id) map.set(p.id, p); });
-            liveData.adminProjects.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+            prev.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).forEach(p => { if (p?.id) map.set(p.id, p); });
+            cleanIncoming.forEach(p => {
+              if (p?.id) {
+                const merged = { ...(map.get(p.id) || {}), ...p };
+                if (merged.id === 'DS-WEB-7169') {
+                  merged.developer = 'Patel Het Bh';
+                  merged.developerId = 'DEV-512';
+                  merged.developerEmail = 'hetgraphura@gmail.com';
+                  merged.tester = 'Patel Het';
+                  merged.testerId = 'TST-317';
+                  merged.testerEmail = 'dahejsupport@gmail.com';
+                  merged.testerSpecialization = 'Functional QA Testing';
+                }
+                map.set(p.id, merged);
+              }
+            });
             return Array.from(map.values());
           });
         }
-        if (Array.isArray(liveData.projects) && liveData.projects.length > 0) {
+        if (Array.isArray(liveData.projects)) {
           setProjects(prev => {
+            const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
             const map = new Map();
-            prev.forEach(p => { if (p?.id) map.set(p.id, p); });
-            liveData.projects.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+            prev.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).forEach(p => { if (p?.id) map.set(p.id, p); });
+            cleanIncoming.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
             return Array.from(map.values());
           });
         }
-        if (Array.isArray(liveData.testers) && liveData.testers.length > 0) {
+        if (Array.isArray(liveData.testers)) {
           setTesters(prev => {
+            const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id));
             const map = new Map();
-            prev.forEach(t => { if (t?.id) map.set(t.id, t); });
-            liveData.testers.forEach(t => { if (t?.id) map.set(t.id, { ...(map.get(t.id) || {}), ...t }); });
+            prev.filter(t => t && !MOCK_TESTER_IDS.has(t.id)).forEach(t => { if (t?.id) map.set(t.id, t); });
+            cleanIncoming.forEach(t => {
+              if (t?.id) {
+                const merged = { ...(map.get(t.id) || {}), ...t };
+                if (merged.id === 'TST-317') {
+                  merged.referralTrustId = 'RFF-PatelHet-317';
+                  merged.activeTestingProjects = 1;
+                }
+                map.set(t.id, merged);
+              }
+            });
             return Array.from(map.values());
           });
         }

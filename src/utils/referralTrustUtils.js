@@ -177,39 +177,10 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
     saveTrustRegistry(registry);
     return canonical;
   }
-  if (memberId === 'DEV-452' || (member.name && member.name.toLowerCase() === 'patel het' && (!memberId || memberId.startsWith('DEV-')))) {
-    const canonical = 'RFF-PatelHet-523';
-    if (memberId) registry[memberId] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
   if (memberId === 'TST-317' || (member.name && member.name.toLowerCase() === 'patel het' && memberId?.startsWith('TST-'))) {
     const canonical = 'RFF-PatelHet-317';
     if (memberId) registry[memberId] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
-  if (memberId === 'DEV-892' || (member.name && member.name.toLowerCase() === 'saheb')) {
-    const canonical = 'RFF-Saheb-892';
-    if (memberId) registry[memberId] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
-  if (memberId === 'TST-781' || (member.name && member.name.toLowerCase() === 'hetvi')) {
-    const canonical = 'RFF-Hetvi-781';
-    if (memberId) registry[memberId] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
-  if (memberId === 'DEV-DEMO' || (member.name && member.name.toLowerCase() === 'developer demo')) {
-    const canonical = 'RFF-DeveloperDemo-892';
-    if (memberId) registry[memberId] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
-  if (memberId === 'TST-DEMO' || (member.name && member.name.toLowerCase().includes('tester demo'))) {
-    const canonical = 'RFF-TesterDemo-901';
-    if (memberId) registry[memberId] = canonical;
+    registry['TST-317'] = canonical;
     saveTrustRegistry(registry);
     return canonical;
   }
@@ -282,12 +253,7 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
     { id: 'DS-ADM-001', name: 'Dahej Support', fullName: 'Dahej Support', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Platform Administrator / Master Sponsor', trustId: 'RFF-DahejSupport-269' },
     { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' },
     { id: 'DEV-512', name: 'Patel Het Bh', fullName: 'Patel Het Bh', email: 'hetgraphura@gmail.com', role: 'developer', roleTitle: 'Full Stack Developer (React & Node)', trustId: 'RFF-PatelHetBh-512' },
-    { id: 'DEV-452', name: 'Patel Het', fullName: 'Patel Het', email: 'patelhet@dahejsupport.com', role: 'developer', roleTitle: 'Frontend Developer', trustId: 'RFF-PatelHet-523' },
-    { id: 'TST-781', name: 'Hetvi', fullName: 'Hetvi', email: 'hetvi@dahejsupport.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-Hetvi-781' },
-    { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' },
-    { id: 'DEV-892', name: 'Saheb', fullName: 'Saheb', email: 'saheb@dahejsupport.com', role: 'developer', roleTitle: 'Senior Full Stack Engineer', trustId: 'RFF-Saheb-892' },
-    { id: 'TST-DEMO', name: 'QA Tester Demo', fullName: 'QA Tester Demo', email: 'tester@hit-support.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-TesterDemo-901' },
-    { id: 'DEV-DEMO', name: 'Developer Demo', fullName: 'Developer Demo', email: 'developer@hit-support.com', role: 'developer', roleTitle: 'Full Stack Developer', trustId: 'RFF-DeveloperDemo-892' }
+    { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' }
   ];
 
   fallbackSeeds.forEach(seed => {
