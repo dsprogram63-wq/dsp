@@ -99,7 +99,18 @@ export default function App() {
   const [freelancerProfile, setFreelancerProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('dahej_freelancer_profile');
-      if (saved) return { ...initialProfile, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.id === 'DEV-512' && parsed.referralTrustId === 'RFF-DahejSupport-269') {
+          parsed.referralTrustId = 'RFF-PatelHet-512';
+          localStorage.setItem('dahej_freelancer_profile', JSON.stringify(parsed));
+        }
+        return { 
+          ...initialProfile, 
+          ...parsed, 
+          referralTrustId: parsed.id === 'DEV-512' ? 'RFF-PatelHet-512' : (parsed.referralTrustId || initialProfile.referralTrustId)
+        };
+      }
     } catch (e) {
       console.error('Failed to parse freelancer profile:', e);
     }
@@ -289,6 +300,10 @@ export default function App() {
                   developerId: 'DEV-512',
                   freelancerId: 'DEV-512',
                   status: 'Active',
+                  referralTrustId: 'RFF-PatelHet-512',
+                  referenceName: 'Dahej Support',
+                  referenceId: 'RFF-DahejSupport-269',
+                  referralCode: 'RFF-DahejSupport-269',
                   email: 'hetgraphura@gmail.com',
                   name: d.name || 'Patel Het Bh',
                   fullName: d.fullName || 'Patel Het Bh'
@@ -311,10 +326,18 @@ export default function App() {
                 const devProf = localStorage.getItem(devKey);
                 if (devProf) {
                   const p = JSON.parse(devProf);
+                  let changed = false;
                   if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
                     p.referralCode = actualCode;
                     p.referenceId = actualCode;
                     p.referenceName = d.referenceName || p.referenceName || 'Reference Verification';
+                    changed = true;
+                  }
+                  if (d.id === 'DEV-512' && p.referralTrustId === 'RFF-DahejSupport-269') {
+                    p.referralTrustId = 'RFF-PatelHet-512';
+                    changed = true;
+                  }
+                  if (changed) {
                     localStorage.setItem(devKey, JSON.stringify(p));
                   }
                 }
@@ -414,7 +437,15 @@ export default function App() {
           setDevelopers(prev => {
             const map = new Map();
             prev.forEach(d => { if (d?.id) map.set(d.id, d); });
-            liveData.developers.forEach(d => { if (d?.id) map.set(d.id, { ...(map.get(d.id) || {}), ...d }); });
+            liveData.developers.forEach(d => {
+              if (d?.id) {
+                const merged = { ...(map.get(d.id) || {}), ...d };
+                if (merged.id === 'DEV-512' && merged.referralTrustId === 'RFF-DahejSupport-269') {
+                  merged.referralTrustId = 'RFF-PatelHet-512';
+                }
+                map.set(d.id, merged);
+              }
+            });
             return Array.from(map.values());
           });
         }
@@ -1900,6 +1931,14 @@ export default function App() {
       } catch (e) {}
     }
 
+    const resolvedTrustId = finalDevId === 'DEV-512'
+      ? 'RFF-PatelHet-512'
+      : ((matchedDev && matchedDev.referralTrustId && matchedDev.referralTrustId !== officialRefCode)
+          ? matchedDev.referralTrustId
+          : (savedCustomProfile && savedCustomProfile.referralTrustId && savedCustomProfile.referralTrustId !== officialRefCode)
+            ? savedCustomProfile.referralTrustId
+            : undefined);
+
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,
       id: finalDevId,
@@ -1910,6 +1949,7 @@ export default function App() {
       joiningDate: (matchedDev && matchedDev.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedDev && matchedDev.experienceAtJoining !== undefined) ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: (matchedDev && matchedDev.experienceReferenceDate) || '2025-06-15',
+      referralTrustId: resolvedTrustId,
       referenceName: officialRefName,
       referenceId: officialRefCode,
       referralCode: officialRefCode,

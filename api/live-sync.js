@@ -47,7 +47,22 @@ export default async function handler(req, res) {
       }
 
       const text = await data.text();
-      const parsed = JSON.parse(text);
+      let parsed = JSON.parse(text);
+
+      if (parsed && Array.isArray(parsed.developers)) {
+        parsed.developers = parsed.developers.map(d => {
+          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+            return {
+              ...d,
+              referralTrustId: 'RFF-PatelHet-512',
+              referenceName: 'Dahej Support',
+              referenceId: 'RFF-DahejSupport-269',
+              referralCode: 'RFF-DahejSupport-269'
+            };
+          }
+          return d;
+        });
+      }
 
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       return res.status(200).json({
@@ -113,6 +128,21 @@ export default async function handler(req, res) {
         },
         applications: updates.applications ? mergeById(currentState.applications, updates.applications) : currentState.applications
       };
+
+      if (mergedState && Array.isArray(mergedState.developers)) {
+        mergedState.developers = mergedState.developers.map(d => {
+          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+            return {
+              ...d,
+              referralTrustId: 'RFF-PatelHet-512',
+              referenceName: 'Dahej Support',
+              referenceId: 'RFF-DahejSupport-269',
+              referralCode: 'RFF-DahejSupport-269'
+            };
+          }
+          return d;
+        });
+      }
 
       const buffer = Buffer.from(JSON.stringify(mergedState, null, 2));
 

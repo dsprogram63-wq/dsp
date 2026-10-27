@@ -71,14 +71,18 @@ export default function TesterProfilePage({
   const resolvedTesterId = currentProfile.testerId || currentProfile.id || formData.testerId || 'TST-321';
   const resolvedName = formData.fullName || currentProfile.fullName || currentProfile.name || 'QA Tester';
 
-  const myReferralTrustId = currentProfile.referralTrustId || getOrAssignReferralTrustId({
-    ...currentProfile,
-    id: resolvedTesterId,
-    testerId: resolvedTesterId,
-    name: resolvedName,
-    fullName: resolvedName,
-    status: 'Active'
-  });
+  const rawTrustId = currentProfile.referralTrustId;
+  const isSponsorCollision = rawTrustId && (rawTrustId === currentProfile.referenceId || rawTrustId === currentProfile.referralCode);
+  const myReferralTrustId = (rawTrustId && !isSponsorCollision)
+    ? rawTrustId
+    : getOrAssignReferralTrustId({
+        ...currentProfile,
+        id: resolvedTesterId,
+        testerId: resolvedTesterId,
+        name: resolvedName,
+        fullName: resolvedName,
+        status: 'Active'
+      });
 
   const handleCopyTrustId = () => {
     if (!myReferralTrustId) return;
