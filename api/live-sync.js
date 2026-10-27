@@ -51,10 +51,10 @@ export default async function handler(req, res) {
 
       if (parsed && Array.isArray(parsed.developers)) {
         parsed.developers = parsed.developers.map(d => {
-          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
             return {
               ...d,
-              referralTrustId: 'RFF-PatelHet-512',
+              referralTrustId: 'RFF-PatelHetBh-512',
               referenceName: 'Dahej Support',
               referenceId: 'RFF-DahejSupport-269',
               referralCode: 'RFF-DahejSupport-269'
@@ -131,10 +131,10 @@ export default async function handler(req, res) {
 
       if (mergedState && Array.isArray(mergedState.developers)) {
         mergedState.developers = mergedState.developers.map(d => {
-          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+          if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
             return {
               ...d,
-              referralTrustId: 'RFF-PatelHet-512',
+              referralTrustId: 'RFF-PatelHetBh-512',
               referenceName: 'Dahej Support',
               referenceId: 'RFF-DahejSupport-269',
               referralCode: 'RFF-DahejSupport-269'

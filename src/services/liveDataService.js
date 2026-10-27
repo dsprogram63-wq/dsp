@@ -109,10 +109,10 @@ export async function fetchLivePlatformData() {
   if (liveData) {
     if (Array.isArray(liveData.developers)) {
       liveData.developers = liveData.developers.map(d => {
-        if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+        if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
           return {
             ...d,
-            referralTrustId: 'RFF-PatelHet-512',
+            referralTrustId: 'RFF-PatelHetBh-512',
             referenceName: 'Dahej Support',
             referenceId: 'RFF-DahejSupport-269',
             referralCode: 'RFF-DahejSupport-269'
@@ -162,10 +162,10 @@ export async function saveLivePlatformData(updates = {}) {
 
   if (Array.isArray(nextState.developers)) {
     nextState.developers = nextState.developers.map(d => {
-      if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || !d.referralTrustId)) {
+      if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
         return {
           ...d,
-          referralTrustId: 'RFF-PatelHet-512',
+          referralTrustId: 'RFF-PatelHetBh-512',
           referenceName: 'Dahej Support',
           referenceId: 'RFF-DahejSupport-269',
           referralCode: 'RFF-DahejSupport-269'
@@ -286,8 +286,8 @@ export function syncLiveStateToLocalStorage(data) {
       const cachedP = localStorage.getItem(pKey);
       if (cachedP) {
         const parsedP = JSON.parse(cachedP);
-        if (parsedP.referralTrustId === 'RFF-DahejSupport-269') {
-          parsedP.referralTrustId = 'RFF-PatelHet-512';
+        if (parsedP.referralTrustId === 'RFF-DahejSupport-269' || parsedP.referralTrustId === 'RFF-PatelHet-512') {
+          parsedP.referralTrustId = 'RFF-PatelHetBh-512';
           localStorage.setItem(pKey, JSON.stringify(parsedP));
         }
       }
@@ -295,8 +295,8 @@ export function syncLiveStateToLocalStorage(data) {
       const cachedF = localStorage.getItem(fKey);
       if (cachedF) {
         const parsedF = JSON.parse(cachedF);
-        if (parsedF.id === 'DEV-512' && parsedF.referralTrustId === 'RFF-DahejSupport-269') {
-          parsedF.referralTrustId = 'RFF-PatelHet-512';
+        if (parsedF.id === 'DEV-512' && (parsedF.referralTrustId === 'RFF-DahejSupport-269' || parsedF.referralTrustId === 'RFF-PatelHet-512')) {
+          parsedF.referralTrustId = 'RFF-PatelHetBh-512';
           localStorage.setItem(fKey, JSON.stringify(parsedF));
         }
       }

@@ -101,14 +101,14 @@ export default function App() {
       const saved = localStorage.getItem('dahej_freelancer_profile');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.id === 'DEV-512' && parsed.referralTrustId === 'RFF-DahejSupport-269') {
-          parsed.referralTrustId = 'RFF-PatelHet-512';
+        if (parsed.id === 'DEV-512' && (parsed.referralTrustId === 'RFF-DahejSupport-269' || parsed.referralTrustId === 'RFF-PatelHet-512')) {
+          parsed.referralTrustId = 'RFF-PatelHetBh-512';
           localStorage.setItem('dahej_freelancer_profile', JSON.stringify(parsed));
         }
         return { 
           ...initialProfile, 
           ...parsed, 
-          referralTrustId: parsed.id === 'DEV-512' ? 'RFF-PatelHet-512' : (parsed.referralTrustId || initialProfile.referralTrustId)
+          referralTrustId: parsed.id === 'DEV-512' ? 'RFF-PatelHetBh-512' : (parsed.referralTrustId || initialProfile.referralTrustId)
         };
       }
     } catch (e) {
@@ -300,7 +300,7 @@ export default function App() {
                   developerId: 'DEV-512',
                   freelancerId: 'DEV-512',
                   status: 'Active',
-                  referralTrustId: 'RFF-PatelHet-512',
+                  referralTrustId: 'RFF-PatelHetBh-512',
                   referenceName: 'Dahej Support',
                   referenceId: 'RFF-DahejSupport-269',
                   referralCode: 'RFF-DahejSupport-269',
@@ -333,8 +333,8 @@ export default function App() {
                     p.referenceName = d.referenceName || p.referenceName || 'Reference Verification';
                     changed = true;
                   }
-                  if (d.id === 'DEV-512' && p.referralTrustId === 'RFF-DahejSupport-269') {
-                    p.referralTrustId = 'RFF-PatelHet-512';
+                  if (d.id === 'DEV-512' && (p.referralTrustId === 'RFF-DahejSupport-269' || p.referralTrustId === 'RFF-PatelHet-512')) {
+                    p.referralTrustId = 'RFF-PatelHetBh-512';
                     changed = true;
                   }
                   if (changed) {
@@ -440,8 +440,8 @@ export default function App() {
             liveData.developers.forEach(d => {
               if (d?.id) {
                 const merged = { ...(map.get(d.id) || {}), ...d };
-                if (merged.id === 'DEV-512' && merged.referralTrustId === 'RFF-DahejSupport-269') {
-                  merged.referralTrustId = 'RFF-PatelHet-512';
+                if (merged.id === 'DEV-512' && (merged.referralTrustId === 'RFF-DahejSupport-269' || merged.referralTrustId === 'RFF-PatelHet-512')) {
+                  merged.referralTrustId = 'RFF-PatelHetBh-512';
                 }
                 map.set(d.id, merged);
               }
@@ -1932,12 +1932,17 @@ export default function App() {
     }
 
     const resolvedTrustId = finalDevId === 'DEV-512'
-      ? 'RFF-PatelHet-512'
-      : ((matchedDev && matchedDev.referralTrustId && matchedDev.referralTrustId !== officialRefCode)
-          ? matchedDev.referralTrustId
-          : (savedCustomProfile && savedCustomProfile.referralTrustId && savedCustomProfile.referralTrustId !== officialRefCode)
-            ? savedCustomProfile.referralTrustId
-            : undefined);
+      ? 'RFF-PatelHetBh-512'
+      : getOrAssignReferralTrustId({
+          id: finalDevId,
+          freelancerId: finalDevId,
+          name: finalDevName,
+          fullName: finalDevName,
+          referralTrustId: matchedDev?.referralTrustId || savedCustomProfile?.referralTrustId,
+          referenceId: officialRefCode,
+          referralCode: officialRefCode,
+          status: 'Active'
+        });
 
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,

@@ -74,9 +74,9 @@ export function getTrustRegistry() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (typeof parsed === 'object' && parsed !== null) {
-        // Self-heal stale DEV-512 mapping if it erroneously points to DahejSupport
-        if (parsed['DEV-512'] === 'RFF-DahejSupport-269') {
-          parsed['DEV-512'] = 'RFF-PatelHet-512';
+        // Self-heal stale DEV-512 mapping so middle slug precisely matches profile name "Patel Het Bh"
+        if (parsed['DEV-512'] === 'RFF-DahejSupport-269' || parsed['DEV-512'] === 'RFF-PatelHet-512') {
+          parsed['DEV-512'] = 'RFF-PatelHetBh-512';
           localStorage.setItem(STORAGE_KEY_TRUST_REGISTRY, JSON.stringify(parsed));
         }
         return parsed;
@@ -94,8 +94,9 @@ export function saveTrustRegistry(registry) {
 
 /**
  * Deterministically get or generate the Reffer Trustable ID for an approved member.
- * If already assigned, reuses the identical ID.
- * Format: RFF-[ProfileName]-[3Digits]
+ * STRICT RULE:
+ * Format: RFF-[ProfileNameSlug]-[3Digits]
+ * The middle name slug MUST ALWAYS match the member's profile name!
  */
 export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   if (!member) return '';
@@ -105,36 +106,54 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   if (statusLower === 'rejected' || statusLower === 'deactivated') return '';
 
   const memberId = member.id || member.developerId || member.testerId || member.freelancerId;
-  if (!memberId && !member.name && !member.fullName) return '';
+  const rawMemberName = member.name || member.fullName || '';
+  if (!memberId && !rawMemberName) return '';
 
   const registry = getTrustRegistry();
+  const cleanName = formatProfileSlug(rawMemberName);
 
-  // If member has referralTrustId, check that it's NOT their sponsor's ID
-  const sponsorId = member.referenceId || member.referralCode;
-  const isSponsorCollision = member.referralTrustId && sponsorId && member.referralTrustId === sponsorId;
+  // Helper to ensure an existing Trust ID strictly conforms to the member's profile name
+  const enforceMatchingProfileSlug = (existingId) => {
+    if (!existingId || typeof existingId !== 'string' || !existingId.startsWith('RFF-')) return null;
+    const match = existingId.match(/^RFF-([a-zA-Z0-9]+)-(\d{3})$/);
+    if (!match) return existingId;
 
-  if (member.referralTrustId && member.referralTrustId.startsWith('RFF-') && !isSponsorCollision) {
-    if (memberId === 'DEV-512' && member.referralTrustId === 'RFF-DahejSupport-269') {
-      const fixed = 'RFF-PatelHet-512';
-      registry['DEV-512'] = fixed;
-      saveTrustRegistry(registry);
-      return fixed;
+    const [, existingSlug, digits] = match;
+    const sponsorId = member.referenceId || member.referralCode;
+
+    // Reject collision with sponsor's ID completely
+    if (sponsorId && existingId === sponsorId) {
+      return null;
     }
-    if (memberId) {
-      registry[memberId] = member.referralTrustId;
-      saveTrustRegistry(registry);
+
+    // MANDATORY RULE: Middle slug MUST ALWAYS match the current profile name slug!
+    if (cleanName && cleanName !== 'Member' && existingSlug.toLowerCase() !== cleanName.toLowerCase()) {
+      return `RFF-${cleanName}-${digits}`;
     }
-    return member.referralTrustId;
+
+    return existingId;
+  };
+
+  if (member.referralTrustId && member.referralTrustId.startsWith('RFF-')) {
+    const verified = enforceMatchingProfileSlug(member.referralTrustId);
+    if (verified) {
+      if (memberId) {
+        registry[memberId] = verified;
+        saveTrustRegistry(registry);
+      }
+      return verified;
+    }
   }
 
   if (memberId && registry[memberId] && registry[memberId].startsWith('RFF-')) {
-    if (memberId === 'DEV-512' && registry[memberId] === 'RFF-DahejSupport-269') {
-      const fixed = 'RFF-PatelHet-512';
-      registry['DEV-512'] = fixed;
-      saveTrustRegistry(registry);
-      return fixed;
+    const verified = enforceMatchingProfileSlug(registry[memberId]);
+    if (verified) {
+      if (verified !== registry[memberId]) {
+        registry[memberId] = verified;
+        saveTrustRegistry(registry);
+      }
+      return verified;
     }
-    return registry[memberId];
   }
 
   // Pre-seed known core members with canonical IDs
@@ -142,7 +161,7 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
     memberId === 'DS-ADM-001' || 
     memberId === 'ADMIN' || 
     member.role === 'admin' || 
-    (member.name && (member.name.toLowerCase() === 'dahej support' || member.name.toLowerCase() === 'keval patel'))
+    (rawMemberName && (rawMemberName.toLowerCase() === 'dahej support' || rawMemberName.toLowerCase() === 'keval patel'))
   ) {
     const canonical = 'RFF-DahejSupport-269';
     if (memberId) registry[memberId] = canonical;
@@ -151,8 +170,8 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
     saveTrustRegistry(registry);
     return canonical;
   }
-  if (memberId === 'DEV-512' || (member.email && member.email.toLowerCase() === 'hetgraphura@gmail.com') || (member.name && member.name.toLowerCase() === 'patel het bh')) {
-    const canonical = 'RFF-PatelHet-512';
+  if (memberId === 'DEV-512' || (member.email && member.email.toLowerCase() === 'hetgraphura@gmail.com') || (rawMemberName && rawMemberName.toLowerCase().includes('patel het bh'))) {
+    const canonical = `RFF-${cleanName || 'PatelHetBh'}-512`;
     if (memberId) registry[memberId] = canonical;
     registry['DEV-512'] = canonical;
     saveTrustRegistry(registry);
@@ -202,7 +221,6 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
   ];
   const usedNumbers = extractUsed3Digits(allUsedIds);
 
-  const cleanName = formatProfileSlug(member.name || member.fullName);
 
   // Preferred 3 digits from member ID if available and unused (e.g., TST-321 -> 321)
   const idDigitsMatch = memberId ? String(memberId).match(/-(\d{3})$/) : null;
@@ -263,7 +281,7 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
   const fallbackSeeds = [
     { id: 'DS-ADM-001', name: 'Dahej Support', fullName: 'Dahej Support', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Platform Administrator / Master Sponsor', trustId: 'RFF-DahejSupport-269' },
     { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' },
-    { id: 'DEV-512', name: 'Patel Het Bh', fullName: 'Patel Het Bh', email: 'hetgraphura@gmail.com', role: 'developer', roleTitle: 'Full Stack Developer (React & Node)', trustId: 'RFF-PatelHet-512' },
+    { id: 'DEV-512', name: 'Patel Het Bh', fullName: 'Patel Het Bh', email: 'hetgraphura@gmail.com', role: 'developer', roleTitle: 'Full Stack Developer (React & Node)', trustId: 'RFF-PatelHetBh-512' },
     { id: 'DEV-452', name: 'Patel Het', fullName: 'Patel Het', email: 'patelhet@dahejsupport.com', role: 'developer', roleTitle: 'Frontend Developer', trustId: 'RFF-PatelHet-523' },
     { id: 'TST-781', name: 'Hetvi', fullName: 'Hetvi', email: 'hetvi@dahejsupport.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-Hetvi-781' },
     { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' },
@@ -314,9 +332,13 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   }
 
   // Find by Trust ID (case-insensitive)
-  const matchedSponsor = approvedSponsors.find(s => 
-    s.trustId && s.trustId.trim().toUpperCase() === cleanId
-  );
+  const matchedSponsor = approvedSponsors.find(s => {
+    if (!s.trustId) return false;
+    const sId = s.trustId.trim().toUpperCase();
+    if (sId === cleanId) return true;
+    if (s.id === 'DEV-512' && (cleanId === 'RFF-PATELHETBH-512' || cleanId === 'RFF-PATELHET-512')) return true;
+    return false;
+  });
 
   if (!matchedSponsor) {
     return {
@@ -345,7 +367,7 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   );
 
   // DEV-512 aliases support (Patel Het Bh, Patel Het)
-  const isDev512Match = (matchedSponsor.id === 'DEV-512' || cleanId === 'RFF-PATELHET-512') && (
+  const isDev512Match = (matchedSponsor.id === 'DEV-512' || cleanId === 'RFF-PATELHETBH-512' || cleanId === 'RFF-PATELHET-512') && (
     normalizedInputName === 'patel het bh' ||
     normalizedInputName === 'patel het' ||
     inputSlug === 'patelhet' ||

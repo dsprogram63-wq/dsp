@@ -68,18 +68,15 @@ export default function ProfilePage({
   const [toastMessage, setToastMessage] = useState(null);
   const [copiedTrustId, setCopiedTrustId] = useState(false);
 
-  // Reffer Trustable ID for approved developer
-  const rawTrustId = currentProfile.referralTrustId;
-  const isSponsorCollision = rawTrustId && (rawTrustId === currentProfile.referenceId || rawTrustId === currentProfile.referralCode);
-  const myReferralTrustId = (rawTrustId && !isSponsorCollision)
-    ? rawTrustId
-    : getOrAssignReferralTrustId({
-        ...currentProfile,
-        status: currentProfile.status || 'Active',
-        freelancerId: currentProfile.freelancerId || currentProfile.id || formData.freelancerId,
-        name: formData.fullName || currentProfile.name || currentProfile.fullName,
-        fullName: formData.fullName || currentProfile.name || currentProfile.fullName
-      });
+  // Reffer Trustable ID for approved developer (strictly synchronized with profile name)
+  const myReferralTrustId = getOrAssignReferralTrustId({
+    ...currentProfile,
+    status: currentProfile.status || 'Active',
+    freelancerId: currentProfile.freelancerId || currentProfile.id || formData.freelancerId,
+    name: formData.fullName || currentProfile.name || currentProfile.fullName,
+    fullName: formData.fullName || currentProfile.name || currentProfile.fullName,
+    referralTrustId: currentProfile.referralTrustId
+  });
 
   const handleCopyTrustId = () => {
     if (!myReferralTrustId) return;
