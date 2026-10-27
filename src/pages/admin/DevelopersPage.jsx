@@ -122,7 +122,7 @@ export default function DevelopersPage({
 
     const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
     const assignedTrustId = isNowActive 
-      ? (dev.referralTrustId || getOrAssignReferralTrustId({ ...dev, status: newStatus }, developers))
+      ? (dev.referralTrustId && dev.referralTrustId !== dev.referenceId && dev.referralTrustId !== dev.referralCode ? dev.referralTrustId : getOrAssignReferralTrustId({ ...dev, status: newStatus }, developers))
       : (dev.referralTrustId || '');
 
     const updated = {

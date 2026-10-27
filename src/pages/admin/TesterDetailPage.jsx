@@ -80,7 +80,7 @@ export default function TesterDetailPage({
 
     const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
     const assignedTrustId = isNowActive 
-      ? (t.referralTrustId || getOrAssignReferralTrustId({ ...t, status: newStatus }))
+      ? (t.referralTrustId && t.referralTrustId !== t.referenceId && t.referralTrustId !== t.referralCode ? t.referralTrustId : getOrAssignReferralTrustId({ ...t, status: newStatus }))
       : (t.referralTrustId || '');
 
     const updated = {
@@ -328,6 +328,12 @@ export default function TesterDetailPage({
               <span>Referrer: <strong>{t.referenceName || 'Direct Onboarding'}</strong></span>
               <span>•</span>
               <span>Referral Code: <strong style={{ color: '#F3821D', fontFamily: 'monospace', background: '#FFF7ED', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{t.referralCode || 'DS-TST-201'}</strong></span>
+              {t.referralTrustId && (
+                <>
+                  <span>•</span>
+                  <span>Own Trust ID: <strong style={{ color: '#0369A1', fontFamily: 'monospace', background: '#E0F2FE', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{t.referralTrustId}</strong></span>
+                </>
+              )}
             </div>
           </div>
         </div>

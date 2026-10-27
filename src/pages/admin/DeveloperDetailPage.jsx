@@ -88,7 +88,7 @@ export default function DeveloperDetailPage({
 
     const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
     const assignedTrustId = isNowActive 
-      ? (developer.referralTrustId || getOrAssignReferralTrustId({ ...developer, status: newStatus }))
+      ? (developer.referralTrustId && developer.referralTrustId !== developer.referenceId && developer.referralTrustId !== developer.referralCode ? developer.referralTrustId : getOrAssignReferralTrustId({ ...developer, status: newStatus }))
       : (developer.referralTrustId || '');
 
     const updated = {
@@ -347,6 +347,12 @@ export default function DeveloperDetailPage({
               <span>Referrer: <strong>{developer.referenceName || 'Direct Onboarding'}</strong></span>
               <span>•</span>
               <span>Referral Code: <strong style={{ color: '#0A3D75', fontFamily: 'monospace', background: '#E8F2FC', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{developer.referralCode || 'DS-REF-8902'}</strong></span>
+              {developer.referralTrustId && (
+                <>
+                  <span>•</span>
+                  <span>Own Trust ID: <strong style={{ color: '#0369A1', fontFamily: 'monospace', background: '#E0F2FE', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.04em' }}>{developer.referralTrustId}</strong></span>
+                </>
+              )}
             </div>
           </div>
         </div>

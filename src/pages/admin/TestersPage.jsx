@@ -116,7 +116,7 @@ export default function TestersPage({
 
     const isNowActive = newStatus === 'Active' || newStatus === 'Approved';
     const assignedTrustId = isNowActive 
-      ? (tester.referralTrustId || getOrAssignReferralTrustId({ ...tester, status: newStatus }, testers))
+      ? (tester.referralTrustId && tester.referralTrustId !== tester.referenceId && tester.referralTrustId !== tester.referralCode ? tester.referralTrustId : getOrAssignReferralTrustId({ ...tester, status: newStatus }, testers))
       : (tester.referralTrustId || '');
 
     const updated = {
