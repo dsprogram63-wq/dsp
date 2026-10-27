@@ -128,6 +128,13 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
     saveTrustRegistry(registry);
     return canonical;
   }
+  if (memberId === 'DEV-512' || (member.email && member.email.toLowerCase() === 'hetgraphura@gmail.com') || (member.name && member.name.toLowerCase() === 'patel het bh')) {
+    const canonical = 'RFF-DahejSupport-269';
+    if (memberId) registry[memberId] = canonical;
+    registry['DEV-512'] = canonical;
+    saveTrustRegistry(registry);
+    return canonical;
+  }
   if (memberId === 'DEV-452' || (member.name && member.name.toLowerCase() === 'patel het' && (!memberId || memberId.startsWith('DEV-')))) {
     const canonical = 'RFF-PatelHet-523';
     if (memberId) registry[memberId] = canonical;
@@ -233,6 +240,7 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
   const fallbackSeeds = [
     { id: 'DS-ADM-001', name: 'Dahej Support', fullName: 'Dahej Support', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Platform Administrator / Master Sponsor', trustId: 'RFF-DahejSupport-269' },
     { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' },
+    { id: 'DEV-512', name: 'Patel Het Bh', fullName: 'Patel Het Bh', email: 'hetgraphura@gmail.com', role: 'developer', roleTitle: 'Full Stack Developer (React & Node)', trustId: 'RFF-DahejSupport-269' },
     { id: 'DEV-452', name: 'Patel Het', fullName: 'Patel Het', email: 'patelhet@dahejsupport.com', role: 'developer', roleTitle: 'Frontend Developer', trustId: 'RFF-PatelHet-523' },
     { id: 'TST-781', name: 'Hetvi', fullName: 'Hetvi', email: 'hetvi@dahejsupport.com', role: 'tester', roleTitle: 'QA Specialist', trustId: 'RFF-Hetvi-781' },
     { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' },

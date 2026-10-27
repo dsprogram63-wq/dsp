@@ -9,6 +9,8 @@
  * - Rich branded HTML templates for Developer & Tester verifications
  */
 
+import { saveLivePlatformData } from './liveDataService.js';
+
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 // Multi-Sender Registry
@@ -937,10 +939,26 @@ export function saveMemberPassword(id, email, password, altId = null) {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
     const registry = raw ? JSON.parse(raw) : {};
-    if (id) registry[id.toString().trim().toLowerCase()] = password;
-    if (email) registry[email.toString().trim().toLowerCase()] = password;
-    if (altId) registry[altId.toString().trim().toLowerCase()] = password;
+    const updates = {};
+    if (id) {
+      const k = id.toString().trim().toLowerCase();
+      registry[k] = password;
+      updates[k] = password;
+    }
+    if (email) {
+      const k = email.toString().trim().toLowerCase();
+      registry[k] = password;
+      updates[k] = password;
+    }
+    if (altId) {
+      const k = altId.toString().trim().toLowerCase();
+      registry[k] = password;
+      updates[k] = password;
+    }
     localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(registry));
+
+    // Persist to live cloud storage asynchronously
+    saveLivePlatformData({ passwords: updates }).catch(() => {});
   } catch (e) {
     console.error('Failed to save member password:', e);
   }
@@ -985,6 +1003,14 @@ export function getMemberPassword(idOrEmail) {
       if (found && found.password) return found.password;
     }
   } catch (e) {}
+
+  // Baseline standard fallback for seed & official accounts
+  if (key === 'dev-512' || key === 'hetgraphura@gmail.com' || key === 'dev-452' || key === 'patelhet@dahejsupport.com' || key === 'dev-892' || key === 'saheb@dahejsupport.com') {
+    return 'dev123';
+  }
+  if (key === 'tst-781' || key === 'hetvi@dahejsupport.com' || key === 'tst-317') {
+    return 'tester123';
+  }
 
   return null;
 }

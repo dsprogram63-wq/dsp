@@ -70,6 +70,7 @@ import {
   toTesterSafeProject 
 } from './services/testerApiService';
 import { saveMemberPassword } from './services/emailService';
+import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
 export default function App() {
   // Authentication session from LocalStorage
@@ -221,7 +222,14 @@ export default function App() {
       const saved = localStorage.getItem('dahej_real_v2_freelancer_projects') || localStorage.getItem('dahej_freelancer_projects');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
+          if (!has7169) {
+            const p7169 = initialProjects.find(p => p.id === 'DS-WEB-7169');
+            if (p7169) return [p7169, ...parsed];
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to parse freelancer projects:', e);
@@ -236,7 +244,14 @@ export default function App() {
       const saved = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
+          if (!has7169) {
+            const p7169 = initialAdminProjects.find(p => p.id === 'DS-WEB-7169');
+            if (p7169) return [p7169, ...parsed];
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to parse admin projects:', e);
@@ -247,11 +262,42 @@ export default function App() {
   // State for Developers (Persistent across sessions & reloads)
   const [developers, setDevelopers] = useState(() => {
     try {
+      // Pre-seed password for DEV-512
+      saveMemberPassword('DEV-512', 'hetgraphura@gmail.com', 'dev123');
+
       const saved = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (saved !== null) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          if (parsed.length === 0) return [];
+          if (parsed.length === 0) return initialDevelopers;
+
+          // Self-heal: Ensure DEV-512 is ALWAYS in developers
+          const dev512Seed = initialDevelopers.find(d => d.id === 'DEV-512');
+          const hasDev512 = parsed.some(d => 
+            (d.id && d.id.toLowerCase() === 'dev-512') || 
+            (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')
+          );
+          if (!hasDev512 && dev512Seed) {
+            parsed = [dev512Seed, ...parsed];
+          } else if (hasDev512 && dev512Seed) {
+            parsed = parsed.map(d => {
+              if ((d.id && d.id.toLowerCase() === 'dev-512') || (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')) {
+                return {
+                  ...dev512Seed,
+                  ...d,
+                  id: 'DEV-512',
+                  developerId: 'DEV-512',
+                  freelancerId: 'DEV-512',
+                  status: 'Active',
+                  email: 'hetgraphura@gmail.com',
+                  name: d.name || 'Patel Het Bh',
+                  fullName: d.fullName || 'Patel Het Bh'
+                };
+              }
+              return d;
+            });
+          }
+
           // Normalize and self-heal any missing referenceId or outdated synthetic REF-00 IDs
           return parsed.map(d => {
             const actualCode = (d.referralCode && !d.referralCode.startsWith('REF-00') ? d.referralCode : null) ||
@@ -360,12 +406,56 @@ export default function App() {
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
 
-  // Sync real data to LocalStorage (Dual-key persistence so data is NEVER lost)
+  // Live Cloud Synchronization on Application Boot
+  useEffect(() => {
+    fetchLivePlatformData().then(liveData => {
+      if (liveData) {
+        if (Array.isArray(liveData.developers) && liveData.developers.length > 0) {
+          setDevelopers(prev => {
+            const map = new Map();
+            prev.forEach(d => { if (d?.id) map.set(d.id, d); });
+            liveData.developers.forEach(d => { if (d?.id) map.set(d.id, { ...(map.get(d.id) || {}), ...d }); });
+            return Array.from(map.values());
+          });
+        }
+        if (Array.isArray(liveData.adminProjects) && liveData.adminProjects.length > 0) {
+          setAdminProjects(prev => {
+            const map = new Map();
+            prev.forEach(p => { if (p?.id) map.set(p.id, p); });
+            liveData.adminProjects.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+            return Array.from(map.values());
+          });
+        }
+        if (Array.isArray(liveData.projects) && liveData.projects.length > 0) {
+          setProjects(prev => {
+            const map = new Map();
+            prev.forEach(p => { if (p?.id) map.set(p.id, p); });
+            liveData.projects.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+            return Array.from(map.values());
+          });
+        }
+        if (Array.isArray(liveData.testers) && liveData.testers.length > 0) {
+          setTesters(prev => {
+            const map = new Map();
+            prev.forEach(t => { if (t?.id) map.set(t.id, t); });
+            liveData.testers.forEach(t => { if (t?.id) map.set(t.id, { ...(map.get(t.id) || {}), ...t }); });
+            return Array.from(map.values());
+          });
+        }
+      }
+    }).catch(err => console.warn('Live platform sync background notice:', err));
+  }, []);
+
+  // Sync real data to LocalStorage & Live Cloud
   useEffect(() => {
     try {
       if (Array.isArray(adminProjects)) {
         localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
         localStorage.setItem('dahej_admin_projects', JSON.stringify(adminProjects));
+        const timer = setTimeout(() => {
+          saveLivePlatformData({ adminProjects }).catch(() => {});
+        }, 1500);
+        return () => clearTimeout(timer);
       }
     } catch (e) {
       console.error(e);
@@ -388,6 +478,10 @@ export default function App() {
       if (Array.isArray(developers)) {
         localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
         localStorage.setItem('dahej_developers', JSON.stringify(developers));
+        const timer = setTimeout(() => {
+          saveLivePlatformData({ developers }).catch(() => {});
+        }, 1500);
+        return () => clearTimeout(timer);
       }
     } catch (e) {
       console.error(e);
@@ -399,6 +493,10 @@ export default function App() {
       if (Array.isArray(testers)) {
         localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
         localStorage.setItem('dahej_testers', JSON.stringify(testers));
+        const timer = setTimeout(() => {
+          saveLivePlatformData({ testers }).catch(() => {});
+        }, 1500);
+        return () => clearTimeout(timer);
       }
     } catch (e) {
       console.error(e);
@@ -1044,6 +1142,7 @@ export default function App() {
       try {
         localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
         localStorage.setItem('dahej_developers', JSON.stringify(updated));
+        saveLivePlatformData({ developers: updated }).catch(() => {});
       } catch (e) {}
       return updated;
     });
@@ -1101,6 +1200,7 @@ export default function App() {
       try {
         localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
         localStorage.setItem('dahej_testers', JSON.stringify(updated));
+        saveLivePlatformData({ testers: updated }).catch(() => {});
       } catch (e) {}
       return updated;
     });
