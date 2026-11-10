@@ -43,8 +43,6 @@ function sanitizePlatformState(state) {
   if (Array.isArray(state.adminProjects)) {
     state.adminProjects = state.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
   }
-      });
-  }
 
   // 4. Freelancer Projects
   if (Array.isArray(state.projects)) {
