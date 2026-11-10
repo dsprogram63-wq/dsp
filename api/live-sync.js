@@ -25,10 +25,12 @@ const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
 function sanitizePlatformState(state) {
   if (!state || typeof state !== 'object') return state;
 
+  const deletedIds = new Set((state.deletedMemberIds || []).map(id => String(id).toLowerCase().trim()));
+
   // 1. Developers: keep only real approved developers (DEV-512 Patel Het Bh)
   if (Array.isArray(state.developers)) {
     state.developers = state.developers
-      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com')
+      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com')
       .map(d => {
         if (d.id === 'DEV-512' || d.email === 'hetgraphura@gmail.com') {
           return {
@@ -53,7 +55,7 @@ function sanitizePlatformState(state) {
   // 2. Testers: keep only real approved/pending testers (TST-317, TST-841)
   if (Array.isArray(state.testers)) {
     state.testers = state.testers
-      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com')
+      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com')
       .map(t => {
         if (t.id === 'TST-317' || t.email === 'dahejsupport@gmail.com') {
           return {
@@ -196,27 +198,53 @@ export default async function handler(req, res) {
 
       currentState = sanitizePlatformState(currentState);
 
-      // Merge arrays uniquely by 'id'
-      const mergeById = (prev = [], incoming = []) => {
-        if (!Array.isArray(incoming)) return prev;
+      const currentDeletedIds = new Set([
+        ...(Array.isArray(currentState.deletedMemberIds) ? currentState.deletedMemberIds : []),
+        ...(Array.isArray(updates.deletedMemberIds) ? updates.deletedMemberIds : []),
+        ...(updates.deletedMemberId ? [String(updates.deletedMemberId).toLowerCase().trim()] : [])
+      ]);
+
+      // Merge arrays uniquely by 'id', respecting full replacement & deleted IDs
+      const mergeById = (prev = [], incoming = [], replace = false) => {
+        if (replace && Array.isArray(incoming)) {
+          return incoming.filter(item => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim()));
+        }
+        if (!Array.isArray(incoming)) {
+          return (prev || []).filter(item => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim()));
+        }
         const map = new Map();
-        (prev || []).forEach(item => { if (item?.id) map.set(item.id, item); });
-        (incoming || []).forEach(item => { if (item?.id) map.set(item.id, { ...(map.get(item.id) || {}), ...item }); });
+        (prev || []).forEach(item => {
+          if (item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())) {
+            map.set(item.id, item);
+          }
+        });
+        (incoming || []).forEach(item => {
+          if (item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())) {
+            map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+          }
+        });
         return Array.from(map.values());
       };
+
+      const nextPasswords = {
+        ...(currentState.passwords || {}),
+        ...(updates.passwords || {})
+      };
+      if (updates.deletedMemberId) {
+        const delKey = String(updates.deletedMemberId).toLowerCase().trim();
+        delete nextPasswords[delKey];
+      }
 
       const mergedState = sanitizePlatformState({
         ...currentState,
         version: '2.0.0',
         updatedAt: new Date().toISOString(),
-        developers: updates.developers ? mergeById(currentState.developers, updates.developers) : currentState.developers,
-        testers: updates.testers ? mergeById(currentState.testers, updates.testers) : currentState.testers,
-        adminProjects: updates.adminProjects ? mergeById(currentState.adminProjects, updates.adminProjects) : currentState.adminProjects,
+        deletedMemberIds: Array.from(currentDeletedIds),
+        developers: updates.developers ? mergeById(currentState.developers, updates.developers, Boolean(updates.replaceDevelopers)) : currentState.developers,
+        testers: updates.testers ? mergeById(currentState.testers, updates.testers, Boolean(updates.replaceTesters)) : currentState.testers,
+        adminProjects: updates.adminProjects ? mergeById(currentState.adminProjects, updates.adminProjects, Boolean(updates.replaceAdminProjects)) : currentState.adminProjects,
         projects: updates.projects ? mergeById(currentState.projects, updates.projects) : (updates.adminProjects ? mergeById(currentState.projects, updates.adminProjects) : currentState.projects),
-        passwords: {
-          ...(currentState.passwords || {}),
-          ...(updates.passwords || {})
-        },
+        passwords: nextPasswords,
         applications: updates.applications ? mergeById(currentState.applications, updates.applications) : currentState.applications
       });
 

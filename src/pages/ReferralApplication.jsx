@@ -460,7 +460,7 @@ export default function ReferralApplication({
           return 'Username can only contain letters, spaces, dots, and hyphens (no numbers or symbols).';
         }
         {
-          const check = checkUsernameAvailability(trimmed);
+          const check = checkUsernameAvailability(trimmed, null, developers, testers);
           if (!check.available) {
             return check.message;
           }
@@ -476,7 +476,7 @@ export default function ReferralApplication({
           return 'Please enter a valid email address (e.g. name@example.com).';
         }
         {
-          const check = checkEmailAvailability(trimmed);
+          const check = checkEmailAvailability(trimmed, null, developers, testers);
           if (!check.available) {
             return check.message;
           }
@@ -498,7 +498,7 @@ export default function ReferralApplication({
           return '10-digit mobile number must start with 6, 7, 8, or 9.';
         }
         {
-          const check = checkMobileAvailability(digits);
+          const check = checkMobileAvailability(digits, null, developers, testers);
           if (!check.available) {
             return check.message;
           }
@@ -683,7 +683,7 @@ export default function ReferralApplication({
       return;
     }
 
-    const emailCheck = checkEmailAvailability(formData.email);
+    const emailCheck = checkEmailAvailability(formData.email, null, developers, testers);
     if (!emailCheck.available) {
       setTouched(prev => ({ ...prev, email: true }));
       setErrors(prev => ({ ...prev, email: emailCheck.message }));

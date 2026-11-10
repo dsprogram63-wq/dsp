@@ -964,6 +964,23 @@ export function saveMemberPassword(id, email, password, altId = null) {
   }
 }
 
+export function removeMemberPassword(idOrEmail) {
+  if (!idOrEmail) return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
+    if (raw) {
+      const registry = JSON.parse(raw);
+      const k = idOrEmail.toString().trim().toLowerCase();
+      if (registry[k]) {
+        delete registry[k];
+        localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(registry));
+      }
+    }
+  } catch (e) {
+    console.error('Failed to remove member password:', e);
+  }
+}
+
 export function getMemberPassword(idOrEmail) {
   if (!idOrEmail) return null;
   const key = idOrEmail.toString().trim().toLowerCase();

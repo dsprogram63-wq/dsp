@@ -32,6 +32,26 @@ import {
   getAuthenticatedTesterProjects
 } from './src/services/testerApiService.js';
 
+import {
+  checkEmailAvailability,
+  checkMobileAvailability,
+  checkUsernameAvailability,
+  addDeletedMemberId,
+  getDeletedMemberIds,
+  getRegisteredDevelopers,
+  getRegisteredTesters
+} from './src/utils/memberUniqueness.js';
+
+if (typeof global.localStorage === 'undefined') {
+  const store = new Map();
+  global.localStorage = {
+    getItem: (key) => store.get(key) || null,
+    setItem: (key, val) => store.set(key, String(val)),
+    removeItem: (key) => store.delete(key),
+    clear: () => store.clear()
+  };
+}
+
 console.log('================================================================');
 console.log('🚀 MASTER PROJECT LIFECYCLE VERIFICATION TEST SUITE');
 console.log('================================================================\n');
@@ -562,6 +582,55 @@ const resAllValid = validateSettlementPayments({
 });
 assert(resAllValid.isValid === true, 'All payments settled with genuine Txn IDs MUST PASS validation');
 assert(Object.keys(resAllValid.errors).length === 0, 'No errors when genuine Txn IDs are provided');
+
+console.log('\n--- TEST 17: Deleted Developer & QA Tester Complete Purge & Uniqueness Recovery ---');
+// 1. Initial registered list with active dev DEV-991
+const activeDev = {
+  id: 'DEV-991',
+  name: 'Test Candidate',
+  email: 'testcandidate@example.com',
+  mobile: '9662009999'
+};
+const devList = [activeDev];
+
+// Active dev details should be unavailable for new registration
+assert(checkEmailAvailability('testcandidate@example.com', null, devList).available === false, 'Existing active developer email is blocked from registration');
+assert(checkMobileAvailability('9662009999', null, devList).available === false, 'Existing active developer mobile is blocked from registration');
+assert(checkUsernameAvailability('Test Candidate', null, devList).available === false, 'Existing active developer username is blocked from registration');
+
+// 2. Admin deletes developer DEV-991
+addDeletedMemberId('DEV-991');
+const afterDeleteList = devList.filter(d => d.id !== 'DEV-991');
+
+// After deletion, uniqueness check with updated list MUST return available: true
+assert(checkEmailAvailability('testcandidate@example.com', null, afterDeleteList).available === true, 'Deleted developer email is immediately released and available for registration');
+assert(checkMobileAvailability('9662009999', null, afterDeleteList).available === true, 'Deleted developer mobile number is immediately released and available for registration');
+assert(checkUsernameAvailability('Test Candidate', null, afterDeleteList).available === true, 'Deleted developer username is immediately released and available for registration');
+
+// 3. Even if stale list still has DEV-991, blacklist prevents collision
+assert(checkEmailAvailability('testcandidate@example.com', null, devList).available === true, 'Blacklisted deleted developer ID email is ignored even if stale object exists');
+assert(checkMobileAvailability('9662009999', null, devList).available === true, 'Blacklisted deleted developer ID mobile is ignored even if stale object exists');
+
+// 4. Empty array in localStorage strictly respected (0 developers in admin)
+global.localStorage.setItem('dahej_real_v2_developers', JSON.stringify([]));
+const registeredDevs = getRegisteredDevelopers();
+assert(Array.isArray(registeredDevs) && registeredDevs.length === 0, 'When Admin deletes all developers, getRegisteredDevelopers strictly returns empty array');
+
+// 5. Same workflow for QA Tester
+const activeTester = {
+  id: 'TST-882',
+  name: 'QA Tester Beta',
+  email: 'qabeta@example.com',
+  mobile: '9662008888'
+};
+const testerList = [activeTester];
+assert(checkEmailAvailability('qabeta@example.com', null, [], testerList).available === false, 'Existing QA tester email is blocked from registration');
+assert(checkMobileAvailability('9662008888', null, [], testerList).available === false, 'Existing QA tester mobile is blocked from registration');
+
+addDeletedMemberId('TST-882');
+const afterDeleteTesters = testerList.filter(t => t.id !== 'TST-882');
+assert(checkEmailAvailability('qabeta@example.com', null, [], afterDeleteTesters).available === true, 'Deleted QA tester email is immediately released and available for registration');
+assert(checkMobileAvailability('9662008888', null, [], afterDeleteTesters).available === true, 'Deleted QA tester mobile is immediately released and available for registration');
 
 console.log('================================================================');
 console.log(`🎉 TEST SUMMARY: ${passedTests}/${totalTests} TESTS PASSED!`);

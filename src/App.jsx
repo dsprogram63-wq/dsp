@@ -57,6 +57,7 @@ import { initialProjects, initialProfile } from './data/mockData';
 import { initialAdminProjects, initialDevelopers } from './data/adminMockData';
 import { initialTesters, initialTesterProfile } from './data/testerMockData';
 import { removeReferralTrustId } from './utils/referralTrustUtils';
+import { getDeletedMemberIds, addDeletedMemberId, isMemberDeleted } from './utils/memberUniqueness';
 import { 
   getAuthenticatedFreelancerProjects, 
   getAuthenticatedFreelancerProjectById, 
@@ -69,7 +70,7 @@ import {
   isProjectAssignedToTester,
   toTesterSafeProject 
 } from './services/testerApiService';
-import { saveMemberPassword } from './services/emailService';
+import { saveMemberPassword, removeMemberPassword } from './services/emailService';
 import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
 export default function App() {
@@ -295,8 +296,12 @@ export default function App() {
   // State for Developers (Persistent across sessions & reloads)
   const [developers, setDevelopers] = useState(() => {
     try {
-      // Pre-seed password for DEV-512
-      saveMemberPassword('DEV-512', 'hetgraphura@gmail.com', 'dev123');
+      const deletedIds = getDeletedMemberIds();
+
+      // Pre-seed password for DEV-512 only if not deleted
+      if (!deletedIds.has('dev-512')) {
+        saveMemberPassword('DEV-512', 'hetgraphura@gmail.com', 'dev123');
+      }
 
       // Purge mock profiles from localStorage
       ['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
@@ -307,18 +312,19 @@ export default function App() {
       if (saved !== null) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Filter out synthetic mock accounts
-          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
+          // Filter out synthetic mock accounts & permanently deleted developers
+          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
 
-          if (parsed.length === 0) return initialDevelopers;
+          // If admin deleted all developers, strictly respect the empty array
+          if (parsed.length === 0) return [];
 
-          // Self-heal: Ensure DEV-512 is ALWAYS in developers
+          // Self-heal: Ensure DEV-512 is in developers only if NOT deleted by admin
           const dev512Seed = initialDevelopers.find(d => d.id === 'DEV-512');
           const hasDev512 = parsed.some(d => 
             (d.id && d.id.toLowerCase() === 'dev-512') || 
             (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')
           );
-          if (!hasDev512 && dev512Seed) {
+          if (!hasDev512 && dev512Seed && !deletedIds.has('dev-512')) {
             parsed = [dev512Seed, ...parsed];
           } else if (hasDev512 && dev512Seed) {
             parsed = parsed.map(d => {
@@ -386,14 +392,19 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse developers:', e);
     }
-    return initialDevelopers;
+    const delIds = getDeletedMemberIds();
+    return (initialDevelopers || []).filter(d => d && !delIds.has(String(d.id || '').toLowerCase()));
   });
 
   // State for Testers (Persistent across sessions & reloads)
   const [testers, setTesters] = useState(() => {
     try {
-      // Pre-seed password for TST-317
-      saveMemberPassword('TST-317', 'dahejsupport@gmail.com', 'tester123');
+      const deletedIds = getDeletedMemberIds();
+
+      // Pre-seed password for TST-317 only if not deleted
+      if (!deletedIds.has('tst-317')) {
+        saveMemberPassword('TST-317', 'dahejsupport@gmail.com', 'tester123');
+      }
 
       // Purge mock tester profiles from localStorage
       ['TST-781', 'TST-DEMO'].forEach(id => {
@@ -404,18 +415,19 @@ export default function App() {
       if (saved !== null) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Filter out synthetic mock testers
-          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
+          // Filter out synthetic mock testers & permanently deleted testers
+          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
 
-          if (parsed.length === 0) return initialTesters;
+          // If admin deleted all testers, strictly respect the empty array
+          if (parsed.length === 0) return [];
 
-          // Self-heal: Ensure TST-317 is ALWAYS present
+          // Self-heal: Ensure TST-317 is in testers only if NOT deleted by admin
           const tst317Seed = initialTesters.find(t => t.id === 'TST-317');
           const hasTst317 = parsed.some(t => 
             (t.id && t.id.toLowerCase() === 'tst-317') || 
             (t.email && t.email.toLowerCase().trim() === 'dahejsupport@gmail.com')
           );
-          if (!hasTst317 && tst317Seed) {
+          if (!hasTst317 && tst317Seed && !deletedIds.has('tst-317')) {
             parsed = [tst317Seed, ...parsed];
           }
 
@@ -491,7 +503,8 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse testers:', e);
     }
-    return initialTesters;
+    const delIds = getDeletedMemberIds();
+    return (initialTesters || []).filter(t => t && !delIds.has(String(t.id || '').toLowerCase()));
   });
   const [selectedAdminProjectId, setSelectedAdminProjectId] = useState(routeState.selectedProjectId || null);
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(routeState.selectedDeveloperId || '');
@@ -504,13 +517,19 @@ export default function App() {
   useEffect(() => {
     fetchLivePlatformData().then(liveData => {
       if (liveData) {
+        // Collect and persist any deleted member IDs discovered from cloud
+        if (Array.isArray(liveData.deletedMemberIds)) {
+          liveData.deletedMemberIds.forEach(id => addDeletedMemberId(id));
+        }
+        const deletedIds = getDeletedMemberIds();
+
         if (Array.isArray(liveData.developers)) {
           setDevelopers(prev => {
-            const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id));
+            const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase()));
             const map = new Map();
-            prev.filter(d => d && !MOCK_DEV_IDS.has(d.id)).forEach(d => { if (d?.id) map.set(d.id, d); });
+            prev.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase())).forEach(d => { if (d?.id) map.set(d.id, d); });
             cleanIncoming.forEach(d => {
-              if (d?.id) {
+              if (d?.id && !deletedIds.has(String(d.id).toLowerCase())) {
                 const merged = { ...(map.get(d.id) || {}), ...d };
                 if (merged.id === 'DEV-512') {
                   merged.referralTrustId = 'RFF-PatelHetBh-512';
@@ -521,7 +540,12 @@ export default function App() {
                 map.set(d.id, merged);
               }
             });
-            return Array.from(map.values());
+            const result = Array.from(map.values());
+            try {
+              localStorage.setItem('dahej_real_v2_developers', JSON.stringify(result));
+              localStorage.setItem('dahej_developers', JSON.stringify(result));
+            } catch (e) {}
+            return result;
           });
         }
         if (Array.isArray(liveData.adminProjects)) {
@@ -558,11 +582,11 @@ export default function App() {
         }
         if (Array.isArray(liveData.testers)) {
           setTesters(prev => {
-            const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id));
+            const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase()));
             const map = new Map();
-            prev.filter(t => t && !MOCK_TESTER_IDS.has(t.id)).forEach(t => { if (t?.id) map.set(t.id, t); });
+            prev.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase())).forEach(t => { if (t?.id) map.set(t.id, t); });
             cleanIncoming.forEach(t => {
-              if (t?.id) {
+              if (t?.id && !deletedIds.has(String(t.id).toLowerCase())) {
                 const merged = { ...(map.get(t.id) || {}), ...t };
                 if (merged.id === 'TST-317') {
                   merged.referralTrustId = 'RFF-PatelHet-317';
@@ -571,7 +595,12 @@ export default function App() {
                 map.set(t.id, merged);
               }
             });
-            return Array.from(map.values());
+            const result = Array.from(map.values());
+            try {
+              localStorage.setItem('dahej_real_v2_testers', JSON.stringify(result));
+              localStorage.setItem('dahej_testers', JSON.stringify(result));
+            } catch (e) {}
+            return result;
           });
         }
       }
@@ -807,9 +836,15 @@ export default function App() {
     if (!developerId) return;
     const targetId = developerId.trim().toLowerCase();
 
-    // 1. Remove from developers state and persist immediately
+    // 1. Mark in permanent deleted IDs blacklist
+    addDeletedMemberId(developerId);
+    addDeletedMemberId(targetId);
+
+    // 2. Remove from developers state and persist immediately
+    let finalUpdatedDevs = [];
     setDevelopers(prevDevs => {
-      const updated = prevDevs.filter(d => (d.id || '').toLowerCase() !== targetId);
+      const updated = prevDevs.filter(d => (d.id || '').toLowerCase() !== targetId && (d.developerId || '').toLowerCase() !== targetId);
+      finalUpdatedDevs = updated;
       try {
         localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
         localStorage.setItem('dahej_developers', JSON.stringify(updated));
@@ -819,17 +854,21 @@ export default function App() {
       return updated;
     });
 
-    // 2. Clean up any stored profile cache for this developer
+    // 3. Clean up any stored profile cache for this developer
     try {
       localStorage.removeItem(`dahej_profile_${developerId}`);
       localStorage.removeItem(`dahej_profile_${targetId}`);
     } catch (e) {}
 
-    // 3. Remove from Referral Trust Registry if present
+    // 4. Remove password
+    removeMemberPassword(developerId);
+    removeMemberPassword(targetId);
+
+    // 5. Remove from Referral Trust Registry if present
     removeReferralTrustId(developerId);
     removeReferralTrustId(targetId);
 
-    // 4. Safely unassign from any active admin projects
+    // 6. Safely unassign from any active admin projects
     setAdminProjects(prevProjects => {
       const updated = prevProjects.map(p => {
         const matchesId = p.developerId && p.developerId.toLowerCase() === targetId;
@@ -852,7 +891,7 @@ export default function App() {
       return updated;
     });
 
-    // 5. Safely unassign from freelancer projects list
+    // 7. Safely unassign from freelancer projects list
     setProjects(prevProjects => {
       const updated = prevProjects.map(p => {
         const matchesId = p.developerId && p.developerId.toLowerCase() === targetId;
@@ -875,7 +914,21 @@ export default function App() {
       return updated;
     });
 
-    // 6. If currently on developer-detail page for the deleted developer, redirect to directory
+    // 8. Explicitly synchronize deletion with cloud database
+    saveLivePlatformData({ 
+      developers: finalUpdatedDevs, 
+      replaceDevelopers: true, 
+      deletedMemberId: targetId,
+      deletedMemberIds: Array.from(getDeletedMemberIds())
+    }).catch(() => {});
+
+    // 9. Dispatch cross-tab / window sync events
+    try {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dahej_platform_data_updated', { detail: { deletedId: targetId, role: 'developer' } }));
+    } catch (e) {}
+
+    // 10. If currently on developer-detail page for the deleted developer, redirect to directory
     if (routeState.subView === 'developer-detail' && (selectedDeveloperId || '').toLowerCase() === targetId) {
       navigateTo('admin/developers');
     }
@@ -1125,9 +1178,15 @@ export default function App() {
     if (!testerId) return;
     const targetId = testerId.trim().toLowerCase();
 
-    // 1. Remove from testers state and persist immediately
+    // 1. Mark in permanent deleted IDs blacklist
+    addDeletedMemberId(testerId);
+    addDeletedMemberId(targetId);
+
+    // 2. Remove from testers state and persist immediately
+    let finalUpdatedTesters = [];
     setTesters(prevTesters => {
-      const updated = prevTesters.filter(t => (t.id || '').toLowerCase() !== targetId);
+      const updated = prevTesters.filter(t => (t.id || '').toLowerCase() !== targetId && (t.testerId || '').toLowerCase() !== targetId);
+      finalUpdatedTesters = updated;
       try {
         localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
         localStorage.setItem('dahej_testers', JSON.stringify(updated));
@@ -1137,17 +1196,21 @@ export default function App() {
       return updated;
     });
 
-    // 2. Clean up any stored profile cache for this tester
+    // 3. Clean up any stored profile cache for this tester
     try {
       localStorage.removeItem(`dahej_tester_profile_${testerId}`);
       localStorage.removeItem(`dahej_tester_profile_${targetId}`);
     } catch (e) {}
 
-    // 3. Remove from Referral Trust Registry if present
+    // 4. Remove password
+    removeMemberPassword(testerId);
+    removeMemberPassword(targetId);
+
+    // 5. Remove from Referral Trust Registry if present
     removeReferralTrustId(testerId);
     removeReferralTrustId(targetId);
 
-    // 4. Safely unassign from any active admin projects
+    // 6. Safely unassign from any active admin projects
     setAdminProjects(prevProjects => {
       const updated = prevProjects.map(p => {
         const matchesId = p.testerId && p.testerId.toLowerCase() === targetId;
@@ -1169,7 +1232,21 @@ export default function App() {
       return updated;
     });
 
-    // 5. If currently on tester-detail page for the deleted tester, redirect to directory
+    // 7. Explicitly synchronize deletion with cloud database
+    saveLivePlatformData({ 
+      testers: finalUpdatedTesters, 
+      replaceTesters: true, 
+      deletedMemberId: targetId,
+      deletedMemberIds: Array.from(getDeletedMemberIds())
+    }).catch(() => {});
+
+    // 8. Dispatch cross-tab / window sync events
+    try {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dahej_platform_data_updated', { detail: { deletedId: targetId, role: 'tester' } }));
+    } catch (e) {}
+
+    // 9. If currently on tester-detail page for the deleted tester, redirect to directory
     if (routeState.subView === 'tester-detail' && (selectedTesterId || '').toLowerCase() === targetId) {
       navigateTo('admin/testers');
     }
