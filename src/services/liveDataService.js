@@ -13,8 +13,8 @@ const STORAGE_FILE_PATH = 'live_state/platform_data.json';
 // In-memory cache of the latest live state
 let memoryCloudState = null;
 
-const MOCK_DEV_IDS = new Set(['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
-const MOCK_TESTER_IDS = new Set(['TST-781', 'TST-DEMO']);
+const MOCK_DEV_IDS = new Set(['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
+const MOCK_TESTER_IDS = new Set(['TST-317', 'TST-841', 'TST-781', 'TST-DEMO']);
 const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
 
 export function sanitizeLivePlatformState(state) {
@@ -25,13 +25,13 @@ export function sanitizeLivePlatformState(state) {
   // 1. Developers: keep only genuinely registered and non-deleted developers
   if (Array.isArray(state.developers)) {
     state.developers = state.developers
-      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
+      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com' && d.email !== 'hetgraphura@gmail.com');
   }
 
   // 2. Testers: keep only genuinely registered and non-deleted testers
   if (Array.isArray(state.testers)) {
     state.testers = state.testers
-      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
+      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com' && t.email !== 'dahejsupport@gmail.com');
   }
 
   // 3. Admin Projects

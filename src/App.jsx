@@ -224,8 +224,8 @@ export default function App() {
 
   const [routeState, setRouteState] = useState(getInitialState);
   
-  const MOCK_DEV_IDS = new Set(['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
-  const MOCK_TESTER_IDS = new Set(['TST-781', 'TST-DEMO']);
+  const MOCK_DEV_IDS = new Set(['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
+  const MOCK_TESTER_IDS = new Set(['TST-317', 'TST-841', 'TST-781', 'TST-DEMO']);
   const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
 
   // State for Freelancer Portal (Persistent across sessions & reloads)
@@ -288,7 +288,7 @@ export default function App() {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           // Filter out synthetic mock accounts & permanently deleted developers
-          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
+          parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com' && d.email !== 'hetgraphura@gmail.com');
 
           // If admin deleted all developers, strictly respect the empty array
           if (parsed.length === 0) return [];
@@ -330,7 +330,7 @@ export default function App() {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           // Filter out synthetic mock testers & permanently deleted testers
-          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
+          parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com' && t.email !== 'dahejsupport@gmail.com');
 
           // If admin deleted all testers, strictly respect the empty array
           if (parsed.length === 0) return [];
