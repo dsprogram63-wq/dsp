@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -368,8 +368,8 @@ export default function App() {
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
 
-  // Live Cloud Synchronization on Application Boot
-  useEffect(() => {
+  // Live Cloud Synchronization with Automatic Polling & Focus Sync
+  const syncFromCloud = useCallback(() => {
     fetchLivePlatformData().then(liveData => {
       if (liveData) {
         // Collect and persist any deleted member IDs discovered from cloud
@@ -405,6 +405,28 @@ export default function App() {
       }
     }).catch(err => console.warn('Live platform sync background notice:', err));
   }, []);
+
+  useEffect(() => {
+    syncFromCloud();
+
+    // Periodic live sync every 10 seconds so Admin sees newly registered developers without manual refresh
+    const pollInterval = setInterval(syncFromCloud, 10000);
+
+    // Sync on tab focus / window visibility
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncFromCloud();
+      }
+    };
+    window.addEventListener('focus', syncFromCloud);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', syncFromCloud);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [syncFromCloud]);
 
   // Sync real data to LocalStorage & Live Cloud
   useEffect(() => {

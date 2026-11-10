@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://vvyevrufmitebsnpqahb.supabase.co';
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_zXV7w4x5oQcvmd44tEftFg_JJ4AtxnX';
-const STORAGE_BUCKET = 'documents';
+const STORAGE_BUCKET = 'avatars';
 const STORAGE_FILE_PATH = 'live_state/platform_data.json';
 
 const getSupabaseClient = () => createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -191,11 +191,10 @@ export default async function handler(req, res) {
         });
 
       if (uploadError) {
-        return res.status(200).json({
-          success: true,
-          notice: 'State sanitized in-memory (RLS note)',
-          updatedAt: mergedState.updatedAt,
-          data: mergedState
+        console.error('Supabase storage upload error:', uploadError);
+        return res.status(500).json({
+          error: 'Failed to persist live cloud state to storage',
+          message: uploadError.message
         });
       }
 

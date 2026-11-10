@@ -7,7 +7,7 @@
 
 import { supabase } from './supabase.js';
 
-const STORAGE_BUCKET = 'documents';
+const STORAGE_BUCKET = 'avatars';
 const STORAGE_FILE_PATH = 'live_state/platform_data.json';
 
 // In-memory cache of the latest live state
