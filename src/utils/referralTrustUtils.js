@@ -187,8 +187,8 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
 
   // Gather all currently used 3-digit numbers to guarantee uniqueness
   const allUsedIds = [
-    ...Object.values(registry),
-    ...allExistingMembers.map(m => m.referralTrustId).filter(Boolean)
+    ...Object.values(registry || {}),
+    ...(Array.isArray(allExistingMembers) ? allExistingMembers : []).map(m => m && m.referralTrustId).filter(Boolean)
   ];
   const usedNumbers = extractUsed3Digits(allUsedIds);
 

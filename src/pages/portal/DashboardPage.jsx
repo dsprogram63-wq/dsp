@@ -24,63 +24,72 @@ import './DashboardPage.css';
 export default function DashboardPage({ 
   onNavigate, 
   onOpenProject, 
-  projects = initialProjects 
+  projects = []
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Normalize projects to guaranteed valid array of project objects
+  const safeProjects = Array.isArray(projects) 
+    ? projects.filter(p => p && typeof p === 'object' && p.id) 
+    : [];
 
   // =========================================================================
   // 7 DASHBOARD SUMMARY BOX CALCULATIONS (Scoped to currently logged-in freelancer)
   // =========================================================================
 
   // 1. Total Projects: All projects assigned to the currently logged-in freelancer
-  const totalProjectsCount = projects.length;
+  const totalProjectsCount = safeProjects.length;
 
   // 2. Active Projects: In progress & not submitted
-  const activeProjectsCount = projects.filter(p => getFreelancerProjectStatus(p) === 'Active').length;
+  const activeProjectsCount = safeProjects.filter(p => getFreelancerProjectStatus(p) === 'Active').length;
 
   // 3. Submitted Projects: Developer progress = 100% AND submitted to QA
-  const submittedProjectsCount = projects.filter(p => getFreelancerProjectStatus(p) === 'Submitted').length;
+  const submittedProjectsCount = safeProjects.filter(p => getFreelancerProjectStatus(p) === 'Submitted').length;
 
   // 4. Under Review Projects: Submitted and currently in QA review cycle (including revision/rework)
-  const underReviewProjectsCount = projects.filter(p => {
+  const underReviewProjectsCount = safeProjects.filter(p => {
     const s = getFreelancerProjectStatus(p);
     return s === 'Under Review' || s === 'Revision Required' || s === 'Changes Requested';
   }).length;
 
   // 5. Approved Projects: Passed QA and approved by Admin (Approved or Completed)
-  const approvedProjectsCount = projects.filter(p => {
+  const approvedProjectsCount = safeProjects.filter(p => {
     const st = getFreelancerProjectStatus(p);
     return st === 'Approved' || st === 'Completed';
   }).length;
 
   // 6. Total Approved Payouts: SUM of Developer amounts from Admin-approved projects
-  const totalApprovedPayoutsNum = projects
+  const totalApprovedPayoutsNum = safeProjects
     .filter(p => {
       const st = getFreelancerProjectStatus(p);
       return st === 'Approved' || st === 'Completed';
     })
-    .reduce((acc, p) => acc + getDevAmount(p), 0);
+    .reduce((acc, p) => acc + (getDevAmount(p) || 0), 0);
 
   // 7. Total Payouts: Actual money already paid to the currently logged-in freelancer
-  const totalPaidPayoutNum = projects
-    .reduce((acc, p) => acc + getDevPaid(p), 0);
+  const totalPaidPayoutNum = safeProjects
+    .reduce((acc, p) => acc + (getDevPaid(p) || 0), 0);
 
   // Search filtering for Project Table (supports Project Name & Project ID)
-  const filteredProjects = projects.filter(p => {
+  const filteredProjects = safeProjects.filter(p => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return (
-      (p.name && p.name.toLowerCase().includes(q)) || 
-      (p.id && p.id.toLowerCase().includes(q))
-    );
+    const pName = String(p.name || '').toLowerCase();
+    const pId = String(p.id || '').toLowerCase();
+    return pName.includes(q) || pId.includes(q);
   });
 
   // Dynamic Next Action item based on freelancer's active assignments
-  const revisionProject = projects.find(p => {
+  const revisionProject = safeProjects.find(p => {
+    if (!p) return false;
     const s = getFreelancerProjectStatus(p);
-    return s === 'Revision Required' || ((p.status || '').toLowerCase().includes('revision') || (p.testingStatus || '').toLowerCase().includes('changes'));
+    const pStatus = String(p.status || '').toLowerCase();
+    const pTesting = String(p.testingStatus || '').toLowerCase();
+    return s === 'Revision Required' || pStatus.includes('revision') || pTesting.includes('changes');
   });
-  const activeWorkProject = projects.find(p => getFreelancerProjectStatus(p) === 'Active') || projects[0];
+
+  const activeWorkProject = safeProjects.find(p => p && getFreelancerProjectStatus(p) === 'Active') || 
+    (safeProjects.length > 0 ? safeProjects[0] : null);
 
   return (
     <div className="dashboard-view-container">
@@ -324,14 +333,14 @@ export default function DashboardPage({
             <div className="next-action-card">
               <span className="next-action-badge" style={{ background: '#EBF3FA', color: '#0A3D75' }}>🚀 Active Workspace</span>
               <div className="next-action-title">
-                {activeWorkProject.name}
+                {activeWorkProject.name || 'Assigned Project'}
               </div>
               <p className="next-action-desc">
                 Deadline: {activeWorkProject.submissionDate || activeWorkProject.developerDeadline || activeWorkProject.deadline || 'Upcoming'} • Current Progress: {getDevProgress(activeWorkProject)}%
               </p>
               <button
                 type="button"
-                onClick={() => onOpenProject && onOpenProject(activeWorkProject.id)}
+                onClick={() => onOpenProject && activeWorkProject.id && onOpenProject(activeWorkProject.id)}
                 className="btn btn-navy-action"
                 style={{ width: '100%', padding: '9px 16px', fontSize: '0.85rem' }}
               >

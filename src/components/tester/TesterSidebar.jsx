@@ -86,7 +86,7 @@ export default function TesterSidebar({
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPath === item.key || 
-                (item.key === 'projects' && (currentPath === 'projects' || currentPath.startsWith('projects/') || currentPath === 'project-detail')) ||
+                (item.key === 'projects' && (currentPath === 'projects' || (typeof currentPath === 'string' && currentPath.startsWith('projects/')) || currentPath === 'project-detail')) ||
                 (item.key === 'testing-queue' && currentPath === 'testing-queue');
 
               return (

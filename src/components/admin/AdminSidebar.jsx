@@ -108,18 +108,19 @@ export default function AdminSidebar({
           <ul className="sidebar-nav-list">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const isStr = typeof currentPath === 'string';
               const isActive = currentPath === item.key || 
                 (item.key === 'projects' && (
                   currentPath === 'projects' || 
-                  currentPath.startsWith('projects/') ||
+                  (isStr && currentPath.startsWith('projects/')) ||
                   currentPath === 'create-project' ||
                   currentPath === 'active-projects' ||
                   currentPath === 'submitted-projects' ||
                   currentPath === 'testing-queue' ||
                   currentPath === 'completed-projects'
                 )) ||
-                (item.key === 'developers' && (currentPath === 'developers' || currentPath.startsWith('developers/'))) ||
-                (item.key === 'testers' && (currentPath === 'testers' || currentPath.startsWith('testers/'))) ||
+                (item.key === 'developers' && (currentPath === 'developers' || (isStr && currentPath.startsWith('developers/')))) ||
+                (item.key === 'testers' && (currentPath === 'testers' || (isStr && currentPath.startsWith('testers/')))) ||
                 (item.key === 'earnings' && currentPath === 'earnings') ||
                 (item.key === 'settings' && currentPath === 'settings');
               

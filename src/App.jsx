@@ -1581,9 +1581,10 @@ export default function App() {
     const authTesterUser = (authSession && authSession.user) || null;
     const authTesterId = (authTesterUser && (authTesterUser.id || authTesterUser.testerId)) ? String(authTesterUser.id || authTesterUser.testerId).trim() : '';
 
-    const matchedTester = (authTesterId ? testers.find(t => t.id && t.id.toLowerCase() === authTesterId.toLowerCase()) : null) ||
-      (authTesterUser && authTesterUser.email ? testers.find(t => t.email && t.email.toLowerCase().trim() === authTesterUser.email.toLowerCase().trim()) : null) ||
-      (authTesterUser && authTesterUser.name ? testers.find(t => t.name && t.name.toLowerCase().trim() === authTesterUser.name.toLowerCase().trim()) : null) ||
+    const testerList = Array.isArray(testers) ? testers : [];
+    const matchedTester = (authTesterId ? testerList.find(t => t && t.id && String(t.id).toLowerCase() === String(authTesterId).toLowerCase()) : null) ||
+      (authTesterUser && authTesterUser.email ? testerList.find(t => t && t.email && String(t.email).toLowerCase().trim() === String(authTesterUser.email).toLowerCase().trim()) : null) ||
+      (authTesterUser && authTesterUser.name ? testerList.find(t => t && (t.name || t.fullName) && String(t.name || t.fullName).toLowerCase().trim() === String(authTesterUser.name).toLowerCase().trim()) : null) ||
       null;
 
     const finalTesterId = (matchedTester && matchedTester.id) || authTesterId || '';
@@ -1602,26 +1603,37 @@ export default function App() {
 
     const finalTesterName = (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester';
 
-    const officialTesterRefCode = (matchedTester && matchedTester.referralCode && !matchedTester.referralCode.startsWith('REF-00') ? matchedTester.referralCode : null) ||
-      (matchedTester && matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null) ||
-      (authTesterUser && authTesterUser.referralCode && !authTesterUser.referralCode.startsWith('REF-00') ? authTesterUser.referralCode : null) ||
-      (authTesterUser && authTesterUser.referenceId && !authTesterUser.referenceId.startsWith('REF-00') ? authTesterUser.referenceId : null) ||
-      (savedCustomTesterProfile && savedCustomTesterProfile.referralCode && !savedCustomTesterProfile.referralCode.startsWith('REF-00') ? savedCustomTesterProfile.referralCode : null) ||
-      (savedCustomTesterProfile && savedCustomTesterProfile.referenceId && !savedCustomTesterProfile.referenceId.startsWith('REF-00') ? savedCustomTesterProfile.referenceId : null) ||
+    const getCleanTesterRef = (code) => {
+      if (typeof code === 'string' && code.trim() && !code.startsWith('REF-00')) {
+        return code.trim();
+      }
+      return null;
+    };
+
+    const officialTesterRefCode = getCleanTesterRef(matchedTester?.referralCode) ||
+      getCleanTesterRef(matchedTester?.referenceId) ||
+      getCleanTesterRef(authTesterUser?.referralCode) ||
+      getCleanTesterRef(authTesterUser?.referenceId) ||
+      getCleanTesterRef(savedCustomTesterProfile?.referralCode) ||
+      getCleanTesterRef(savedCustomTesterProfile?.referenceId) ||
       'DS-TST-201';
 
     const officialTesterRefName = (matchedTester && (matchedTester.referenceName || matchedTester.reference)) || (authTesterUser && authTesterUser.referenceName) || (savedCustomTesterProfile && savedCustomTesterProfile.referenceName) || 'Reference Verification';
 
     // Proactively synchronize savedCustomTesterProfile in localStorage if it contains stale values
-    if (finalTesterId && savedCustomTesterProfile && (!savedCustomTesterProfile.referralCode || savedCustomTesterProfile.referralCode.startsWith('REF-00') || savedCustomTesterProfile.referenceId?.startsWith('REF-00') || savedCustomTesterProfile.referenceId !== officialTesterRefCode)) {
-      try {
-        localStorage.setItem(`dahej_tester_profile_${finalTesterId}`, JSON.stringify({
-          ...savedCustomTesterProfile,
-          referralCode: officialTesterRefCode,
-          referenceId: officialTesterRefCode,
-          referenceName: officialTesterRefName
-        }));
-      } catch (e) {}
+    if (finalTesterId && savedCustomTesterProfile) {
+      const curRef = savedCustomTesterProfile.referralCode;
+      const isStale = !curRef || (typeof curRef === 'string' && curRef.startsWith('REF-00')) || (typeof savedCustomTesterProfile.referenceId === 'string' && savedCustomTesterProfile.referenceId.startsWith('REF-00')) || savedCustomTesterProfile.referenceId !== officialTesterRefCode;
+      if (isStale) {
+        try {
+          localStorage.setItem(`dahej_tester_profile_${finalTesterId}`, JSON.stringify({
+            ...savedCustomTesterProfile,
+            referralCode: officialTesterRefCode,
+            referenceId: officialTesterRefCode,
+            referenceName: officialTesterRefName
+          }));
+        } catch (e) {}
+      }
     }
 
     const activeTesterTrustId = (matchedTester && matchedTester.referralTrustId) ||
@@ -1989,9 +2001,10 @@ export default function App() {
     const authId = (authUser && (authUser.id || authUser.freelancerId)) ? String(authUser.id || authUser.freelancerId).trim() : '';
 
     // Find developer record from developers directory
-    const matchedDev = (authId ? developers.find(d => d.id && d.id.toLowerCase() === authId.toLowerCase()) : null) ||
-      (authUser && authUser.email ? developers.find(d => d.email && d.email.toLowerCase().trim() === authUser.email.toLowerCase().trim()) : null) ||
-      (authUser && authUser.name ? developers.find(d => d.name && d.name.toLowerCase().trim() === authUser.name.toLowerCase().trim()) : null) ||
+    const devList = Array.isArray(developers) ? developers : [];
+    const matchedDev = (authId ? devList.find(d => d && d.id && String(d.id).toLowerCase() === String(authId).toLowerCase()) : null) ||
+      (authUser && authUser.email ? devList.find(d => d && d.email && String(d.email).toLowerCase().trim() === String(authUser.email).toLowerCase().trim()) : null) ||
+      (authUser && authUser.name ? devList.find(d => d && (d.name || d.fullName) && String(d.name || d.fullName).toLowerCase().trim() === String(authUser.name).toLowerCase().trim()) : null) ||
       null;
 
     const finalDevId = (matchedDev && matchedDev.id) || authId || '';
@@ -2008,28 +2021,39 @@ export default function App() {
       return null;
     })();
 
-    const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && matchedDev.name) || 'Developer';
+    const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && (matchedDev.name || matchedDev.fullName)) || 'Developer';
 
-    const officialRefCode = (matchedDev && matchedDev.referralCode && !matchedDev.referralCode.startsWith('REF-00') ? matchedDev.referralCode : null) ||
-      (matchedDev && matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null) ||
-      (authUser && authUser.referralCode && !authUser.referralCode.startsWith('REF-00') ? authUser.referralCode : null) ||
-      (authUser && authUser.referenceId && !authUser.referenceId.startsWith('REF-00') ? authUser.referenceId : null) ||
-      (savedCustomProfile && savedCustomProfile.referralCode && !savedCustomProfile.referralCode.startsWith('REF-00') ? savedCustomProfile.referralCode : null) ||
-      (savedCustomProfile && savedCustomProfile.referenceId && !savedCustomProfile.referenceId.startsWith('REF-00') ? savedCustomProfile.referenceId : null) ||
+    const getCleanRef = (code) => {
+      if (typeof code === 'string' && code.trim() && !code.startsWith('REF-00')) {
+        return code.trim();
+      }
+      return null;
+    };
+
+    const officialRefCode = getCleanRef(matchedDev?.referralCode) ||
+      getCleanRef(matchedDev?.referenceId) ||
+      getCleanRef(authUser?.referralCode) ||
+      getCleanRef(authUser?.referenceId) ||
+      getCleanRef(savedCustomProfile?.referralCode) ||
+      getCleanRef(savedCustomProfile?.referenceId) ||
       'DS-REF-8902';
 
     const officialRefName = (matchedDev && (matchedDev.referenceName || matchedDev.reference)) || (authUser && authUser.referenceName) || (savedCustomProfile && savedCustomProfile.referenceName) || 'Reference Verification';
 
     // Proactively synchronize savedCustomProfile in localStorage if it contains stale values
-    if (finalDevId && savedCustomProfile && (!savedCustomProfile.referralCode || savedCustomProfile.referralCode.startsWith('REF-00') || savedCustomProfile.referenceId?.startsWith('REF-00') || savedCustomProfile.referenceId !== officialRefCode)) {
-      try {
-        localStorage.setItem(`dahej_profile_${finalDevId}`, JSON.stringify({
-          ...savedCustomProfile,
-          referralCode: officialRefCode,
-          referenceId: officialRefCode,
-          referenceName: officialRefName
-        }));
-      } catch (e) {}
+    if (finalDevId && savedCustomProfile) {
+      const curRef = savedCustomProfile.referralCode;
+      const isStale = !curRef || (typeof curRef === 'string' && curRef.startsWith('REF-00')) || (typeof savedCustomProfile.referenceId === 'string' && savedCustomProfile.referenceId.startsWith('REF-00')) || savedCustomProfile.referenceId !== officialRefCode;
+      if (isStale) {
+        try {
+          localStorage.setItem(`dahej_profile_${finalDevId}`, JSON.stringify({
+            ...savedCustomProfile,
+            referralCode: officialRefCode,
+            referenceId: officialRefCode,
+            referenceName: officialRefName
+          }));
+        } catch (e) {}
+      }
     }
 
     const resolvedTrustId = finalDevId === 'DEV-512'

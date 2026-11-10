@@ -522,11 +522,11 @@ export function toTesterSafeProject(rawProject) {
     testerPaymentDate: rawProject.testerPaymentDate || null,
 
     // Admin-created developer tasks mapped for QA checklist
-    tasks: (rawProject.tasks || []).map((t, idx) => ({
+    tasks: (rawProject.tasks || []).filter(Boolean).map((t, idx) => ({
       id: t.id || `tsk-${rawProject.id}-${idx + 1}`,
       number: t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`),
-      name: t.name,
-      title: t.name,
+      name: t.name || 'QA Task Deliverable',
+      title: t.name || 'QA Task Deliverable',
       desc: t.desc || t.description || 'Milestone deliverable specification',
       status: t.status || 'Pending',
       qaStatus: t.qaStatus || (t.status === 'Completed' ? 'Passed' : 'Pending'),
@@ -540,27 +540,27 @@ export function toTesterSafeProject(rawProject) {
     })),
 
     // Developer Credentials & Links (visible to tester for QA)
-    credentials: (rawProject.credentials || []).map(c => ({
-      id: c.id,
-      service: c.service || c.platform || c.type,
-      platform: c.platform || c.service || c.type,
+    credentials: (rawProject.credentials || []).filter(Boolean).map(c => ({
+      id: c.id || `cred-${Math.random()}`,
+      service: c.service || c.platform || c.type || 'Platform',
+      platform: c.platform || c.service || c.type || 'Platform',
       type: c.type || 'Platform',
-      username: c.username,
-      secret: c.secret,
-      notes: c.notes
+      username: c.username || '',
+      secret: c.secret || '',
+      notes: c.notes || ''
     })),
     liveLink: rawProject.liveLink || rawProject.liveProjectLink || '',
     liveProjectLink: rawProject.liveLink || rawProject.liveProjectLink || '',
     driveLink: rawProject.driveLink || rawProject.driveProjectLink || '',
-    documents: (rawProject.documents || []).map(doc => ({
+    documents: (rawProject.documents || []).filter(Boolean).map(doc => ({
       ...doc,
-      id: doc.id,
-      name: doc.name,
+      id: doc.id || `doc-${Math.random()}`,
+      name: doc.name || 'Specification Document',
       type: doc.type || 'Specification Document',
       size: doc.size || '1.5 MB',
       date: doc.date || rawProject.assignedDate || 'Recent',
-      dataUrl: doc.dataUrl || doc.fileData || doc.url,
-      fileData: doc.fileData || doc.dataUrl || doc.url
+      dataUrl: doc.dataUrl || doc.fileData || doc.url || '',
+      fileData: doc.fileData || doc.dataUrl || doc.url || ''
     })),
 
     // QA & Testing workflow state

@@ -77,7 +77,7 @@ export default function PortalSidebar({
           <ul className="sidebar-nav-list">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPath === item.key || (item.key === 'projects' && currentPath.startsWith('projects/'));
+              const isActive = currentPath === item.key || (item.key === 'projects' && typeof currentPath === 'string' && currentPath.startsWith('projects/'));
               
               return (
                 <li key={item.key}>

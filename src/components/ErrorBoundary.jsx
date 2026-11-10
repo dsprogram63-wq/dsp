@@ -3,7 +3,7 @@ import React from 'react';
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,6 +12,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    this.setState({ errorInfo });
   }
 
   handleReload = () => {
@@ -20,13 +21,16 @@ export default class ErrorBoundary extends React.Component {
 
   handleReset = () => {
     try {
+      localStorage.removeItem('dahej_auth_session');
       sessionStorage.clear();
     } catch (e) {}
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || String(this.state.error || 'Unknown error');
+
       return (
         <div style={{
           minHeight: '100vh',
@@ -40,7 +44,7 @@ export default class ErrorBoundary extends React.Component {
           boxSizing: 'border-box'
         }}>
           <div style={{
-            maxWidth: '520px',
+            maxWidth: '560px',
             width: '100%',
             backgroundColor: '#1E293B',
             borderRadius: '16px',
@@ -70,16 +74,44 @@ export default class ErrorBoundary extends React.Component {
             <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 10px 0', color: '#FFFFFF' }}>
               Something went wrong
             </h1>
-            <p style={{ fontSize: '0.92rem', color: '#94A3B8', margin: '0 0 24px 0', lineHeight: 1.5 }}>
-              An unexpected error occurred while loading this page. You can return to the main page or reload.
+            <p style={{ fontSize: '0.92rem', color: '#94A3B8', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              An unexpected error occurred while loading this workspace. You can reset your session or return to the main portal.
             </p>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            {this.state.error && (
+              <details style={{
+                marginBottom: '24px',
+                textAlign: 'left',
+                backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                fontSize: '0.8rem',
+                color: '#F87171'
+              }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                  Technical Error Details: {errorMessage}
+                </summary>
+                <pre style={{
+                  marginTop: '10px',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  fontSize: '0.72rem',
+                  color: '#94A3B8',
+                  maxHeight: '160px',
+                  overflowY: 'auto'
+                }}>
+                  {this.state.error?.stack || errorMessage}
+                </pre>
+              </details>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={this.handleReload}
                 style={{
-                  padding: '10px 20px',
+                  padding: '10px 22px',
                   borderRadius: '8px',
                   backgroundColor: '#F3821D',
                   color: '#FFFFFF',
@@ -95,7 +127,7 @@ export default class ErrorBoundary extends React.Component {
                 type="button"
                 onClick={this.handleReset}
                 style={{
-                  padding: '10px 20px',
+                  padding: '10px 22px',
                   borderRadius: '8px',
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   color: '#CBD5E1',
@@ -105,7 +137,7 @@ export default class ErrorBoundary extends React.Component {
                   cursor: 'pointer'
                 }}
               >
-                Reset & Reload
+                Reset Session & Login
               </button>
             </div>
           </div>

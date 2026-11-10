@@ -123,10 +123,10 @@ export function toFreelancerSafeProject(rawProject) {
     developerPaymentDate: rawProject.developerPaymentDate || rawProject.completedDate || null,
 
     // Task & Progress info
-    tasks: (rawProject.tasks || []).map((t, idx) => ({
+    tasks: (rawProject.tasks || []).filter(Boolean).map((t, idx) => ({
       id: t.id || `tsk-${rawProject.id}-${idx + 1}`,
       number: t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`),
-      name: t.name,
+      name: t.name || 'Task Deliverable',
       desc: t.desc || t.description || 'Milestone deliverable specification',
       status: t.status || 'Pending',
       progress: t.progress !== undefined ? t.progress : (t.status === 'Completed' || t.status === 'Done' ? 100 : t.status === 'In Progress' ? 50 : 0),
@@ -145,24 +145,24 @@ export function toFreelancerSafeProject(rawProject) {
     freelancerProgress: calculatedProgress,
 
     // Documents & Credentials
-    documents: (rawProject.documents || []).map(doc => ({
+    documents: (rawProject.documents || []).filter(Boolean).map(doc => ({
       ...doc,
-      id: doc.id,
-      name: doc.name,
+      id: doc.id || `doc-${Math.random()}`,
+      name: doc.name || 'Project Document',
       type: doc.type || 'Requirement Document',
       size: doc.size || '2.4 MB',
       date: doc.date || rawProject.assignedDate || 'Recent',
-      dataUrl: doc.dataUrl || doc.fileData || doc.url,
-      fileData: doc.fileData || doc.dataUrl || doc.url
+      dataUrl: doc.dataUrl || doc.fileData || doc.url || '',
+      fileData: doc.fileData || doc.dataUrl || doc.url || ''
     })),
-    credentials: (rawProject.credentials || []).map(c => ({
-      id: c.id,
-      service: c.service || c.platform || c.type,
-      platform: c.platform || c.service || c.type,
+    credentials: (rawProject.credentials || []).filter(Boolean).map(c => ({
+      id: c.id || `cred-${Math.random()}`,
+      service: c.service || c.platform || c.type || 'Platform',
+      platform: c.platform || c.service || c.type || 'Platform',
       type: c.type || 'Platform',
-      username: c.username,
-      secret: c.secret,
-      notes: c.notes
+      username: c.username || '',
+      secret: c.secret || '',
+      notes: c.notes || ''
     })),
 
     // Project Links
