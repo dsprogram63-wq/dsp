@@ -74,11 +74,6 @@ export function getTrustRegistry() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (typeof parsed === 'object' && parsed !== null) {
-        // Self-heal stale DEV-512 mapping so middle slug precisely matches profile name "Patel Het Bh"
-        if (parsed['DEV-512'] === 'RFF-DahejSupport-269' || parsed['DEV-512'] === 'RFF-PatelHet-512') {
-          parsed['DEV-512'] = 'RFF-PatelHetBh-512';
-          localStorage.setItem(STORAGE_KEY_TRUST_REGISTRY, JSON.stringify(parsed));
-        }
         return parsed;
       }
     }
@@ -170,20 +165,6 @@ export function getOrAssignReferralTrustId(member, allExistingMembers = []) {
     saveTrustRegistry(registry);
     return canonical;
   }
-  if (memberId === 'DEV-512' || (member.email && member.email.toLowerCase() === 'hetgraphura@gmail.com') || (rawMemberName && rawMemberName.toLowerCase().includes('patel het bh'))) {
-    const canonical = `RFF-${cleanName || 'PatelHetBh'}-512`;
-    if (memberId) registry[memberId] = canonical;
-    registry['DEV-512'] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
-  if (memberId === 'TST-317' || (member.name && member.name.toLowerCase() === 'patel het' && memberId?.startsWith('TST-'))) {
-    const canonical = 'RFF-PatelHet-317';
-    if (memberId) registry[memberId] = canonical;
-    registry['TST-317'] = canonical;
-    saveTrustRegistry(registry);
-    return canonical;
-  }
 
   // Gather all currently used 3-digit numbers to guarantee uniqueness
   const allUsedIds = [
@@ -248,12 +229,10 @@ export function getAllApprovedSponsors(developers = [], testers = []) {
   developers.forEach(d => processMember(d, 'developer'));
   testers.forEach(t => processMember(t, 'tester'));
 
-  // Ensure default canonical sponsors are always present even before any dynamic loads
+  // Ensure default canonical admin sponsor is always present even before any dynamic loads
   const fallbackSeeds = [
     { id: 'DS-ADM-001', name: 'Dahej Support', fullName: 'Dahej Support', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Platform Administrator / Master Sponsor', trustId: 'RFF-DahejSupport-269' },
-    { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' },
-    { id: 'DEV-512', name: 'Patel Het Bh', fullName: 'Patel Het Bh', email: 'hetgraphura@gmail.com', role: 'developer', roleTitle: 'Full Stack Developer (React & Node)', trustId: 'RFF-PatelHetBh-512' },
-    { id: 'TST-317', name: 'Patel Het', fullName: 'Patel Het', email: 'dahejsupport@gmail.com', role: 'tester', roleTitle: 'QA / Software Tester', trustId: 'RFF-PatelHet-317' }
+    { id: 'DS-ADM-002', name: 'Keval Patel', fullName: 'Keval Patel', email: 'dahejsupport@gmail.com', role: 'admin', roleTitle: 'Master Admin / Operations Lead', trustId: 'RFF-DahejSupport-269' }
   ];
 
   fallbackSeeds.forEach(seed => {
@@ -301,9 +280,7 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
   const matchedSponsor = approvedSponsors.find(s => {
     if (!s.trustId) return false;
     const sId = s.trustId.trim().toUpperCase();
-    if (sId === cleanId) return true;
-    if (s.id === 'DEV-512' && (cleanId === 'RFF-PATELHETBH-512' || cleanId === 'RFF-PATELHET-512')) return true;
-    return false;
+    return sId === cleanId;
   });
 
   if (!matchedSponsor) {
@@ -332,18 +309,9 @@ export function validateSponsorCredentials(inputTrustId, inputSponsorName, appro
     inputSlug === 'admin'
   );
 
-  // DEV-512 aliases support (Patel Het Bh, Patel Het)
-  const isDev512Match = (matchedSponsor.id === 'DEV-512' || cleanId === 'RFF-PATELHETBH-512' || cleanId === 'RFF-PATELHET-512') && (
-    normalizedInputName === 'patel het bh' ||
-    normalizedInputName === 'patel het' ||
-    inputSlug === 'patelhet' ||
-    inputSlug === 'patelhetbh'
-  );
-
   // STRICT FULL EXACT MATCH ONLY
   const isNameMatch = 
     isAdminMatch ||
-    isDev512Match ||
     sponsorNameNorm === normalizedInputName ||
     sponsorFullNameNorm === normalizedInputName ||
     (sponsorSlug.length >= 3 && sponsorSlug === inputSlug);

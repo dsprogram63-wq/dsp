@@ -1,84 +1,16 @@
 // Persistent Baseline Data for Dahej Support Tester Panel & QA System
 
 export const initialTesterProfile = {
-  name: 'Patel Het',
-  email: 'dahejsupport@gmail.com',
-  id: 'TST-317',
+  name: 'QA Tester',
+  email: '',
+  id: '',
   role: 'QA / Software Tester',
   status: 'Active',
-  referralTrustId: 'RFF-PatelHet-317',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
+  referralTrustId: '',
+  avatar: ''
 };
 
-export const initialTesters = [
-  {
-    id: 'TST-317',
-    testerId: 'TST-317',
-    name: 'Patel Het',
-    fullName: 'Patel Het',
-    email: 'dahejsupport@gmail.com',
-    mobile: '+91 9662003947',
-    role: 'QA / Software Tester',
-    specialization: 'Functional QA Testing',
-    testingTools: 'Postman, Manual QA',
-    experience: '2+ Years',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
-    referralTrustId: 'RFF-PatelHet-317',
-    referenceName: 'Reddy',
-    referralCode: 'DS-REF-552',
-    referenceId: 'DS-REF-552',
-    joiningDate: '20 Oct 2026',
-    status: 'Active',
-    availability: 'Available',
-    applicationMessage: '',
-    aboutSelf: '',
-    activeTestingProjects: 1,
-    completedTesting: 0,
-    totalPayouts: '₹0',
-    pendingPayouts: '₹0',
-    rating: 5.0,
-    currentProjects: [
-      {
-        id: 'DS-WEB-7169',
-        name: 'Restaurant site',
-        clientName: 'The Grand Palace Dining',
-        status: 'In Progress',
-        testingStatus: 'Pending',
-        progress: 0
-      }
-    ],
-    testingHistory: [],
-    earningsHistory: []
-  },
-  {
-    id: 'TST-841',
-    testerId: 'TST-841',
-    name: 'Patel Het',
-    fullName: 'Patel Het',
-    email: 'hetp82259@gmail.com',
-    mobile: '+91 9662003947',
-    role: 'QA / Software Tester',
-    specialization: 'Automated & Functional QA',
-    testingTools: 'Selenium, Cypress, Postman',
-    experience: '3+ Years',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
-    referenceName: 'Reddy',
-    referralCode: 'DS-REF-552',
-    referenceId: 'DS-REF-552',
-    joiningDate: '20 Oct 2026',
-    status: 'Pending',
-    availability: 'Available',
-    applicationMessage: 'i am ready for work',
-    activeTestingProjects: 0,
-    completedTesting: 0,
-    totalPayouts: '₹0',
-    pendingPayouts: '₹0',
-    rating: 5.0,
-    currentProjects: [],
-    testingHistory: [],
-    earningsHistory: []
-  }
-];
+export const initialTesters = [];
 
 export const defaultTestingChecklist = [
   { id: 'chk-1', number: '01', title: 'Homepage Layout & Hero Functionality', category: 'UI / Layout', status: 'Pending', notes: '' },

@@ -51,29 +51,14 @@ export default function FreelancerLogin({
       const s = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
       if (s) {
         let parsed = JSON.parse(s);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Purge any synthetic mock accounts
+        if (Array.isArray(parsed)) {
+          // Purge any synthetic mock accounts & respect deletions
           parsed = parsed.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
-          // Self-heal: Ensure DEV-512 (Patel Het Bh / hetgraphura@gmail.com) is ALWAYS present
-          const hasDev512 = parsed.some(d => 
-            (d.id && d.id.toLowerCase() === 'dev-512') || 
-            (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')
-          );
-          if (!hasDev512) {
-            const dev512 = initialDevelopers.find(d => d.id === 'DEV-512');
-            if (dev512) {
-              parsed.unshift(dev512);
-            }
-          }
-          try {
-            localStorage.setItem('dahej_real_v2_developers', JSON.stringify(parsed));
-            localStorage.setItem('dahej_developers', JSON.stringify(parsed));
-          } catch (e) {}
           return parsed;
         }
       }
     } catch (e) {}
-    return (initialDevelopers || []).filter(d => !MOCK_DEV_IDS.has(d.id));
+    return [];
   };
 
   const getFreshTesters = () => {
@@ -81,18 +66,14 @@ export default function FreelancerLogin({
       const s = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
       if (s) {
         let parsed = JSON.parse(s);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Purge any synthetic mock accounts
+        if (Array.isArray(parsed)) {
+          // Purge any synthetic mock accounts & respect deletions
           parsed = parsed.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
-          try {
-            localStorage.setItem('dahej_real_v2_testers', JSON.stringify(parsed));
-            localStorage.setItem('dahej_testers', JSON.stringify(parsed));
-          } catch (e) {}
           return parsed;
         }
       }
     } catch (e) {}
-    return (initialTesters || []).filter(t => !MOCK_TESTER_IDS.has(t.id));
+    return [];
   };
 
   const allStoredDevs = getFreshDevelopers();
@@ -300,18 +281,8 @@ export default function FreelancerLogin({
       member.password || 
       null;
 
-    const isDefaultOfficialAccount = (
-      memberEmail === 'hetgraphura@gmail.com' ||
-      memberId === 'DEV-512' ||
-      memberEmail === 'dahejsupport@gmail.com' ||
-      memberId === 'TST-317'
-    );
-
-    const expectedPassword = adminAssignedPassword || (isDefaultOfficialAccount ? (actualRole === 'tester' ? 'tester123' : 'dev123') : null);
-
-    const isMatchedPassword = (expectedPassword && passTrimmed === expectedPassword) ||
-      ((memberEmail === 'hetgraphura@gmail.com' || memberId === 'DEV-512') && passTrimmed === 'dev123') ||
-      ((memberEmail === 'dahejsupport@gmail.com' || memberId === 'TST-317') && passTrimmed === 'tester123');
+    const expectedPassword = adminAssignedPassword || member.password;
+    const isMatchedPassword = Boolean(expectedPassword && passTrimmed === expectedPassword);
 
     if (!isMatchedPassword) {
       recordLoginEvent({

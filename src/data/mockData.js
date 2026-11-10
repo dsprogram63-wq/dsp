@@ -3,22 +3,22 @@ import { initialAdminProjects } from './adminMockData';
 import { toFreelancerSafeProject } from '../services/freelancerApiService';
 
 export const initialProfile = {
-  name: 'Patel Het Bh',
-  fullName: 'Patel Het Bh',
-  email: 'hetgraphura@gmail.com',
-  id: 'DEV-512',
-  developerId: 'DEV-512',
-  freelancerId: 'DEV-512',
-  mobile: '+91 9662003948',
-  role: 'Full Stack Developer (React & Node)',
-  roleTitle: 'Full Stack Developer (React & Node)',
+  name: 'Developer',
+  fullName: 'Developer',
+  email: '',
+  id: '',
+  developerId: '',
+  freelancerId: '',
+  mobile: '',
+  role: 'Full Stack Developer',
+  roleTitle: 'Full Stack Developer',
   status: 'Active',
-  referralTrustId: 'RFF-PatelHetBh-512',
+  referralTrustId: '',
   referralCode: 'RFF-DahejSupport-269',
   referenceId: 'RFF-DahejSupport-269',
   referenceName: 'Dahej Support',
-  joiningDate: '26 Oct 2026',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
+  joiningDate: '',
+  avatar: ''
 };
 
 // Initial freelancer projects derived safely from initialAdminProjects

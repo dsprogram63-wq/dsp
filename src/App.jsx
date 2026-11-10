@@ -102,14 +102,10 @@ export default function App() {
       const saved = localStorage.getItem('dahej_freelancer_profile');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.id === 'DEV-512' && (parsed.referralTrustId === 'RFF-DahejSupport-269' || parsed.referralTrustId === 'RFF-PatelHet-512')) {
-          parsed.referralTrustId = 'RFF-PatelHetBh-512';
-          localStorage.setItem('dahej_freelancer_profile', JSON.stringify(parsed));
-        }
         return { 
           ...initialProfile, 
           ...parsed, 
-          referralTrustId: parsed.id === 'DEV-512' ? 'RFF-PatelHetBh-512' : (parsed.referralTrustId || initialProfile.referralTrustId)
+          referralTrustId: parsed.referralTrustId || initialProfile.referralTrustId || ''
         };
       }
     } catch (e) {
@@ -262,23 +258,7 @@ export default function App() {
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(p => {
-            if (p.id === 'DS-WEB-7169') {
-              return {
-                ...p,
-                developer: 'Patel Het Bh',
-                developerId: 'DEV-512',
-                developerEmail: 'hetgraphura@gmail.com',
-                developerSkill: 'Full Stack Developer (React & Node)',
-                tester: 'Patel Het',
-                testerId: 'TST-317',
-                testerEmail: 'dahejsupport@gmail.com',
-                testerSpecialization: 'Functional QA Testing',
-                testerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
-              };
-            }
-            return p;
-          });
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
           if (!has7169) {
             const p7169 = initialAdminProjects.find(p => p.id === 'DS-WEB-7169');
@@ -298,13 +278,8 @@ export default function App() {
     try {
       const deletedIds = getDeletedMemberIds();
 
-      // Pre-seed password for DEV-512 only if not deleted
-      if (!deletedIds.has('dev-512')) {
-        saveMemberPassword('DEV-512', 'hetgraphura@gmail.com', 'dev123');
-      }
-
       // Purge mock profiles from localStorage
-      ['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
+      ['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
         try { localStorage.removeItem(`dahej_profile_${id}`); } catch(e) {}
       });
 
@@ -318,67 +293,11 @@ export default function App() {
           // If admin deleted all developers, strictly respect the empty array
           if (parsed.length === 0) return [];
 
-          // Self-heal: Ensure DEV-512 is in developers only if NOT deleted by admin
-          const dev512Seed = initialDevelopers.find(d => d.id === 'DEV-512');
-          const hasDev512 = parsed.some(d => 
-            (d.id && d.id.toLowerCase() === 'dev-512') || 
-            (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')
-          );
-          if (!hasDev512 && dev512Seed && !deletedIds.has('dev-512')) {
-            parsed = [dev512Seed, ...parsed];
-          } else if (hasDev512 && dev512Seed) {
-            parsed = parsed.map(d => {
-              if ((d.id && d.id.toLowerCase() === 'dev-512') || (d.email && d.email.toLowerCase().trim() === 'hetgraphura@gmail.com')) {
-                return {
-                  ...dev512Seed,
-                  ...d,
-                  id: 'DEV-512',
-                  developerId: 'DEV-512',
-                  freelancerId: 'DEV-512',
-                  status: 'Active',
-                  referralTrustId: 'RFF-PatelHetBh-512',
-                  referenceName: 'Dahej Support',
-                  referenceId: 'RFF-DahejSupport-269',
-                  referralCode: 'RFF-DahejSupport-269',
-                  email: 'hetgraphura@gmail.com',
-                  name: d.name || 'Patel Het Bh',
-                  fullName: d.fullName || 'Patel Het Bh'
-                };
-              }
-              return d;
-            });
-          }
-
-          // Normalize and self-heal any missing referenceId or outdated synthetic REF-00 IDs
+          // Normalize referenceId or outdated synthetic REF-00 IDs
           return parsed.map(d => {
             const actualCode = (d.referralCode && !d.referralCode.startsWith('REF-00') ? d.referralCode : null) ||
               (d.referenceId && !d.referenceId.startsWith('REF-00') ? d.referenceId : null) ||
               'RFF-DahejSupport-269';
-
-            // Proactively heal any cached custom profile in localStorage
-            try {
-              if (d.id) {
-                const devKey = `dahej_profile_${d.id}`;
-                const devProf = localStorage.getItem(devKey);
-                if (devProf) {
-                  const p = JSON.parse(devProf);
-                  let changed = false;
-                  if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
-                    p.referralCode = actualCode;
-                    p.referenceId = actualCode;
-                    p.referenceName = d.referenceName || p.referenceName || 'Dahej Support';
-                    changed = true;
-                  }
-                  if (d.id === 'DEV-512' && (p.referralTrustId === 'RFF-DahejSupport-269' || p.referralTrustId === 'RFF-PatelHet-512')) {
-                    p.referralTrustId = 'RFF-PatelHetBh-512';
-                    changed = true;
-                  }
-                  if (changed) {
-                    localStorage.setItem(devKey, JSON.stringify(p));
-                  }
-                }
-              }
-            } catch (err) {}
 
             return {
               ...d,
@@ -401,13 +320,8 @@ export default function App() {
     try {
       const deletedIds = getDeletedMemberIds();
 
-      // Pre-seed password for TST-317 only if not deleted
-      if (!deletedIds.has('tst-317')) {
-        saveMemberPassword('TST-317', 'dahejsupport@gmail.com', 'tester123');
-      }
-
       // Purge mock tester profiles from localStorage
-      ['TST-781', 'TST-DEMO'].forEach(id => {
+      ['TST-317', 'TST-781', 'TST-841', 'TST-DEMO'].forEach(id => {
         try { localStorage.removeItem(`dahej_tester_profile_${id}`); } catch(e) {}
       });
 
@@ -421,16 +335,6 @@ export default function App() {
           // If admin deleted all testers, strictly respect the empty array
           if (parsed.length === 0) return [];
 
-          // Self-heal: Ensure TST-317 is in testers only if NOT deleted by admin
-          const tst317Seed = initialTesters.find(t => t.id === 'TST-317');
-          const hasTst317 = parsed.some(t => 
-            (t.id && t.id.toLowerCase() === 'tst-317') || 
-            (t.email && t.email.toLowerCase().trim() === 'dahejsupport@gmail.com')
-          );
-          if (!hasTst317 && tst317Seed && !deletedIds.has('tst-317')) {
-            parsed = [tst317Seed, ...parsed];
-          }
-
           return parsed.map(t => {
             const actualCode = (t.referralCode && !t.referralCode.startsWith('REF-00') ? t.referralCode : null) ||
               (t.referenceId && !t.referenceId.startsWith('REF-00') ? t.referenceId : null) ||
@@ -440,62 +344,13 @@ export default function App() {
             const fixedStatus = isInactive ? t.status : 'Active';
             const trustId = t.referralTrustId || (!isInactive ? getOrAssignReferralTrustId({ ...t, status: 'Active' }, parsed) : '');
 
-            // Proactively heal any cached custom tester profile in localStorage
-            try {
-              if (t.id) {
-                const testerKey = `dahej_tester_profile_${t.id}`;
-                const testerProf = localStorage.getItem(testerKey);
-                if (testerProf) {
-                  const p = JSON.parse(testerProf);
-                  let changed = false;
-                  if (!p.referralCode || p.referralCode.startsWith('REF-00') || p.referenceId?.startsWith('REF-00') || p.referenceId !== actualCode) {
-                    p.referralCode = actualCode;
-                    p.referenceId = actualCode;
-                    p.referenceName = t.referenceName || p.referenceName || 'Reddy';
-                    changed = true;
-                  }
-                  if (trustId && (!p.referralTrustId || p.referralTrustId !== trustId)) {
-                    p.referralTrustId = trustId;
-                    changed = true;
-                  }
-                  if (fixedStatus && p.status !== fixedStatus) {
-                    p.status = fixedStatus;
-                    changed = true;
-                  }
-                  if (changed) {
-                    localStorage.setItem(testerKey, JSON.stringify(p));
-                  }
-                }
-              }
-            } catch (err) {}
-
-            if (t.id === 'TST-317') {
-              return {
-                ...t,
-                status: 'Active',
-                referralTrustId: 'RFF-PatelHet-317',
-                activeTestingProjects: 1,
-                currentProjects: [{
-                  id: 'DS-WEB-7169',
-                  name: 'Restaurant site',
-                  clientName: 'The Grand Palace Dining',
-                  status: 'In Progress',
-                  testingStatus: 'Pending',
-                  progress: 0
-                }],
-                referralCode: actualCode,
-                referenceId: actualCode,
-                referenceName: t.referenceName || 'Reddy'
-              };
-            }
-
             return {
               ...t,
               status: fixedStatus,
               referralTrustId: trustId || t.referralTrustId,
               referralCode: actualCode,
               referenceId: actualCode,
-              referenceName: t.referenceName || 'Reddy'
+              referenceName: t.referenceName || 'Dahej Support'
             };
           });
         }
@@ -524,84 +379,28 @@ export default function App() {
         const deletedIds = getDeletedMemberIds();
 
         if (Array.isArray(liveData.developers)) {
-          setDevelopers(prev => {
-            const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase()));
-            const map = new Map();
-            prev.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase())).forEach(d => { if (d?.id) map.set(d.id, d); });
-            cleanIncoming.forEach(d => {
-              if (d?.id && !deletedIds.has(String(d.id).toLowerCase())) {
-                const merged = { ...(map.get(d.id) || {}), ...d };
-                if (merged.id === 'DEV-512') {
-                  merged.referralTrustId = 'RFF-PatelHetBh-512';
-                  merged.referenceName = 'Dahej Support';
-                  merged.referenceId = 'RFF-DahejSupport-269';
-                  merged.referralCode = 'RFF-DahejSupport-269';
-                }
-                map.set(d.id, merged);
-              }
-            });
-            const result = Array.from(map.values());
-            try {
-              localStorage.setItem('dahej_real_v2_developers', JSON.stringify(result));
-              localStorage.setItem('dahej_developers', JSON.stringify(result));
-            } catch (e) {}
-            return result;
-          });
+          const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase()));
+          setDevelopers(cleanIncoming);
+          try {
+            localStorage.setItem('dahej_real_v2_developers', JSON.stringify(cleanIncoming));
+            localStorage.setItem('dahej_developers', JSON.stringify(cleanIncoming));
+          } catch (e) {}
         }
         if (Array.isArray(liveData.adminProjects)) {
-          setAdminProjects(prev => {
-            const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-            const map = new Map();
-            prev.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).forEach(p => { if (p?.id) map.set(p.id, p); });
-            cleanIncoming.forEach(p => {
-              if (p?.id) {
-                const merged = { ...(map.get(p.id) || {}), ...p };
-                if (merged.id === 'DS-WEB-7169') {
-                  merged.developer = 'Patel Het Bh';
-                  merged.developerId = 'DEV-512';
-                  merged.developerEmail = 'hetgraphura@gmail.com';
-                  merged.tester = 'Patel Het';
-                  merged.testerId = 'TST-317';
-                  merged.testerEmail = 'dahejsupport@gmail.com';
-                  merged.testerSpecialization = 'Functional QA Testing';
-                }
-                map.set(p.id, merged);
-              }
-            });
-            return Array.from(map.values());
-          });
+          const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+          setAdminProjects(cleanIncoming);
         }
         if (Array.isArray(liveData.projects)) {
-          setProjects(prev => {
-            const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-            const map = new Map();
-            prev.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).forEach(p => { if (p?.id) map.set(p.id, p); });
-            cleanIncoming.forEach(p => { if (p?.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
-            return Array.from(map.values());
-          });
+          const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+          setProjects(cleanIncoming);
         }
         if (Array.isArray(liveData.testers)) {
-          setTesters(prev => {
-            const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase()));
-            const map = new Map();
-            prev.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase())).forEach(t => { if (t?.id) map.set(t.id, t); });
-            cleanIncoming.forEach(t => {
-              if (t?.id && !deletedIds.has(String(t.id).toLowerCase())) {
-                const merged = { ...(map.get(t.id) || {}), ...t };
-                if (merged.id === 'TST-317') {
-                  merged.referralTrustId = 'RFF-PatelHet-317';
-                  merged.activeTestingProjects = 1;
-                }
-                map.set(t.id, merged);
-              }
-            });
-            const result = Array.from(map.values());
-            try {
-              localStorage.setItem('dahej_real_v2_testers', JSON.stringify(result));
-              localStorage.setItem('dahej_testers', JSON.stringify(result));
-            } catch (e) {}
-            return result;
-          });
+          const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase()));
+          setTesters(cleanIncoming);
+          try {
+            localStorage.setItem('dahej_real_v2_testers', JSON.stringify(cleanIncoming));
+            localStorage.setItem('dahej_testers', JSON.stringify(cleanIncoming));
+          } catch (e) {}
         }
       }
     }).catch(err => console.warn('Live platform sync background notice:', err));
@@ -858,6 +657,15 @@ export default function App() {
     try {
       localStorage.removeItem(`dahej_profile_${developerId}`);
       localStorage.removeItem(`dahej_profile_${targetId}`);
+      const activeAuth = JSON.parse(localStorage.getItem('dahej_auth_session') || 'null');
+      if (activeAuth && activeAuth.user && (
+        String(activeAuth.user.id || '').toLowerCase() === targetId ||
+        String(activeAuth.user.freelancerId || '').toLowerCase() === targetId
+      )) {
+        localStorage.removeItem('dahej_auth_session');
+        localStorage.removeItem('dahej_freelancer_profile');
+        setAuthSession(null);
+      }
     } catch (e) {}
 
     // 4. Remove password
@@ -1200,6 +1008,15 @@ export default function App() {
     try {
       localStorage.removeItem(`dahej_tester_profile_${testerId}`);
       localStorage.removeItem(`dahej_tester_profile_${targetId}`);
+      const activeAuth = JSON.parse(localStorage.getItem('dahej_auth_session') || 'null');
+      if (activeAuth && activeAuth.user && (
+        String(activeAuth.user.id || '').toLowerCase() === targetId ||
+        String(activeAuth.user.testerId || '').toLowerCase() === targetId
+      )) {
+        localStorage.removeItem('dahej_auth_session');
+        localStorage.removeItem('dahej_tester_profile');
+        setAuthSession(null);
+      }
     } catch (e) {}
 
     // 4. Remove password
@@ -2133,18 +1950,16 @@ export default function App() {
       }
     }
 
-    const resolvedTrustId = finalDevId === 'DEV-512'
-      ? 'RFF-PatelHetBh-512'
-      : getOrAssignReferralTrustId({
-          id: finalDevId,
-          freelancerId: finalDevId,
-          name: finalDevName,
-          fullName: finalDevName,
-          referralTrustId: matchedDev?.referralTrustId || savedCustomProfile?.referralTrustId,
-          referenceId: officialRefCode,
-          referralCode: officialRefCode,
-          status: 'Active'
-        });
+    const resolvedTrustId = getOrAssignReferralTrustId({
+      id: finalDevId,
+      freelancerId: finalDevId,
+      name: finalDevName,
+      fullName: finalDevName,
+      referralTrustId: matchedDev?.referralTrustId || savedCustomProfile?.referralTrustId,
+      referenceId: officialRefCode,
+      referralCode: officialRefCode,
+      status: 'Active'
+    });
 
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,

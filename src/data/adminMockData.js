@@ -9,51 +9,7 @@ export const initialAdminProfile = {
   location: 'Bharuch / Dahej, Gujarat'
 };
 
-export const initialDevelopers = [
-  {
-    id: 'DEV-512',
-    developerId: 'DEV-512',
-    freelancerId: 'DEV-512',
-    name: 'Patel Het Bh',
-    fullName: 'Patel Het Bh',
-    email: 'hetgraphura@gmail.com',
-    mobile: '+91 9662003948',
-    primarySkill: 'Full Stack Developer (React & Node)',
-    experience: '3+ Years',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
-    referralTrustId: 'RFF-PatelHetBh-512',
-    referenceName: 'Dahej Support',
-    referralCode: 'RFF-DahejSupport-269',
-    referenceId: 'RFF-DahejSupport-269',
-    joiningDate: '26 Oct 2026',
-    status: 'Active',
-    availability: 'Busy',
-    password: 'dev123',
-    activeProjectsCount: 1,
-    completedProjectsCount: 0,
-    revisionProjectsCount: 0,
-    currentProgress: 0,
-    totalEarnings: '₹0',
-    totalEarningsNum: 0,
-    pendingPayouts: '₹0',
-    pendingPayoutsNum: 0,
-    rating: 5.0,
-    currentProjects: [
-      {
-        id: 'DS-WEB-7169',
-        name: 'Restaurant site',
-        clientName: 'The Grand Palace Dining',
-        status: 'In Progress',
-        progress: 0,
-        assignedDate: '26 Oct 2026',
-        submissionDate: '07 Nov 2026',
-        deadline: '07 Nov 2026'
-      }
-    ],
-    projectHistory: [],
-    earningsHistory: []
-  }
-];
+export const initialDevelopers = [];
 
 export const initialAdminProjects = [
   {
@@ -61,16 +17,16 @@ export const initialAdminProjects = [
     name: 'Restaurant site',
     clientName: 'The Grand Palace Dining',
     client: 'The Grand Palace Dining',
-    developer: 'Patel Het Bh',
-    developerId: 'DEV-512',
-    developerEmail: 'hetgraphura@gmail.com',
-    developerSkill: 'Full Stack Developer (React & Node)',
-    developerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
-    tester: 'Patel Het',
-    testerId: 'TST-317',
-    testerEmail: 'dahejsupport@gmail.com',
-    testerSpecialization: 'Functional QA Testing',
-    testerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160',
+    developer: 'Unassigned',
+    developerId: null,
+    developerEmail: '',
+    developerSkill: '',
+    developerAvatar: '',
+    tester: 'Unassigned',
+    testerId: null,
+    testerEmail: '',
+    testerSpecialization: '',
+    testerAvatar: '',
     projectType: 'Web Development',
     category: 'Web Development',
     priority: 'High',
@@ -173,9 +129,7 @@ export const initialAdminProjects = [
     testingNotes: '',
     testingDocuments: [],
     testingActivity: [
-      { event: 'Project Created by Master Admin', time: '26 Oct 2026', by: 'Admin' },
-      { event: 'Developer Assigned: Patel Het Bh (DEV-512)', time: '26 Oct 2026', by: 'System' },
-      { event: 'QA Tester Assigned: Patel Het (TST-317)', time: '26 Oct 2026', by: 'System' }
+      { event: 'Project Created by Master Admin', time: '26 Oct 2026', by: 'Admin' }
     ]
   }
 ];

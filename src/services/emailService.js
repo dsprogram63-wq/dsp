@@ -1021,14 +1021,6 @@ export function getMemberPassword(idOrEmail) {
     }
   } catch (e) {}
 
-  // Baseline standard fallback for seed & official accounts
-  if (key === 'dev-512' || key === 'hetgraphura@gmail.com') {
-    return 'dev123';
-  }
-  if (key === 'tst-317' || key === 'dahejsupport@gmail.com') {
-    return 'tester123';
-  }
-
   return null;
 }
 

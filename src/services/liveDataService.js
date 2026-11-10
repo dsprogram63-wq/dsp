@@ -22,79 +22,21 @@ export function sanitizeLivePlatformState(state) {
 
   const deletedIds = new Set((state.deletedMemberIds || []).map(id => String(id).toLowerCase().trim()));
 
+  // 1. Developers: keep only genuinely registered and non-deleted developers
   if (Array.isArray(state.developers)) {
     state.developers = state.developers
-      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com')
-      .map(d => {
-        if (d.id === 'DEV-512' || d.email === 'hetgraphura@gmail.com') {
-          return {
-            ...d,
-            id: 'DEV-512',
-            developerId: 'DEV-512',
-            freelancerId: 'DEV-512',
-            name: d.name || 'Patel Het Bh',
-            fullName: d.fullName || 'Patel Het Bh',
-            email: 'hetgraphura@gmail.com',
-            referralTrustId: 'RFF-PatelHetBh-512',
-            referenceName: 'Dahej Support',
-            referenceId: 'RFF-DahejSupport-269',
-            referralCode: 'RFF-DahejSupport-269',
-            status: 'Active'
-          };
-        }
-        return d;
-      });
+      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com');
   }
 
+  // 2. Testers: keep only genuinely registered and non-deleted testers
   if (Array.isArray(state.testers)) {
     state.testers = state.testers
-      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com')
-      .map(t => {
-        if (t.id === 'TST-317' || t.email === 'dahejsupport@gmail.com') {
-          return {
-            ...t,
-            id: 'TST-317',
-            testerId: 'TST-317',
-            name: t.name || 'Patel Het',
-            fullName: t.fullName || 'Patel Het',
-            email: 'dahejsupport@gmail.com',
-            referralTrustId: 'RFF-PatelHet-317',
-            status: 'Active',
-            activeTestingProjects: 1,
-            currentProjects: [{
-              id: 'DS-WEB-7169',
-              name: 'Restaurant site',
-              clientName: 'The Grand Palace Dining',
-              status: 'In Progress',
-              testingStatus: 'Pending',
-              progress: 0
-            }]
-          };
-        }
-        return t;
-      });
+      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com');
   }
 
+  // 3. Admin Projects
   if (Array.isArray(state.adminProjects)) {
-    state.adminProjects = state.adminProjects
-      .filter(p => p && !MOCK_PROJECT_IDS.has(p.id))
-      .map(p => {
-        if (p.id === 'DS-WEB-7169') {
-          return {
-            ...p,
-            developer: 'Patel Het Bh',
-            developerId: 'DEV-512',
-            developerEmail: 'hetgraphura@gmail.com',
-            developerSkill: 'Full Stack Developer (React & Node)',
-            tester: 'Patel Het',
-            testerId: 'TST-317',
-            testerEmail: 'dahejsupport@gmail.com',
-            testerSpecialization: 'Functional QA Testing',
-            testerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160'
-          };
-        }
-        return p;
-      });
+    state.adminProjects = state.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
   }
 
   if (Array.isArray(state.projects)) {
@@ -265,21 +207,6 @@ export async function saveLivePlatformData(updates = {}) {
     applications: updates.applications ? mergeById(currentState.applications, updates.applications) : currentState.applications
   };
 
-  if (Array.isArray(nextState.developers)) {
-    nextState.developers = nextState.developers.map(d => {
-      if (d.id === 'DEV-512' && (d.referralTrustId === 'RFF-DahejSupport-269' || d.referralTrustId === 'RFF-PatelHet-512' || !d.referralTrustId)) {
-        return {
-          ...d,
-          referralTrustId: 'RFF-PatelHetBh-512',
-          referenceName: 'Dahej Support',
-          referenceId: 'RFF-DahejSupport-269',
-          referralCode: 'RFF-DahejSupport-269'
-        };
-      }
-      return d;
-    });
-  }
-
   memoryCloudState = nextState;
   syncLiveStateToLocalStorage(nextState);
 
@@ -388,34 +315,12 @@ export function syncLiveStateToLocalStorage(data) {
     }
 
     // Purge any stale mock profiles from localStorage
-    ['DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
+    ['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
       try { localStorage.removeItem(`dahej_profile_${id}`); } catch(e) {}
     });
-    ['TST-781', 'TST-DEMO'].forEach(id => {
+    ['TST-317', 'TST-781', 'TST-841', 'TST-DEMO'].forEach(id => {
       try { localStorage.removeItem(`dahej_tester_profile_${id}`); } catch(e) {}
     });
-
-    // Proactively heal DEV-512 cached custom profiles in localStorage
-    try {
-      const pKey = 'dahej_profile_DEV-512';
-      const cachedP = localStorage.getItem(pKey);
-      if (cachedP) {
-        const parsedP = JSON.parse(cachedP);
-        if (parsedP.referralTrustId === 'RFF-DahejSupport-269' || parsedP.referralTrustId === 'RFF-PatelHet-512') {
-          parsedP.referralTrustId = 'RFF-PatelHetBh-512';
-          localStorage.setItem(pKey, JSON.stringify(parsedP));
-        }
-      }
-      const fKey = 'dahej_freelancer_profile';
-      const cachedF = localStorage.getItem(fKey);
-      if (cachedF) {
-        const parsedF = JSON.parse(cachedF);
-        if (parsedF.id === 'DEV-512' && (parsedF.referralTrustId === 'RFF-DahejSupport-269' || parsedF.referralTrustId === 'RFF-PatelHet-512')) {
-          parsedF.referralTrustId = 'RFF-PatelHetBh-512';
-          localStorage.setItem(fKey, JSON.stringify(parsedF));
-        }
-      }
-    } catch (healErr) {}
   } catch (e) {
     console.error('Failed to sync live state to localStorage:', e);
   }
