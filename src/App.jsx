@@ -790,7 +790,7 @@ export default function App() {
     const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedDev.name || 'Developer').trim();
     const sanitizedEmail = (updatedFields.email || matchedDev.email || '').trim();
     const sanitizedMobile = (updatedFields.mobile || matchedDev.mobile || '').trim();
-    const updatedAvatar = updatedFields.avatar || matchedDev.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=160';
+    const updatedAvatar = updatedFields.avatar || matchedDev.avatar || (authUser && authUser.avatar) || '';
 
     const activeDevRefCode = (matchedDev.referralCode && !matchedDev.referralCode.startsWith('REF-00') ? matchedDev.referralCode : null) ||
       (matchedDev.referenceId && !matchedDev.referenceId.startsWith('REF-00') ? matchedDev.referenceId : null) ||
@@ -892,7 +892,7 @@ export default function App() {
     const sanitizedName = (updatedFields.fullName || updatedFields.name || matchedTester.name || 'QA Tester').trim();
     const sanitizedEmail = (updatedFields.email || matchedTester.email || '').trim();
     const sanitizedMobile = (updatedFields.mobile || matchedTester.mobile || '').trim();
-    const updatedAvatar = updatedFields.avatar || matchedTester.avatar || (authUser && authUser.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=160';
+    const updatedAvatar = updatedFields.avatar || matchedTester.avatar || (authUser && authUser.avatar) || '';
 
     const activeTesterRefCode = (matchedTester.referralCode && !matchedTester.referralCode.startsWith('REF-00') ? matchedTester.referralCode : null) ||
       (matchedTester.referenceId && !matchedTester.referenceId.startsWith('REF-00') ? matchedTester.referenceId : null) ||

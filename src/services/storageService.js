@@ -45,11 +45,14 @@ export async function uploadFileToBucket(bucket, filePath, file) {
 }
 
 /**
- * Uploads a profile avatar image and returns the public image URL
+ * Uploads a profile avatar image with a unique timestamped filename and returns the public image URL
  */
 export async function uploadAvatar(userId, file) {
-  const ext = file.name ? file.name.split('.').pop() : 'png';
-  const filePath = `avatars/${userId || Date.now()}_avatar.${ext}`;
+  const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'png';
+  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const cleanUser = String(userId || 'member').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const uniqueToken = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const filePath = `avatars/${cleanUser}_${uniqueToken}_avatar.${ext}`;
   return await uploadFileToBucket('avatars', filePath, file);
 }
 

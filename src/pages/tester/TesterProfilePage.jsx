@@ -126,11 +126,11 @@ export default function TesterProfilePage({
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       showToast('⚠️ Please select a valid image file (PNG, JPG, or WebP).');
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -138,13 +138,12 @@ export default function TesterProfilePage({
       const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
       showToast(`⚠️ Photo size (${sizeMb} MB) exceeds 2 MB limit. Please select a photo under 2 MB.`);
       alert(`⚠️ File Size Exceeded (Max 2 MB)\n\nSelected file size is ${sizeMb} MB. Please upload a photo smaller than 2 MB.`);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     showToast('Uploading photo to storage...');
     try {
-      const { url } = await uploadAvatar(formData.referenceId || formData.id || 'tester', file);
+      const { url } = await uploadAvatar(formData.testerId || formData.id || 'tester', file);
       if (url) {
         setFormData(prev => ({
           ...prev,

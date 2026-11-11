@@ -129,6 +129,7 @@ export default function ReferralApplication({
   const [assignedApplicantId, setAssignedApplicantId] = useState('');
   const [submittedInfo, setSubmittedInfo] = useState(null);
   const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [confirmationEmailSent, setConfirmationEmailSent] = useState(false);
   const [isResendingConfirmEmail, setIsResendingConfirmEmail] = useState(false);
@@ -918,14 +919,27 @@ export default function ReferralApplication({
   // Profile Photo Upload Handlers (Strict 2 MB Limit)
   const handleAvatarChange = async (e) => {
     const file = e.target.files && e.target.files[0];
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     if (!file) return;
+
+    const targetRole = selectedRole;
+    const setTrackAvatar = (updater) => {
+      setTrackStates(prev => {
+        const cur = prev[targetRole] || prev.developer;
+        return {
+          ...prev,
+          [targetRole]: updater(cur)
+        };
+      });
+    };
 
     // Check file type
     if (!file.type.startsWith('image/')) {
       const err = 'Please select a valid image file (PNG, JPG, JPEG, or WebP).';
-      setAvatarError(err);
+      setTrackAvatar(cur => ({ ...cur, avatarError: err }));
       alert(err);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -933,53 +947,62 @@ export default function ReferralApplication({
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
       const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
       const err = `Image file size (${sizeInMb} MB) exceeds the 2 MB maximum limit. Please select a photo under 2 MB.`;
-      setAvatarError(err);
+      setTrackAvatar(cur => ({ ...cur, avatarError: err }));
       alert(`⚠️ File Size Exceeded (Max 2 MB)\n\nSelected file size is ${sizeInMb} MB. Please select a photo smaller than 2 MB.`);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     // Valid image file under 2 MB
-    setAvatarError('');
     const sizeFormatted = file.size >= 1048576 
       ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` 
       : `${Math.round(file.size / 1024)} KB`;
 
+    const infoPayload = {
+      name: file.name,
+      sizeFormatted,
+      sizeBytes: file.size,
+      isCustom: true
+    };
+
+    setTrackAvatar(cur => ({ ...cur, avatarError: '' }));
+    setIsUploadingAvatar(true);
+
+    // Show immediate local preview of newly selected file while uploading to Supabase
+    const base64Promise = new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target?.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+
+    const localPreview = await base64Promise;
+    if (localPreview) {
+      setTrackAvatar(cur => ({
+        ...cur,
+        formData: { ...cur.formData, avatar: localPreview },
+        avatarInfo: infoPayload,
+        avatarError: ''
+      }));
+    }
+
     try {
-      const applicantTag = (formData.email || formData.fullName || 'applicant').replace(/[^a-zA-Z0-9]/g, '_');
+      const curTrack = trackStates[targetRole] || currentTrack;
+      const rawTag = (curTrack?.formData?.email || curTrack?.formData?.fullName || targetRole).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const applicantTag = `${targetRole}_${rawTag}`;
       const { url } = await uploadAvatar(applicantTag, file);
       if (url) {
-        setFormData(prev => ({
-          ...prev,
-          avatar: url
+        setTrackAvatar(cur => ({
+          ...cur,
+          formData: { ...cur.formData, avatar: url },
+          avatarInfo: infoPayload,
+          avatarError: ''
         }));
-        setAvatarInfo({
-          name: file.name,
-          sizeFormatted,
-          sizeBytes: file.size,
-          isCustom: true
-        });
-        return;
       }
     } catch (err) {
       console.warn('Storage upload fallback:', err);
+    } finally {
+      setIsUploadingAvatar(false);
     }
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64Data = uploadEvent.target.result;
-      setFormData(prev => ({
-        ...prev,
-        avatar: base64Data
-      }));
-      setAvatarInfo({
-        name: file.name,
-        sizeFormatted,
-        sizeBytes: file.size,
-        isCustom: true
-      });
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleRemoveAvatar = () => {
@@ -1003,6 +1026,11 @@ export default function ReferralApplication({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isUploadingAvatar) {
+      alert('⏳ Please wait a moment while your newly uploaded profile photo finishes saving.');
+      return;
+    }
 
     // Strict Profile Photo Mandatory Validation (Both Developer & Tester Tracks)
     if (!formData.avatar || !formData.avatar.trim()) {
@@ -1343,10 +1371,11 @@ export default function ReferralApplication({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    disabled={isUploadingAvatar}
                     className={`btn-upload-photo-action ${avatarError ? 'pulse-attention' : ''}`}
                   >
                     <Upload size={14} />
-                    <span>{formData.avatar ? 'Change Profile Photo' : 'Upload Profile Photo *'}</span>
+                    <span>{isUploadingAvatar ? 'Uploading Profile Photo...' : (formData.avatar ? 'Change Profile Photo' : 'Upload Profile Photo *')}</span>
                   </button>
 
                   {formData.avatar && (
@@ -1984,13 +2013,15 @@ export default function ReferralApplication({
               <button 
                 type="submit" 
                 className="btn btn-submit-apply"
-                disabled={isSubmittingApplication}
-                style={{ opacity: isSubmittingApplication ? 0.8 : 1, cursor: isSubmittingApplication ? 'not-allowed' : 'pointer' }}
+                disabled={isSubmittingApplication || isUploadingAvatar}
+                style={{ opacity: (isSubmittingApplication || isUploadingAvatar) ? 0.8 : 1, cursor: (isSubmittingApplication || isUploadingAvatar) ? 'not-allowed' : 'pointer' }}
               >
                 <span>
-                  {isSubmittingApplication 
-                    ? 'Submitting & Sending Confirmation Email...' 
-                    : `Submit ${selectedRole === 'tester' ? 'QA Tester' : 'Developer'} Application`}
+                  {isUploadingAvatar
+                    ? 'Uploading Profile Photo...'
+                    : isSubmittingApplication 
+                      ? 'Submitting & Sending Confirmation Email...' 
+                      : `Submit ${selectedRole === 'tester' ? 'QA Tester' : 'Developer'} Application`}
                 </span>
               </button>
               <p className="apply-disclaimer">
