@@ -1,14 +1,21 @@
 /**
- * Dahej Support - Live Cloud Data & State Synchronization Service
- * 
- * Provides real-time and persistent synchronization between all devices, browsers,
- * and sessions using Supabase Cloud Storage and the /api/live-sync endpoint.
+ * Dahej Support - Table-Wise Live Cloud Data & State Synchronization Service
+ *
+ * Persists data independently per domain table (`developers`, `testers`, `projects`,
+ * `applications`, `auth_registry`) via `/api/live-sync` and direct Supabase fallback.
  */
 
 import { supabase } from './supabase.js';
 
 const STORAGE_BUCKET = 'avatars';
-const STORAGE_FILE_PATH = 'live_state/platform_data.json';
+const TABLE_PATHS = {
+  developers: 'db_tables/developers.json',
+  testers: 'db_tables/testers.json',
+  projects: 'db_tables/projects.json',
+  applications: 'db_tables/applications.json',
+  authRegistry: 'db_tables/auth_registry.json',
+  legacy: 'live_state/platform_data.json',
+};
 
 // In-memory cache of the latest live state
 let memoryCloudState = null;
@@ -20,27 +27,46 @@ const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
 export function sanitizeLivePlatformState(state) {
   if (!state || typeof state !== 'object') return state;
 
-  const deletedIds = new Set((state.deletedMemberIds || []).map(id => String(id).toLowerCase().trim()));
+  const deletedIds = new Set(
+    (state.deletedMemberIds || []).map((id) => String(id).toLowerCase().trim())
+  );
 
   // 1. Developers: keep only genuinely registered and non-deleted developers
   if (Array.isArray(state.developers)) {
-    state.developers = state.developers
-      .filter(d => d && !MOCK_DEV_IDS.has(d.id) && !d.isDemo && !deletedIds.has(String(d.id || '').toLowerCase()) && d.email !== 'developer@hit-support.com' && d.email !== 'patelhet@dahejsupport.com' && d.email !== 'saheb@dahejsupport.com' && d.email !== 'vikram.dev@dahejsupport.com' && d.email !== 'hetgraphura@gmail.com');
+    state.developers = state.developers.filter(
+      (d) =>
+        d &&
+        !MOCK_DEV_IDS.has(d.id) &&
+        !d.isDemo &&
+        !deletedIds.has(String(d.id || '').toLowerCase()) &&
+        d.email !== 'developer@hit-support.com' &&
+        d.email !== 'patelhet@dahejsupport.com' &&
+        d.email !== 'saheb@dahejsupport.com' &&
+        d.email !== 'vikram.dev@dahejsupport.com' &&
+        d.email !== 'hetgraphura@gmail.com'
+    );
   }
 
   // 2. Testers: keep only genuinely registered and non-deleted testers
   if (Array.isArray(state.testers)) {
-    state.testers = state.testers
-      .filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !t.isDemo && !deletedIds.has(String(t.id || '').toLowerCase()) && t.email !== 'tester@hit-support.com' && t.email !== 'hetvi@dahejsupport.com' && t.email !== 'dahejsupport@gmail.com');
+    state.testers = state.testers.filter(
+      (t) =>
+        t &&
+        !MOCK_TESTER_IDS.has(t.id) &&
+        !t.isDemo &&
+        !deletedIds.has(String(t.id || '').toLowerCase()) &&
+        t.email !== 'tester@hit-support.com' &&
+        t.email !== 'hetvi@dahejsupport.com' &&
+        t.email !== 'dahejsupport@gmail.com'
+    );
   }
 
-  // 3. Admin Projects
+  // 3. Projects
   if (Array.isArray(state.adminProjects)) {
-    state.adminProjects = state.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+    state.adminProjects = state.adminProjects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id));
   }
-
   if (Array.isArray(state.projects)) {
-    state.projects = state.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+    state.projects = state.projects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id));
   }
 
   return state;
@@ -66,61 +92,149 @@ function getSyncEndpoints() {
   return [...new Set(endpoints)];
 }
 
-/**
- * Directly fetch live platform state from Supabase Cloud Storage
- */
-async function fetchDirectFromSupabase() {
+async function downloadJsonTable(filePath) {
   try {
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .download(STORAGE_FILE_PATH);
-
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(filePath);
     if (error || !data) return null;
-
     const text = await data.text();
     return JSON.parse(text);
   } catch (err) {
-    console.warn('Direct Supabase live state download error:', err);
+    return null;
+  }
+}
+
+async function uploadJsonTable(filePath, payload) {
+  const jsonText = JSON.stringify(payload, null, 2);
+  const body =
+    typeof Buffer !== 'undefined'
+      ? Buffer.from(jsonText)
+      : new Blob([jsonText], { type: 'application/json' });
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(filePath, body, {
+    contentType: 'application/json',
+    upsert: true,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Directly fetch table-wise platform data from Supabase Storage fallback
+ */
+async function fetchDirectFromSupabase() {
+  try {
+    const [devFile, testerFile, projFile, appFile, authFile] = await Promise.all([
+      downloadJsonTable(TABLE_PATHS.developers),
+      downloadJsonTable(TABLE_PATHS.testers),
+      downloadJsonTable(TABLE_PATHS.projects),
+      downloadJsonTable(TABLE_PATHS.applications),
+      downloadJsonTable(TABLE_PATHS.authRegistry),
+    ]);
+
+    let legacy = null;
+    if (!devFile && !testerFile && !projFile && !authFile) {
+      legacy = await downloadJsonTable(TABLE_PATHS.legacy);
+      if (!legacy) return null;
+    }
+
+    return {
+      version: '3.0.0-tables',
+      updatedAt:
+        devFile?.updatedAt ||
+        testerFile?.updatedAt ||
+        projFile?.updatedAt ||
+        legacy?.updatedAt ||
+        new Date().toISOString(),
+      developers: devFile?.rows || legacy?.developers || [],
+      testers: testerFile?.rows || legacy?.testers || [],
+      adminProjects: projFile?.rows || legacy?.adminProjects || legacy?.projects || [],
+      projects: projFile?.rows || legacy?.projects || legacy?.adminProjects || [],
+      applications: appFile?.rows || legacy?.applications || [],
+      passwords: authFile?.passwords || legacy?.passwords || {},
+      deletedMemberIds: authFile?.deletedMemberIds || legacy?.deletedMemberIds || [],
+    };
+  } catch (err) {
+    console.warn('Direct Supabase table fetch error:', err);
     return null;
   }
 }
 
 /**
- * Directly save live platform state to Supabase Cloud Storage
+ * Directly save ONLY the changed table(s) to Supabase Storage fallback
  */
-async function saveDirectToSupabase(updatedState) {
+async function saveDirectToSupabase(updates, nextState) {
   try {
-    const buffer = Buffer.from ? Buffer.from(JSON.stringify(updatedState, null, 2)) : new Blob([JSON.stringify(updatedState, null, 2)], { type: 'application/json' });
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(STORAGE_FILE_PATH, buffer, {
-        contentType: 'application/json',
-        upsert: true
-      });
+    const now = nextState.updatedAt || new Date().toISOString();
+    const writes = [];
 
-    if (error) throw error;
+    if (updates.developers || updates.updateDeveloper || updates.deletedMemberId) {
+      writes.push(
+        uploadJsonTable(TABLE_PATHS.developers, {
+          table: 'developers',
+          updatedAt: now,
+          rows: nextState.developers || [],
+        })
+      );
+    }
+    if (updates.testers || updates.updateTester || updates.deletedMemberId) {
+      writes.push(
+        uploadJsonTable(TABLE_PATHS.testers, {
+          table: 'testers',
+          updatedAt: now,
+          rows: nextState.testers || [],
+        })
+      );
+    }
+    if (updates.adminProjects || updates.projects || updates.updateProject) {
+      writes.push(
+        uploadJsonTable(TABLE_PATHS.projects, {
+          table: 'projects',
+          updatedAt: now,
+          rows: nextState.adminProjects || nextState.projects || [],
+        })
+      );
+    }
+    if (updates.applications || updates.addApplication) {
+      writes.push(
+        uploadJsonTable(TABLE_PATHS.applications, {
+          table: 'applications',
+          updatedAt: now,
+          rows: nextState.applications || [],
+        })
+      );
+    }
+    if (updates.passwords || updates.deletedMemberId || updates.deletedMemberIds) {
+      writes.push(
+        uploadJsonTable(TABLE_PATHS.authRegistry, {
+          table: 'auth_registry',
+          updatedAt: now,
+          passwords: nextState.passwords || {},
+          deletedMemberIds: nextState.deletedMemberIds || [],
+        })
+      );
+    }
+
+    await Promise.all(writes);
     return true;
   } catch (err) {
-    console.error('Direct Supabase live state upload error:', err);
+    console.error('Direct Supabase table upload error:', err);
     return false;
   }
 }
 
 /**
- * Fetch all platform data from the live cloud.
+ * Fetch all platform data from the live cloud tables.
  * Falls back gracefully to memory or local cache.
  */
 export async function fetchLivePlatformData() {
   let liveData = null;
 
-  // 1. Try /api/live-sync proxy endpoints
+  // 1. Try /api/live-sync endpoint
   const endpoints = getSyncEndpoints();
   for (const url of endpoints) {
     try {
       const res = await fetch(url, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4500) : undefined,
       });
       if (res.ok) {
         const json = await res.json();
@@ -134,7 +248,7 @@ export async function fetchLivePlatformData() {
     }
   }
 
-  // 2. Fallback: Direct Supabase client
+  // 2. Fallback: Direct Supabase table download
   if (!liveData) {
     liveData = await fetchDirectFromSupabase();
   }
@@ -150,7 +264,7 @@ export async function fetchLivePlatformData() {
 }
 
 /**
- * Save partial or complete updates to the live cloud database.
+ * Save partial, table-level, or single-record updates to the live cloud database.
  */
 export async function saveLivePlatformData(updates = {}) {
   if (!updates || typeof updates !== 'object') return false;
@@ -161,23 +275,27 @@ export async function saveLivePlatformData(updates = {}) {
   const currentDeletedIds = new Set([
     ...(Array.isArray(currentState.deletedMemberIds) ? currentState.deletedMemberIds : []),
     ...(Array.isArray(updates.deletedMemberIds) ? updates.deletedMemberIds : []),
-    ...(updates.deletedMemberId ? [String(updates.deletedMemberId).toLowerCase().trim()] : [])
+    ...(updates.deletedMemberId ? [String(updates.deletedMemberId).toLowerCase().trim()] : []),
   ]);
 
   const mergeById = (prev = [], incoming = [], replace = false) => {
     if (replace && Array.isArray(incoming)) {
-      return incoming.filter(item => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim()));
+      return incoming.filter(
+        (item) => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())
+      );
     }
     if (!Array.isArray(incoming)) {
-      return (prev || []).filter(item => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim()));
+      return (prev || []).filter(
+        (item) => item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())
+      );
     }
     const map = new Map();
-    (prev || []).forEach(item => {
+    (prev || []).forEach((item) => {
       if (item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())) {
         map.set(item.id, item);
       }
     });
-    (incoming || []).forEach(item => {
+    (incoming || []).forEach((item) => {
       if (item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())) {
         map.set(item.id, { ...(map.get(item.id) || {}), ...item });
       }
@@ -187,30 +305,60 @@ export async function saveLivePlatformData(updates = {}) {
 
   const nextPasswords = {
     ...(currentState.passwords || {}),
-    ...(updates.passwords || {})
+    ...(updates.passwords || {}),
   };
   if (updates.deletedMemberId) {
     const delKey = String(updates.deletedMemberId).toLowerCase().trim();
     delete nextPasswords[delKey];
   }
 
-  const nextState = {
+  const nextDevelopers = updates.updateDeveloper
+    ? mergeById(currentState.developers, [updates.updateDeveloper], false)
+    : updates.developers
+      ? mergeById(currentState.developers, updates.developers, Boolean(updates.replaceDevelopers))
+      : currentState.developers;
+
+  const nextTesters = updates.updateTester
+    ? mergeById(currentState.testers, [updates.updateTester], false)
+    : updates.testers
+      ? mergeById(currentState.testers, updates.testers, Boolean(updates.replaceTesters))
+      : currentState.testers;
+
+  const nextProjects = updates.updateProject
+    ? mergeById(currentState.adminProjects || currentState.projects, [updates.updateProject], false)
+    : updates.adminProjects
+      ? mergeById(
+          currentState.adminProjects,
+          updates.adminProjects,
+          Boolean(updates.replaceAdminProjects)
+        )
+      : updates.projects
+        ? mergeById(currentState.projects, updates.projects, false)
+        : currentState.adminProjects || currentState.projects;
+
+  const nextApplications = updates.addApplication
+    ? mergeById(currentState.applications, [updates.addApplication], false)
+    : updates.applications
+      ? mergeById(currentState.applications, updates.applications, false)
+      : currentState.applications;
+
+  const nextState = sanitizeLivePlatformState({
     ...currentState,
-    version: '2.0.0',
+    version: '3.0.0-tables',
     updatedAt: new Date().toISOString(),
     deletedMemberIds: Array.from(currentDeletedIds),
-    developers: updates.developers ? mergeById(currentState.developers, updates.developers, Boolean(updates.replaceDevelopers)) : currentState.developers,
-    testers: updates.testers ? mergeById(currentState.testers, updates.testers, Boolean(updates.replaceTesters)) : currentState.testers,
-    adminProjects: updates.adminProjects ? mergeById(currentState.adminProjects, updates.adminProjects, Boolean(updates.replaceAdminProjects)) : currentState.adminProjects,
-    projects: updates.projects ? mergeById(currentState.projects, updates.projects) : (updates.adminProjects ? mergeById(currentState.projects, updates.adminProjects) : currentState.projects),
+    developers: nextDevelopers,
+    testers: nextTesters,
+    adminProjects: nextProjects,
+    projects: nextProjects,
     passwords: nextPasswords,
-    applications: updates.applications ? mergeById(currentState.applications, updates.applications) : currentState.applications
-  };
+    applications: nextApplications,
+  });
 
   memoryCloudState = nextState;
   syncLiveStateToLocalStorage(nextState);
 
-  // 2. Try saving via /api/live-sync
+  // 2. Save via /api/live-sync
   const endpoints = getSyncEndpoints();
   let saved = false;
 
@@ -220,11 +368,15 @@ export async function saveLivePlatformData(updates = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
-        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4500) : undefined,
       });
       if (res.ok) {
         const json = await res.json();
         if (json && json.success) {
+          if (json.data) {
+            memoryCloudState = sanitizeLivePlatformState(json.data);
+            syncLiveStateToLocalStorage(memoryCloudState);
+          }
           saved = true;
           break;
         }
@@ -232,9 +384,9 @@ export async function saveLivePlatformData(updates = {}) {
     } catch (e) {}
   }
 
-  // 3. Fallback: Save directly to Supabase storage
+  // 3. Fallback: Save directly to Supabase table files
   if (!saved) {
-    saved = await saveDirectToSupabase(nextState);
+    saved = await saveDirectToSupabase(updates, nextState);
   }
 
   return saved;
@@ -248,31 +400,32 @@ export async function getLiveMemberByEmailOrId(idOrEmail) {
   if (!idOrEmail) return null;
   const clean = idOrEmail.toString().trim().toLowerCase();
 
-  // Ensure we have the latest cloud state
   const state = await fetchLivePlatformData();
   if (!state) return null;
 
   const devs = state.developers || [];
   const testers = state.testers || [];
 
-  const matchedDev = devs.find(d => 
-    (d.email && d.email.toLowerCase().trim() === clean) ||
-    (d.id && d.id.toLowerCase().trim() === clean) ||
-    (d.developerId && d.developerId.toLowerCase().trim() === clean) ||
-    (d.name && d.name.toLowerCase().trim() === clean) ||
-    (d.fullName && d.fullName.toLowerCase().trim() === clean)
+  const matchedDev = devs.find(
+    (d) =>
+      (d.email && d.email.toLowerCase().trim() === clean) ||
+      (d.id && d.id.toLowerCase().trim() === clean) ||
+      (d.developerId && d.developerId.toLowerCase().trim() === clean) ||
+      (d.name && d.name.toLowerCase().trim() === clean) ||
+      (d.fullName && d.fullName.toLowerCase().trim() === clean)
   );
 
   if (matchedDev) {
     return { member: matchedDev, role: 'freelancer' };
   }
 
-  const matchedTester = testers.find(t => 
-    (t.email && t.email.toLowerCase().trim() === clean) ||
-    (t.id && t.id.toLowerCase().trim() === clean) ||
-    (t.testerId && t.testerId.toLowerCase().trim() === clean) ||
-    (t.name && t.name.toLowerCase().trim() === clean) ||
-    (t.fullName && t.fullName.toLowerCase().trim() === clean)
+  const matchedTester = testers.find(
+    (t) =>
+      (t.email && t.email.toLowerCase().trim() === clean) ||
+      (t.id && t.id.toLowerCase().trim() === clean) ||
+      (t.testerId && t.testerId.toLowerCase().trim() === clean) ||
+      (t.name && t.name.toLowerCase().trim() === clean) ||
+      (t.fullName && t.fullName.toLowerCase().trim() === clean)
   );
 
   if (matchedTester) {
@@ -315,11 +468,15 @@ export function syncLiveStateToLocalStorage(data) {
     }
 
     // Purge any stale mock profiles from localStorage
-    ['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach(id => {
-      try { localStorage.removeItem(`dahej_profile_${id}`); } catch(e) {}
+    ['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO'].forEach((id) => {
+      try {
+        localStorage.removeItem(`dahej_profile_${id}`);
+      } catch (e) {}
     });
-    ['TST-317', 'TST-781', 'TST-841', 'TST-DEMO'].forEach(id => {
-      try { localStorage.removeItem(`dahej_tester_profile_${id}`); } catch(e) {}
+    ['TST-317', 'TST-781', 'TST-841', 'TST-DEMO'].forEach((id) => {
+      try {
+        localStorage.removeItem(`dahej_tester_profile_${id}`);
+      } catch (e) {}
     });
   } catch (e) {
     console.error('Failed to sync live state to localStorage:', e);

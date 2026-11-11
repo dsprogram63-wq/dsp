@@ -92,7 +92,7 @@ export default function TesterProfilePage({
   };
 
   useEffect(() => {
-    if (propProfile) {
+    if (propProfile && !isEditing) {
       const cleanRefCode = resolveRefCode(propProfile, resolveRefCode(formData, 'DS-TST-201'));
       setFormData(prev => ({
         ...prev,
@@ -107,11 +107,11 @@ export default function TesterProfilePage({
         referenceId: cleanRefCode,
         referralCode: cleanRefCode,
         program: 'The HIT Support Tester Program',
-        avatar: propProfile.avatar || prev.avatar,
+        avatar: propProfile.avatar !== undefined ? propProfile.avatar : prev.avatar,
         verified: propProfile.verified !== false
       }));
     }
-  }, [propProfile]);
+  }, [propProfile, isEditing]);
 
   // Deterministically compute current experience from stored joining experience + complete years elapsed
   const computedExperience = calculateCurrentExperience(
@@ -204,7 +204,10 @@ export default function TesterProfilePage({
     }
 
     // 3. Validation for Mobile
-    const phoneDigits = (formData.mobile || '').replace(/\D/g, '');
+    let phoneDigits = (formData.mobile || '').replace(/\D/g, '');
+    if (phoneDigits.length === 12 && phoneDigits.startsWith('91')) {
+      phoneDigits = phoneDigits.slice(2);
+    }
     if (phoneDigits.length !== 10) {
       showToast(`Mobile number must be exactly 10 digits (${phoneDigits.length}/10 entered).`);
       return;
@@ -217,7 +220,7 @@ export default function TesterProfilePage({
     const updatedPayload = {
       fullName: trimmedName,
       name: trimmedName,
-      mobile: formData.mobile.trim(),
+      mobile: `+91 ${phoneDigits}`,
       email: formData.email.trim(),
       avatar: formData.avatar
     };

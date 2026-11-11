@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -368,6 +368,13 @@ export default function App() {
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
 
+  // Track latest cloud-hydrated snapshots to avoid echo-overwriting cloud tables on periodic polls
+  const lastCloudSnapshotRef = useRef({
+    adminProjects: null,
+    developers: null,
+    testers: null
+  });
+
   // Live Cloud Synchronization with Automatic Polling & Focus Sync
   const syncFromCloud = useCallback(() => {
     fetchLivePlatformData().then(liveData => {
@@ -380,26 +387,32 @@ export default function App() {
 
         if (Array.isArray(liveData.developers)) {
           const cleanIncoming = liveData.developers.filter(d => d && !MOCK_DEV_IDS.has(d.id) && !deletedIds.has(String(d.id || '').toLowerCase()));
-          setDevelopers(cleanIncoming);
+          const snap = JSON.stringify(cleanIncoming);
+          lastCloudSnapshotRef.current.developers = snap;
+          setDevelopers(prev => (JSON.stringify(prev) === snap ? prev : cleanIncoming));
           try {
-            localStorage.setItem('dahej_real_v2_developers', JSON.stringify(cleanIncoming));
-            localStorage.setItem('dahej_developers', JSON.stringify(cleanIncoming));
+            localStorage.setItem('dahej_real_v2_developers', snap);
+            localStorage.setItem('dahej_developers', snap);
           } catch (e) {}
         }
         if (Array.isArray(liveData.adminProjects)) {
           const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-          setAdminProjects(cleanIncoming);
+          const snap = JSON.stringify(cleanIncoming);
+          lastCloudSnapshotRef.current.adminProjects = snap;
+          setAdminProjects(prev => (JSON.stringify(prev) === snap ? prev : cleanIncoming));
         }
         if (Array.isArray(liveData.projects)) {
           const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-          setProjects(cleanIncoming);
+          setProjects(prev => (JSON.stringify(prev) === JSON.stringify(cleanIncoming) ? prev : cleanIncoming));
         }
         if (Array.isArray(liveData.testers)) {
           const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase()));
-          setTesters(cleanIncoming);
+          const snap = JSON.stringify(cleanIncoming);
+          lastCloudSnapshotRef.current.testers = snap;
+          setTesters(prev => (JSON.stringify(prev) === snap ? prev : cleanIncoming));
           try {
-            localStorage.setItem('dahej_real_v2_testers', JSON.stringify(cleanIncoming));
-            localStorage.setItem('dahej_testers', JSON.stringify(cleanIncoming));
+            localStorage.setItem('dahej_real_v2_testers', snap);
+            localStorage.setItem('dahej_testers', snap);
           } catch (e) {}
         }
       }
@@ -428,15 +441,18 @@ export default function App() {
     };
   }, [syncFromCloud]);
 
-  // Sync real data to LocalStorage & Live Cloud
+  // Sync real data to LocalStorage & Live Cloud (skips echo if state matches cloud snapshot)
   useEffect(() => {
     try {
       if (Array.isArray(adminProjects)) {
-        localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(adminProjects));
-        localStorage.setItem('dahej_admin_projects', JSON.stringify(adminProjects));
+        const snap = JSON.stringify(adminProjects);
+        localStorage.setItem('dahej_real_v2_admin_projects', snap);
+        localStorage.setItem('dahej_admin_projects', snap);
+        if (lastCloudSnapshotRef.current.adminProjects === snap) return;
         const timer = setTimeout(() => {
+          lastCloudSnapshotRef.current.adminProjects = snap;
           saveLivePlatformData({ adminProjects }).catch(() => {});
-        }, 1500);
+        }, 1200);
         return () => clearTimeout(timer);
       }
     } catch (e) {
@@ -458,11 +474,14 @@ export default function App() {
   useEffect(() => {
     try {
       if (Array.isArray(developers)) {
-        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(developers));
-        localStorage.setItem('dahej_developers', JSON.stringify(developers));
+        const snap = JSON.stringify(developers);
+        localStorage.setItem('dahej_real_v2_developers', snap);
+        localStorage.setItem('dahej_developers', snap);
+        if (lastCloudSnapshotRef.current.developers === snap) return;
         const timer = setTimeout(() => {
+          lastCloudSnapshotRef.current.developers = snap;
           saveLivePlatformData({ developers }).catch(() => {});
-        }, 1500);
+        }, 1200);
         return () => clearTimeout(timer);
       }
     } catch (e) {
@@ -473,11 +492,14 @@ export default function App() {
   useEffect(() => {
     try {
       if (Array.isArray(testers)) {
-        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(testers));
-        localStorage.setItem('dahej_testers', JSON.stringify(testers));
+        const snap = JSON.stringify(testers);
+        localStorage.setItem('dahej_real_v2_testers', snap);
+        localStorage.setItem('dahej_testers', snap);
+        if (lastCloudSnapshotRef.current.testers === snap) return;
         const timer = setTimeout(() => {
+          lastCloudSnapshotRef.current.testers = snap;
           saveLivePlatformData({ testers }).catch(() => {});
-        }, 1500);
+        }, 1200);
         return () => clearTimeout(timer);
       }
     } catch (e) {
@@ -632,7 +654,7 @@ export default function App() {
     }));
   };
 
-  // Admin developer update (auto-cleans applicationMessage upon approval, saves password & persists)
+  // Admin developer update (auto-cleans applicationMessage upon approval, saves password & persists atomically to developers table)
   const handleUpdateDeveloper = (updatedDev) => {
     const isApproved = updatedDev.status === 'Active' || updatedDev.status === 'Approved';
     const sanitizedDev = {
@@ -644,12 +666,25 @@ export default function App() {
     }
     setDevelopers(prev => {
       const updated = prev.map(d => d.id === sanitizedDev.id ? sanitizedDev : d);
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.developers = snap;
       try {
-        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
-        localStorage.setItem('dahej_developers', JSON.stringify(updated));
+        localStorage.setItem('dahej_real_v2_developers', snap);
+        localStorage.setItem('dahej_developers', snap);
       } catch (e) {}
       return updated;
     });
+    saveLivePlatformData({
+      updateDeveloper: sanitizedDev,
+      ...(sanitizedDev.password && sanitizedDev.email
+        ? {
+            passwords: {
+              [String(sanitizedDev.id).toLowerCase()]: sanitizedDev.password,
+              [String(sanitizedDev.email).toLowerCase().trim()]: sanitizedDev.password
+            }
+          }
+        : {})
+    }).catch(() => {});
   };
 
   // Admin delete developer (permanently removes developer and purges cached profiles, trust IDs & unassigns projects)
@@ -662,18 +697,16 @@ export default function App() {
     addDeletedMemberId(targetId);
 
     // 2. Remove from developers state and persist immediately
-    let finalUpdatedDevs = [];
-    setDevelopers(prevDevs => {
-      const updated = prevDevs.filter(d => (d.id || '').toLowerCase() !== targetId && (d.developerId || '').toLowerCase() !== targetId);
-      finalUpdatedDevs = updated;
-      try {
-        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
-        localStorage.setItem('dahej_developers', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save developers after deletion:', e);
-      }
-      return updated;
-    });
+    const finalUpdatedDevs = developers.filter(d => (d.id || '').toLowerCase() !== targetId && (d.developerId || '').toLowerCase() !== targetId);
+    const snap = JSON.stringify(finalUpdatedDevs);
+    lastCloudSnapshotRef.current.developers = snap;
+    setDevelopers(finalUpdatedDevs);
+    try {
+      localStorage.setItem('dahej_real_v2_developers', snap);
+      localStorage.setItem('dahej_developers', snap);
+    } catch (e) {
+      console.error('Failed to save developers after deletion:', e);
+    }
 
     // 3. Clean up any stored profile cache for this developer
     try {
@@ -851,19 +884,47 @@ export default function App() {
       }
     }
 
-    // Sync in developers directory list
-    setDevelopers(prevDevs => prevDevs.map(d => {
-      if (d.id === authId || (authUser && d.email === authUser.email)) {
-        return {
-          ...d,
+    // Sync in developers directory list & immediately persist single row to developers table
+    let updatedDevRow = null;
+    setDevelopers(prevDevs => {
+      const updated = prevDevs.map(d => {
+        if (d.id === authId || (authUser && d.email === authUser.email)) {
+          updatedDevRow = {
+            ...d,
+            name: sanitizedName,
+            fullName: sanitizedName,
+            email: sanitizedEmail,
+            mobile: sanitizedMobile,
+            avatar: updatedAvatar
+          };
+          return updatedDevRow;
+        }
+        return d;
+      });
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.developers = snap;
+      try {
+        localStorage.setItem('dahej_real_v2_developers', snap);
+        localStorage.setItem('dahej_developers', snap);
+      } catch (e) {}
+      return updated;
+    });
+
+    if (updatedDevRow) {
+      saveLivePlatformData({ updateDeveloper: updatedDevRow }).catch(() => {});
+    } else if (authId) {
+      saveLivePlatformData({
+        updateDeveloper: {
+          id: authId,
+          developerId: authId,
           name: sanitizedName,
+          fullName: sanitizedName,
           email: sanitizedEmail,
           mobile: sanitizedMobile,
           avatar: updatedAvatar
-        };
-      }
-      return d;
-    }));
+        }
+      }).catch(() => {});
+    }
   };
 
   // Tester profile update (strictly enforces immutable fields & persists to localStorage, authSession & tester directory)
@@ -968,22 +1029,50 @@ export default function App() {
       }
     }
 
-    // Sync in testers directory list
-    setTesters(prevTesters => prevTesters.map(t => {
-      if (t.id === authId || (authUser && t.email === authUser.email)) {
-        return {
-          ...t,
+    // Sync in testers directory list & immediately persist single row to testers table
+    let updatedTesterRow = null;
+    setTesters(prevTesters => {
+      const updated = prevTesters.map(t => {
+        if (t.id === authId || (authUser && t.email === authUser.email)) {
+          updatedTesterRow = {
+            ...t,
+            name: sanitizedName,
+            fullName: sanitizedName,
+            email: sanitizedEmail,
+            mobile: sanitizedMobile,
+            avatar: updatedAvatar
+          };
+          return updatedTesterRow;
+        }
+        return t;
+      });
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.testers = snap;
+      try {
+        localStorage.setItem('dahej_real_v2_testers', snap);
+        localStorage.setItem('dahej_testers', snap);
+      } catch (e) {}
+      return updated;
+    });
+
+    if (updatedTesterRow) {
+      saveLivePlatformData({ updateTester: updatedTesterRow }).catch(() => {});
+    } else if (authId) {
+      saveLivePlatformData({
+        updateTester: {
+          id: authId,
+          testerId: authId,
           name: sanitizedName,
+          fullName: sanitizedName,
           email: sanitizedEmail,
           mobile: sanitizedMobile,
           avatar: updatedAvatar
-        };
-      }
-      return t;
-    }));
+        }
+      }).catch(() => {});
+    }
   };
 
-  // Admin tester update (auto-cleans applicationMessage upon approval, saves password & persists)
+  // Admin tester update (auto-cleans applicationMessage upon approval, saves password & persists atomically to testers table)
   const handleUpdateTester = (updatedTester) => {
     const isApproved = updatedTester.status === 'Active' || updatedTester.status === 'Approved';
     const sanitizedTester = {
@@ -995,12 +1084,25 @@ export default function App() {
     }
     setTesters(prev => {
       const updated = prev.map(t => t.id === sanitizedTester.id ? sanitizedTester : t);
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.testers = snap;
       try {
-        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
-        localStorage.setItem('dahej_testers', JSON.stringify(updated));
+        localStorage.setItem('dahej_real_v2_testers', snap);
+        localStorage.setItem('dahej_testers', snap);
       } catch (e) {}
       return updated;
     });
+    saveLivePlatformData({
+      updateTester: sanitizedTester,
+      ...(sanitizedTester.password && sanitizedTester.email
+        ? {
+            passwords: {
+              [String(sanitizedTester.id).toLowerCase()]: sanitizedTester.password,
+              [String(sanitizedTester.email).toLowerCase().trim()]: sanitizedTester.password
+            }
+          }
+        : {})
+    }).catch(() => {});
   };
 
   // Admin delete tester (permanently removes QA tester and purges cached profiles, trust IDs & unassigns projects)
@@ -1013,18 +1115,16 @@ export default function App() {
     addDeletedMemberId(targetId);
 
     // 2. Remove from testers state and persist immediately
-    let finalUpdatedTesters = [];
-    setTesters(prevTesters => {
-      const updated = prevTesters.filter(t => (t.id || '').toLowerCase() !== targetId && (t.testerId || '').toLowerCase() !== targetId);
-      finalUpdatedTesters = updated;
-      try {
-        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
-        localStorage.setItem('dahej_testers', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save testers after deletion:', e);
-      }
-      return updated;
-    });
+    const finalUpdatedTesters = testers.filter(t => (t.id || '').toLowerCase() !== targetId && (t.testerId || '').toLowerCase() !== targetId);
+    const snap = JSON.stringify(finalUpdatedTesters);
+    lastCloudSnapshotRef.current.testers = snap;
+    setTesters(finalUpdatedTesters);
+    try {
+      localStorage.setItem('dahej_real_v2_testers', snap);
+      localStorage.setItem('dahej_testers', snap);
+    } catch (e) {
+      console.error('Failed to save testers after deletion:', e);
+    }
 
     // 3. Clean up any stored profile cache for this tester
     try {
@@ -1187,13 +1287,18 @@ export default function App() {
     };
     setDevelopers(prev => {
       const updated = [newDev, ...prev.filter(d => d.id !== newId)];
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.developers = snap;
       try {
-        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updated));
-        localStorage.setItem('dahej_developers', JSON.stringify(updated));
-        saveLivePlatformData({ developers: updated }).catch(() => {});
+        localStorage.setItem('dahej_real_v2_developers', snap);
+        localStorage.setItem('dahej_developers', snap);
       } catch (e) {}
       return updated;
     });
+    saveLivePlatformData({
+      updateDeveloper: newDev,
+      addApplication: { ...newDev, roleTrack: 'developer' }
+    }).catch(() => {});
   };
 
   // Referral / QA Tester registration handler (dynamically adds to Pending Testers with saved avatar)
@@ -1245,13 +1350,18 @@ export default function App() {
     };
     setTesters(prev => {
       const updated = [newTester, ...prev.filter(t => t.id !== newId)];
+      const snap = JSON.stringify(updated);
+      lastCloudSnapshotRef.current.testers = snap;
       try {
-        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updated));
-        localStorage.setItem('dahej_testers', JSON.stringify(updated));
-        saveLivePlatformData({ testers: updated }).catch(() => {});
+        localStorage.setItem('dahej_real_v2_testers', snap);
+        localStorage.setItem('dahej_testers', snap);
       } catch (e) {}
       return updated;
     });
+    saveLivePlatformData({
+      updateTester: newTester,
+      addApplication: { ...newTester, roleTrack: 'tester' }
+    }).catch(() => {});
   };
 
   // Unified Navigation router
@@ -1517,7 +1627,7 @@ export default function App() {
       return null;
     })();
 
-    const finalTesterName = (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || (matchedTester && (matchedTester.name || matchedTester.fullName)) || 'QA Tester';
+    const finalTesterName = (matchedTester && (matchedTester.name || matchedTester.fullName)) || (savedCustomTesterProfile && (savedCustomTesterProfile.name || savedCustomTesterProfile.fullName)) || (authTesterUser && (authTesterUser.name || authTesterUser.fullName)) || 'QA Tester';
 
     const getCleanTesterRef = (code) => {
       if (typeof code === 'string' && code.trim() && !code.startsWith('REF-00')) {
@@ -1589,7 +1699,7 @@ export default function App() {
       email: finalTesterEmail,
       status: 'Active',
       referralTrustId: activeTesterTrustId,
-      mobile: (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || (matchedTester && matchedTester.mobile) || '',
+      mobile: (matchedTester && matchedTester.mobile) || (savedCustomTesterProfile && savedCustomTesterProfile.mobile) || (authTesterUser && authTesterUser.mobile) || '',
       joiningDate: (matchedTester && matchedTester.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedTester && matchedTester.experienceAtJoining !== undefined) ? matchedTester.experienceAtJoining : (matchedTester && matchedTester.experience ? parseInt(matchedTester.experience) || 3 : 3),
       experienceReferenceDate: (matchedTester && matchedTester.experienceReferenceDate) || (matchedTester && matchedTester.joiningDate) || '2025-02-10',
@@ -1598,7 +1708,7 @@ export default function App() {
       referralCode: officialTesterRefCode,
       program: 'The HIT Support Tester Program',
       roleTitle: (matchedTester && (matchedTester.specialization || matchedTester.role)) || 'The HIT Support Tester Program',
-      avatar: (matchedTester && matchedTester.avatar) || (authTesterUser && authTesterUser.avatar) || '',
+      avatar: (matchedTester && matchedTester.avatar) || (savedCustomTesterProfile && savedCustomTesterProfile.avatar) || (authTesterUser && authTesterUser.avatar) || '',
       verified: matchedTester ? matchedTester.verified !== false : true
     };
 
@@ -1937,7 +2047,7 @@ export default function App() {
       return null;
     })();
 
-    const finalDevName = (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || (matchedDev && (matchedDev.name || matchedDev.fullName)) || 'Developer';
+    const finalDevName = (matchedDev && (matchedDev.name || matchedDev.fullName)) || (savedCustomProfile && (savedCustomProfile.name || savedCustomProfile.fullName)) || (authUser && (authUser.name || authUser.fullName)) || 'Developer';
 
     const getCleanRef = (code) => {
       if (typeof code === 'string' && code.trim() && !code.startsWith('REF-00')) {
@@ -1989,7 +2099,7 @@ export default function App() {
       fullName: finalDevName,
       name: finalDevName,
       email: finalDevEmail,
-      mobile: (savedCustomProfile && savedCustomProfile.mobile) || (authUser && authUser.mobile) || (matchedDev && matchedDev.mobile) || '',
+      mobile: (matchedDev && matchedDev.mobile) || (savedCustomProfile && savedCustomProfile.mobile) || (authUser && authUser.mobile) || '',
       joiningDate: (matchedDev && matchedDev.joiningDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       experienceAtJoining: (matchedDev && matchedDev.experienceAtJoining !== undefined) ? matchedDev.experienceAtJoining : 2,
       experienceReferenceDate: (matchedDev && matchedDev.experienceReferenceDate) || '2025-06-15',
@@ -1999,7 +2109,7 @@ export default function App() {
       referralCode: officialRefCode,
       program: 'The HIT Support Developer Program',
       roleTitle: (matchedDev && matchedDev.primarySkill) || 'The HIT Support Developer Program',
-      avatar: (matchedDev && matchedDev.avatar) || (authUser && authUser.avatar) || ''
+      avatar: (matchedDev && matchedDev.avatar) || (savedCustomProfile && savedCustomProfile.avatar) || (authUser && authUser.avatar) || ''
     };
 
     // Strictly fetch ONLY projects assigned to the authenticated freelancer
