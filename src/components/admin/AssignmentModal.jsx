@@ -259,7 +259,9 @@ export default function AssignmentModal({
                 })
               ) : (
                 <div className="candidate-empty-state">
-                  No other developers match your search.
+                  {availableCandidates.length === 0 && currentDev.name && currentDev.name !== 'Unassigned'
+                    ? 'No other active developers available to switch to. Use "Send Mail" on the project card to notify the current developer.'
+                    : 'No other developers match your search.'}
                 </div>
               )}
             </div>

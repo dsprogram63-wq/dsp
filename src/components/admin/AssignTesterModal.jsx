@@ -254,7 +254,9 @@ export default function AssignTesterModal({
                 })
               ) : (
                 <div className="candidate-empty-state">
-                  No other QA testers match your search.
+                  {availableCandidates.length === 0 && currentTester.name && currentTester.name !== 'Unassigned'
+                    ? 'No other active QA testers available to switch to. Use "Send Mail" on the project card to notify the current QA tester.'
+                    : 'No other QA testers match your search.'}
                 </div>
               )}
             </div>

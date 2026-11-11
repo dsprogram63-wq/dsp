@@ -1873,7 +1873,9 @@ export function buildProjectAssignmentEmailHtml({
 
               <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
                 Hello <strong>${recipientName || (isTester ? 'QA Tester' : 'Developer')}</strong>${memberId ? ` (${memberId})` : ''},<br>
-                You have been assigned to a project on the <strong>Dahej Support ${isTester ? 'QA Testing' : 'Developer'} Network</strong>. Please review the complete assignment details, deadlines, and milestones below before starting work.
+                ${isReassignment
+                  ? `This project has been reassigned to you on the <strong>Dahej Support ${isTester ? 'QA Testing' : 'Developer'} Network</strong>. Please review the updated assignment details, deadlines, and milestones below before proceeding.`
+                  : `You have been assigned to a project on the <strong>Dahej Support ${isTester ? 'QA Testing' : 'Developer'} Network</strong>. Please review the complete assignment details, deadlines, and milestones below before starting work.`}
               </p>
 
               <!-- Key Mandatory Details Card -->
@@ -2152,8 +2154,12 @@ export async function sendProjectAssignmentNotifications({
     ? developers.find(
         (d) =>
           d &&
-          ((project.developerId && d.id && d.id.toLowerCase() === String(project.developerId).toLowerCase()) ||
-            (project.developer && d.name && d.name.toLowerCase() === String(project.developer).toLowerCase()))
+          ((project.developerId &&
+            (d.id || d.developerId) &&
+            String(d.id || d.developerId).toLowerCase() === String(project.developerId).toLowerCase()) ||
+            (project.developer &&
+              (d.name || d.fullName) &&
+              String(d.name || d.fullName).toLowerCase() === String(project.developer).toLowerCase()))
       )
     : null;
 
@@ -2161,30 +2167,55 @@ export async function sendProjectAssignmentNotifications({
     ? testers.find(
         (t) =>
           t &&
-          ((project.testerId && t.id && t.id.toLowerCase() === String(project.testerId).toLowerCase()) ||
-            (project.tester && t.name && t.name.toLowerCase() === String(project.tester).toLowerCase()))
+          ((project.testerId &&
+            (t.id || t.testerId) &&
+            String(t.id || t.testerId).toLowerCase() === String(project.testerId).toLowerCase()) ||
+            (project.tester &&
+              (t.name || t.fullName) &&
+              String(t.name || t.fullName).toLowerCase() === String(project.tester).toLowerCase()))
       )
     : null;
 
+  const resolvedDevEmail = (project.developerEmail || devMatch?.email || devMatch?.emailAddress || '').trim();
+  const resolvedTesterEmail = (project.testerEmail || testerMatch?.email || testerMatch?.emailAddress || '').trim();
+
   const jobs = [];
-  if (notifyDeveloper && (project.developerEmail || devMatch?.email)) {
-    jobs.push(
-      sendDeveloperProjectAssignmentEmail({
-        project: { ...project, developerEmail: project.developerEmail || devMatch?.email || '' },
-        developer: devMatch,
-        isReassignment: isDeveloperReassignment
-      }).then((res) => ['developer', res])
-    );
+  if (notifyDeveloper) {
+    if (resolvedDevEmail && resolvedDevEmail.toLowerCase() !== 'unassigned') {
+      jobs.push(
+        sendDeveloperProjectAssignmentEmail({
+          project: { ...project, developerEmail: resolvedDevEmail },
+          developer: devMatch,
+          isReassignment: isDeveloperReassignment
+        }).then((res) => ['developer', res])
+      );
+    } else {
+      jobs.push(
+        Promise.resolve([
+          'developer',
+          { success: false, error: 'Developer email address not found on profile.' }
+        ])
+      );
+    }
   }
 
-  if (notifyTester && (project.testerEmail || testerMatch?.email)) {
-    jobs.push(
-      sendTesterProjectAssignmentEmail({
-        project: { ...project, testerEmail: project.testerEmail || testerMatch?.email || '' },
-        tester: testerMatch,
-        isReassignment: isTesterReassignment
-      }).then((res) => ['tester', res])
-    );
+  if (notifyTester) {
+    if (resolvedTesterEmail && resolvedTesterEmail.toLowerCase() !== 'unassigned') {
+      jobs.push(
+        sendTesterProjectAssignmentEmail({
+          project: { ...project, testerEmail: resolvedTesterEmail },
+          tester: testerMatch,
+          isReassignment: isTesterReassignment
+        }).then((res) => ['tester', res])
+      );
+    } else {
+      jobs.push(
+        Promise.resolve([
+          'tester',
+          { success: false, error: 'QA Tester email address not found on profile.' }
+        ])
+      );
+    }
   }
 
   const results = await Promise.all(jobs);

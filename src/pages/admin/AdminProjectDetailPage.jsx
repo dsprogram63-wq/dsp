@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
   UserCheck, 
@@ -29,6 +29,7 @@ import {
   FolderKanban,
   UploadCloud,
   Globe,
+  Mail,
   X
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
@@ -40,6 +41,7 @@ import CredentialModal from '../../components/portal/CredentialModal';
 import { initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
+import { sendProjectAssignmentNotifications } from '../../services/emailService';
 import './AdminProjectDetailPage.css';
 
 export default function AdminProjectDetailPage({ 
@@ -48,7 +50,9 @@ export default function AdminProjectDetailPage({
   testers = initialTesters,
   onBack, 
   onUpdateProject, 
-  onNavigate 
+  onNavigate,
+  externalNotice = null,
+  onClearExternalNotice
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [isAssignDevModalOpen, setIsAssignDevModalOpen] = useState(false);
@@ -58,7 +62,17 @@ export default function AdminProjectDetailPage({
   const [previewDoc, setPreviewDoc] = useState(null);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
+  const [sendingRoleMail, setSendingRoleMail] = useState(null);
   const adminDocInputRef = useRef(null);
+  const toastTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (!externalNotice) return;
+    const timer = setTimeout(() => {
+      if (onClearExternalNotice) onClearExternalNotice();
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, [externalNotice, onClearExternalNotice]);
 
   if (!project) {
     return (
@@ -74,9 +88,10 @@ export default function AdminProjectDetailPage({
     );
   }
 
-  const showToast = (msg) => {
+  const showToast = (msg, durationMs = 4500) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), durationMs);
   };
 
   const toggleSecret = (id) => {
@@ -317,17 +332,29 @@ export default function AdminProjectDetailPage({
       }
     ];
 
-    onUpdateProject({
+    setToastMessage(`Assigning Developer ${assignData.developer} & sending email via project@dsprogram.space...`);
+    const updatePromise = onUpdateProject({
       ...project,
       developer: assignData.developer,
       developerId: assignData.developerId,
-      developerEmail: assignData.developerEmail || project.developerEmail || '',
+      developerEmail: assignData.developerEmail || '',
       developerSkill: assignData.developerSkill,
       developerAvatar: assignData.developerAvatar,
       assignedDate: assignData.assignedDate,
       assignmentHistory: updatedHistory
     });
-    showToast(`Developer changed to ${assignData.developer}`);
+
+    Promise.resolve(updatePromise).then((emailRes) => {
+      if (emailRes?.developer?.success) {
+        showToast(`Developer changed to ${assignData.developer} — Email sent to ${emailRes.developer.recipient}`, 5500);
+      } else if (emailRes?.developer && !emailRes.developer.success) {
+        showToast(`Developer changed to ${assignData.developer}, email error: ${emailRes.developer.error || 'Dispatch failed'}`, 5500);
+      } else {
+        showToast(`Developer changed to ${assignData.developer}`);
+      }
+    }).catch(() => {
+      showToast(`Developer changed to ${assignData.developer}`);
+    });
   };
 
   const handleAssignTester = (testerData) => {
@@ -348,16 +375,55 @@ export default function AdminProjectDetailPage({
       }
     ];
 
-    onUpdateProject({
+    setToastMessage(`Assigning QA Tester ${testerData.tester} & sending email via project@dsprogram.space...`);
+    const updatePromise = onUpdateProject({
       ...project,
       tester: testerData.tester,
       testerId: testerData.testerId,
-      testerEmail: testerData.testerEmail || project.testerEmail || '',
+      testerEmail: testerData.testerEmail || '',
       testerSpecialization: testerData.testerSpecialization,
       testerAvatar: testerData.testerAvatar,
       assignmentHistory: updatedHistory
     });
-    showToast(`QA Tester changed to ${testerData.tester}`);
+
+    Promise.resolve(updatePromise).then((emailRes) => {
+      if (emailRes?.tester?.success) {
+        showToast(`QA Tester changed to ${testerData.tester} — Email sent to ${emailRes.tester.recipient}`, 5500);
+      } else if (emailRes?.tester && !emailRes.tester.success) {
+        showToast(`QA Tester changed to ${testerData.tester}, email error: ${emailRes.tester.error || 'Dispatch failed'}`, 5500);
+      } else {
+        showToast(`QA Tester changed to ${testerData.tester}`);
+      }
+    }).catch(() => {
+      showToast(`QA Tester changed to ${testerData.tester}`);
+    });
+  };
+
+  const handleSendRoleAssignmentMail = async (targetRole) => {
+    const isDev = targetRole === 'developer';
+    setSendingRoleMail(targetRole);
+    setToastMessage(`Dispatching ${isDev ? 'Developer' : 'QA Tester'} assignment email via project@dsprogram.space...`);
+    try {
+      const emailRes = await sendProjectAssignmentNotifications({
+        project,
+        notifyDeveloper: isDev,
+        notifyTester: !isDev,
+        isDeveloperReassignment: isDev && Array.isArray(project.assignmentHistory) && project.assignmentHistory.some(h => h.status === 'Developer Reassigned'),
+        isTesterReassignment: !isDev && Array.isArray(project.assignmentHistory) && project.assignmentHistory.some(h => h.status === 'QA Tester Reassigned'),
+        developers,
+        testers
+      });
+      const roleResult = isDev ? emailRes?.developer : emailRes?.tester;
+      if (roleResult?.success) {
+        showToast(`Assignment email sent to ${roleResult.recipient} via project@dsprogram.space`, 5500);
+      } else {
+        showToast(`Email dispatch failed: ${roleResult?.error || 'Check member email address'}`, 5500);
+      }
+    } catch (err) {
+      showToast(`Email dispatch failed: ${err?.message || 'Network error'}`, 5500);
+    } finally {
+      setSendingRoleMail(null);
+    }
   };
 
   const handleApproveProject = () => {
@@ -458,10 +524,10 @@ export default function AdminProjectDetailPage({
   return (
     <div className="admin-project-detail-container">
       {/* Toast Notification */}
-      {toastMessage && (
+      {(toastMessage || externalNotice) && (
         <div className="project-detail-toast">
           <CheckCircle size={18} color="#10B981" />
-          <span>{toastMessage}</span>
+          <span>{toastMessage || externalNotice}</span>
         </div>
       )}
 
@@ -740,17 +806,31 @@ export default function AdminProjectDetailPage({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px' }}>
               <span>Availability: <strong style={{ color: currentDevAvailability === 'Available' ? '#16A34A' : '#D97706' }}>{currentDevAvailability}</strong></span>
-              {!isFinalizedOrLocked && (
-                <button 
-                  type="button" 
-                  onClick={() => setIsAssignDevModalOpen(true)}
-                  style={{ background: 'none', border: 'none', color: '#0A3D75', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Change Developer →
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {project.developer && project.developer !== 'Unassigned' && (
+                  <button
+                    type="button"
+                    disabled={sendingRoleMail === 'developer'}
+                    onClick={() => handleSendRoleAssignmentMail('developer')}
+                    style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 8px', color: '#0A3D75', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                    title="Send or resend assignment details from project@dsprogram.space"
+                  >
+                    <Mail size={12} />
+                    <span>{sendingRoleMail === 'developer' ? 'Sending...' : 'Send Mail'}</span>
+                  </button>
+                )}
+                {!isFinalizedOrLocked && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsAssignDevModalOpen(true)}
+                    style={{ background: 'none', border: 'none', color: '#0A3D75', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Change Developer →
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -786,17 +866,31 @@ export default function AdminProjectDetailPage({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px' }}>
               <span>QA Testing: <strong style={{ color: isTesterApproved ? '#16A34A' : '#C2410C' }}>{project.testingProgress || 0}% Verified</strong></span>
-              {!isFinalizedOrLocked && (
-                <button 
-                  type="button" 
-                  onClick={() => setIsAssignTesterModalOpen(true)}
-                  style={{ background: 'none', border: 'none', color: '#F3821D', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Change Tester →
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {project.tester && project.tester !== 'Unassigned' && (
+                  <button
+                    type="button"
+                    disabled={sendingRoleMail === 'tester'}
+                    onClick={() => handleSendRoleAssignmentMail('tester')}
+                    style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '6px', padding: '3px 8px', color: '#C2410C', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                    title="Send or resend QA assignment details from project@dsprogram.space"
+                  >
+                    <Mail size={12} />
+                    <span>{sendingRoleMail === 'tester' ? 'Sending...' : 'Send Mail'}</span>
+                  </button>
+                )}
+                {!isFinalizedOrLocked && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsAssignTesterModalOpen(true)}
+                    style={{ background: 'none', border: 'none', color: '#F3821D', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Change Tester →
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

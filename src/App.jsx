@@ -364,6 +364,7 @@ export default function App() {
   const [selectedAdminProjectId, setSelectedAdminProjectId] = useState(routeState.selectedProjectId || null);
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(routeState.selectedDeveloperId || '');
   const [selectedTesterId, setSelectedTesterId] = useState(routeState.selectedTesterId || '');
+  const [projectNotice, setProjectNotice] = useState(null);
 
   // State for Tester Panel
   const [selectedTesterProjectId, setSelectedTesterProjectId] = useState(routeState.selectedProjectId || null);
@@ -612,48 +613,74 @@ export default function App() {
     const updatedProjectsList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
     const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
 
+    // Synchronously update cloud snapshot ref & immediately persist to cloud to prevent 10s poll races
+    const projectsSnap = JSON.stringify(updatedProjectsList);
+    lastCloudSnapshotRef.current.adminProjects = projectsSnap;
+
     setAdminProjects(updatedProjectsList);
     setProjects(updatedDevList);
     try {
-      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedProjectsList));
+      localStorage.setItem('dahej_real_v2_admin_projects', projectsSnap);
+      localStorage.setItem('dahej_admin_projects', projectsSnap);
       localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
     } catch (e) {}
 
+    saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
+
     // Dispatch assignment emails via dedicated project@dsprogram.space channel when developer or QA tester changes
-    const prevDevId = prevProj?.developerId || '';
-    const nextDevId = mergedProj?.developerId || '';
-    const prevDevName = prevProj?.developer || '';
-    const nextDevName = mergedProj?.developer || '';
-    const hasDevAssigned = Boolean((nextDevId && nextDevId !== 'Unassigned') || (nextDevName && nextDevName !== 'Unassigned'));
+    const norm = (val) => String(val || '').trim().toLowerCase();
+    const prevDevId = norm(prevProj?.developerId);
+    const nextDevId = norm(mergedProj?.developerId);
+    const prevDevName = norm(prevProj?.developer);
+    const nextDevName = norm(mergedProj?.developer);
+    const prevDevEmail = norm(prevProj?.developerEmail);
+    const nextDevEmail = norm(mergedProj?.developerEmail);
+    const hasDevAssigned = Boolean((nextDevId && nextDevId !== 'unassigned') || (nextDevName && nextDevName !== 'unassigned'));
+
+    const prevHistory = Array.isArray(prevProj?.assignmentHistory) ? prevProj.assignmentHistory : [];
+    const nextHistory = Array.isArray(mergedProj?.assignmentHistory) ? mergedProj.assignmentHistory : [];
+    const latestHistoryEntry = nextHistory.length > prevHistory.length ? nextHistory[nextHistory.length - 1] : null;
+    const explicitDevReassignLogged = latestHistoryEntry?.status === 'Developer Reassigned';
+    const explicitTesterReassignLogged = latestHistoryEntry?.status === 'QA Tester Reassigned';
+
     const devChanged = hasDevAssigned && (
+      explicitDevReassignLogged ||
       nextDevId !== prevDevId ||
       nextDevName !== prevDevName ||
-      Boolean(mergedProj.developerEmail && mergedProj.developerEmail !== prevProj?.developerEmail)
+      Boolean(nextDevEmail && nextDevEmail !== prevDevEmail)
     );
 
-    const prevTesterId = prevProj?.testerId || '';
-    const nextTesterId = mergedProj?.testerId || '';
-    const prevTesterName = prevProj?.tester || '';
-    const nextTesterName = mergedProj?.tester || '';
-    const hasTesterAssigned = Boolean((nextTesterId && nextTesterId !== 'Unassigned') || (nextTesterName && nextTesterName !== 'Unassigned'));
+    const prevTesterId = norm(prevProj?.testerId);
+    const nextTesterId = norm(mergedProj?.testerId);
+    const prevTesterName = norm(prevProj?.tester);
+    const nextTesterName = norm(mergedProj?.tester);
+    const prevTesterEmail = norm(prevProj?.testerEmail);
+    const nextTesterEmail = norm(mergedProj?.testerEmail);
+    const hasTesterAssigned = Boolean((nextTesterId && nextTesterId !== 'unassigned') || (nextTesterName && nextTesterName !== 'unassigned'));
+
     const testerChanged = hasTesterAssigned && (
+      explicitTesterReassignLogged ||
       nextTesterId !== prevTesterId ||
       nextTesterName !== prevTesterName ||
-      Boolean(mergedProj.testerEmail && mergedProj.testerEmail !== prevProj?.testerEmail)
+      Boolean(nextTesterEmail && nextTesterEmail !== prevTesterEmail)
     );
 
+    let emailDispatchPromise = Promise.resolve(null);
     if (devChanged || testerChanged) {
-      const wasDevPreviouslyAssigned = Boolean((prevDevId && prevDevId !== 'Unassigned') || (prevDevName && prevDevName !== 'Unassigned'));
-      const wasTesterPreviouslyAssigned = Boolean((prevTesterId && prevTesterId !== 'Unassigned') || (prevTesterName && prevTesterName !== 'Unassigned'));
-      sendProjectAssignmentNotifications({
+      const wasDevPreviouslyAssigned = Boolean((prevDevId && prevDevId !== 'unassigned') || (prevDevName && prevDevName !== 'unassigned'));
+      const wasTesterPreviouslyAssigned = Boolean((prevTesterId && prevTesterId !== 'unassigned') || (prevTesterName && prevTesterName !== 'unassigned'));
+      emailDispatchPromise = sendProjectAssignmentNotifications({
         project: mergedProj,
         notifyDeveloper: devChanged,
         notifyTester: testerChanged,
-        isDeveloperReassignment: devChanged && wasDevPreviouslyAssigned,
-        isTesterReassignment: testerChanged && wasTesterPreviouslyAssigned,
+        isDeveloperReassignment: devChanged && (wasDevPreviouslyAssigned || explicitDevReassignLogged),
+        isTesterReassignment: testerChanged && (wasTesterPreviouslyAssigned || explicitTesterReassignLogged),
         developers,
         testers
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error('[Project Mailer] Reassignment notification error:', err);
+        return { error: err?.message || 'Email dispatch error' };
+      });
     }
 
     // Dynamic sync of developers active workloads & availability
@@ -691,6 +718,8 @@ export default function App() {
         currentProjects: allTesterProjs
       };
     }));
+
+    return emailDispatchPromise;
   };
 
   // Admin developer update (auto-cleans applicationMessage upon approval, saves password & persists atomically to developers table)
@@ -1233,11 +1262,19 @@ export default function App() {
   // Admin create project (dynamically updates developer/tester assigned state)
   const handleCreateAdminProject = (newProj) => {
     const updatedProjects = [newProj, ...adminProjects];
+    const projectsSnap = JSON.stringify(updatedProjects);
+    lastCloudSnapshotRef.current.adminProjects = projectsSnap;
     setAdminProjects(updatedProjects);
     const safeProj = toFreelancerSafeProject(newProj);
     if (safeProj) {
       setProjects(prev => [safeProj, ...prev]);
     }
+    try {
+      localStorage.setItem('dahej_real_v2_admin_projects', projectsSnap);
+      localStorage.setItem('dahej_admin_projects', projectsSnap);
+    } catch (e) {}
+
+    saveLivePlatformData({ updateProject: newProj }).catch(() => {});
 
     // Dynamic sync of developers active workloads & availability
     setDevelopers(prevDevs => prevDevs.map(d => {
@@ -1276,6 +1313,7 @@ export default function App() {
     }));
 
     // Dispatch assignment emails to Developer & QA Tester via dedicated project@dsprogram.space channel
+    setProjectNotice('Project created — Dispatching assignment emails via project@dsprogram.space...');
     sendProjectAssignmentNotifications({
       project: newProj,
       notifyDeveloper: true,
@@ -1284,7 +1322,22 @@ export default function App() {
       isTesterReassignment: false,
       developers,
       testers
-    }).catch(() => {});
+    }).then((res) => {
+      const devOk = res?.developer?.success;
+      const qaOk = res?.tester?.success;
+      if (devOk && qaOk) {
+        setProjectNotice(`Assignment emails sent to ${res.developer.recipient} & ${res.tester.recipient} via project@dsprogram.space`);
+      } else if (devOk || qaOk) {
+        const sentTo = [devOk ? res.developer.recipient : null, qaOk ? res.tester.recipient : null].filter(Boolean).join(', ');
+        const errs = [!devOk && res?.developer?.error, !qaOk && res?.tester?.error].filter(Boolean).join('; ');
+        setProjectNotice(`Email sent to ${sentTo}${errs ? ` (Notice: ${errs})` : ''}`);
+      } else {
+        setProjectNotice(`Project created, but email failed: ${res?.developer?.error || res?.tester?.error || 'Dispatch error'}`);
+      }
+    }).catch((err) => {
+      console.error('[Project Mailer] Creation notification error:', err);
+      setProjectNotice(`Project created, but email failed: ${err?.message || 'Dispatch error'}`);
+    });
 
     setSelectedAdminProjectId(newProj.id);
     navigateTo(`admin/projects/${newProj.id}`);
@@ -2044,6 +2097,8 @@ export default function App() {
             onBack={() => navigateTo('admin/projects')}
             onUpdateProject={handleUpdateAdminProject}
             onNavigate={navigateTo}
+            externalNotice={projectNotice}
+            onClearExternalNotice={() => setProjectNotice(null)}
           />
         )}
 
