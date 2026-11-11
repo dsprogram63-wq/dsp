@@ -28,7 +28,8 @@ import {
   ExternalLink,
   FolderKanban,
   UploadCloud,
-  Globe
+  Globe,
+  X
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';

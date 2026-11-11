@@ -56,7 +56,7 @@ import TesterEarningsPage from './pages/tester/TesterEarningsPage';
 import { initialProjects, initialProfile } from './data/mockData';
 import { initialAdminProjects, initialDevelopers } from './data/adminMockData';
 import { initialTesters, initialTesterProfile } from './data/testerMockData';
-import { removeReferralTrustId } from './utils/referralTrustUtils';
+import { removeReferralTrustId, getOrAssignReferralTrustId } from './utils/referralTrustUtils';
 import { getDeletedMemberIds, addDeletedMemberId, isMemberDeleted } from './utils/memberUniqueness';
 import { 
   getAuthenticatedFreelancerProjects, 
@@ -1981,7 +1981,7 @@ export default function App() {
       referenceId: officialRefCode,
       referralCode: officialRefCode,
       status: 'Active'
-    });
+    }, [...(Array.isArray(developers) ? developers : []), ...(Array.isArray(testers) ? testers : [])]);
 
     const currentLoggedInFreelancer = {
       freelancerId: finalDevId,
