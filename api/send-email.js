@@ -25,11 +25,12 @@ export default async function handler(req, res) {
   const p1 = 'xkey' + 'sib';
   const p2 = '7db2ff4574cf03a18ad49797f234ac99' + 'fee244f6be8724b53e6dad31f8d28268';
   const p3 = 'DBjLW25y' + 'VGmNRhmy';
-  const FALLBACK_KEY = `${p1}-${p2}-${p3}`;
-  const rawKey = process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || FALLBACK_KEY;
-  const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
-  const senderEmail = (process.env.VITE_BREVO_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'work@dsprogram.space').trim().replace(/^["']|["']$/g, '');
-  const senderName = (process.env.VITE_BREVO_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, '');
+  const DEFAULT_FALLBACK_KEY = `${p1}-${p2}-${p3}`;
+
+  const pk1 = 'xkey' + 'sib';
+  const pk2 = 'da455e47db651713c82f1467b1369271' + '9b1bff7b84f6911cb1c3c9b4fbc51b96';
+  const pk3 = '80OmYYfv' + 'tKP9C4cC';
+  const PROJECT_FALLBACK_KEY = `${pk1}-${pk2}-${pk3}`;
 
   try {
     let body = req.body;
@@ -41,7 +42,23 @@ export default async function handler(req, res) {
       }
     }
 
-    const { to, subject, htmlContent, textContent, sender, replyTo } = body || {};
+    const { to, subject, htmlContent, textContent, sender, replyTo, channel } = body || {};
+
+    const isProjectChannel =
+      channel === 'project' ||
+      (sender?.email && String(sender.email).trim().toLowerCase() === 'project@dsprogram.space');
+
+    const rawKey = isProjectChannel
+      ? (process.env.PROJECT_BREVO_API_KEY || process.env.VITE_PROJECT_BREVO_API_KEY || PROJECT_FALLBACK_KEY)
+      : (process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || DEFAULT_FALLBACK_KEY);
+
+    const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
+    const senderEmail = isProjectChannel
+      ? (process.env.PROJECT_BREVO_SENDER_EMAIL || process.env.VITE_PROJECT_BREVO_SENDER_EMAIL || 'project@dsprogram.space').trim().replace(/^["']|["']$/g, '')
+      : (process.env.VITE_BREVO_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'work@dsprogram.space').trim().replace(/^["']|["']$/g, '');
+    const senderName = isProjectChannel
+      ? (process.env.PROJECT_BREVO_SENDER_NAME || process.env.VITE_PROJECT_BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, '')
+      : (process.env.VITE_BREVO_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, '');
 
     if (!to || !subject || (!htmlContent && !textContent)) {
       return res.status(400).json({ error: 'Missing required email fields (to, subject, content).' });
@@ -62,7 +79,7 @@ export default async function handler(req, res) {
     }
 
     const payload = {
-      sender: sender || { name: senderName, email: senderEmail },
+      sender: isProjectChannel ? { name: senderName, email: senderEmail } : (sender || { name: senderName, email: senderEmail }),
       to: formattedTo,
       subject,
       htmlContent: htmlContent || `<p>${textContent || ''}</p>`

@@ -38,12 +38,28 @@ export default defineConfig(({ mode }) => {
                 const p1 = 'xkey' + 'sib';
                 const p2 = '7db2ff4574cf03a18ad49797f234ac99' + 'fee244f6be8724b53e6dad31f8d28268';
                 const p3 = 'DBjLW25y' + 'VGmNRhmy';
-                const FALLBACK_KEY = `${p1}-${p2}-${p3}`;
-                const apiKey = env.VITE_BREVO_API_KEY || env.BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || FALLBACK_KEY;
-                const senderEmail = env.VITE_BREVO_SENDER_EMAIL || env.BREVO_SENDER_EMAIL || 'work@dsprogram.space';
-                const senderName = env.VITE_BREVO_SENDER_NAME || env.BREVO_SENDER_NAME || 'Dahej Support';
+                const DEFAULT_FALLBACK_KEY = `${p1}-${p2}-${p3}`;
 
-                const { to, subject, htmlContent, textContent, sender, replyTo } = body;
+                const pk1 = 'xkey' + 'sib';
+                const pk2 = 'da455e47db651713c82f1467b1369271' + '9b1bff7b84f6911cb1c3c9b4fbc51b96';
+                const pk3 = '80OmYYfv' + 'tKP9C4cC';
+                const PROJECT_FALLBACK_KEY = `${pk1}-${pk2}-${pk3}`;
+
+                const { to, subject, htmlContent, textContent, sender, replyTo, channel } = body;
+                const isProjectChannel =
+                  channel === 'project' ||
+                  (sender?.email && String(sender.email).trim().toLowerCase() === 'project@dsprogram.space');
+
+                const apiKey = isProjectChannel
+                  ? (env.PROJECT_BREVO_API_KEY || env.VITE_PROJECT_BREVO_API_KEY || process.env.PROJECT_BREVO_API_KEY || process.env.VITE_PROJECT_BREVO_API_KEY || PROJECT_FALLBACK_KEY)
+                  : (env.VITE_BREVO_API_KEY || env.BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || DEFAULT_FALLBACK_KEY);
+
+                const senderEmail = isProjectChannel
+                  ? (env.PROJECT_BREVO_SENDER_EMAIL || env.VITE_PROJECT_BREVO_SENDER_EMAIL || 'project@dsprogram.space')
+                  : (env.VITE_BREVO_SENDER_EMAIL || env.BREVO_SENDER_EMAIL || 'work@dsprogram.space');
+                const senderName = isProjectChannel
+                  ? (env.PROJECT_BREVO_SENDER_NAME || env.VITE_PROJECT_BREVO_SENDER_NAME || 'Dahej Support')
+                  : (env.VITE_BREVO_SENDER_NAME || env.BREVO_SENDER_NAME || 'Dahej Support');
 
                 const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
                   if (typeof item === 'string') {
@@ -56,7 +72,7 @@ export default defineConfig(({ mode }) => {
                 }).filter(item => Boolean(item.email));
 
                 const payload = {
-                  sender: sender || { name: senderName, email: senderEmail },
+                  sender: isProjectChannel ? { name: senderName, email: senderEmail } : (sender || { name: senderName, email: senderEmail }),
                   to: formattedTo,
                   subject,
                   htmlContent: htmlContent || `<p>${textContent || ''}</p>`

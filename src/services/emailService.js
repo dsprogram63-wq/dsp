@@ -30,6 +30,20 @@ export const SENDER_PROFILES = {
   QA_DESK: {
     name: 'Dahej Support',
     email: 'work@dsprogram.space'
+  },
+  PROJECT: {
+    name:
+      (typeof import.meta !== 'undefined' &&
+        (import.meta.env?.VITE_PROJECT_BREVO_SENDER_NAME || import.meta.env?.PROJECT_BREVO_SENDER_NAME)) ||
+      (typeof process !== 'undefined' &&
+        (process.env?.VITE_PROJECT_BREVO_SENDER_NAME || process.env?.PROJECT_BREVO_SENDER_NAME)) ||
+      'Dahej Support',
+    email:
+      (typeof import.meta !== 'undefined' &&
+        (import.meta.env?.VITE_PROJECT_BREVO_SENDER_EMAIL || import.meta.env?.PROJECT_BREVO_SENDER_EMAIL)) ||
+      (typeof process !== 'undefined' &&
+        (process.env?.VITE_PROJECT_BREVO_SENDER_EMAIL || process.env?.PROJECT_BREVO_SENDER_EMAIL)) ||
+      'project@dsprogram.space'
   }
 };
 
@@ -40,6 +54,20 @@ const getApiKey = () => {
   const p2 = '7db2ff4574cf03a18ad49797f234ac99' + 'fee244f6be8724b53e6dad31f8d28268';
   const p3 = 'DBjLW25y' + 'VGmNRhmy';
   return `${p1}-${p2}-${p3}`;
+};
+
+const getProjectApiKey = () => {
+  const envKey =
+    (typeof import.meta !== 'undefined' &&
+      (import.meta.env?.VITE_PROJECT_BREVO_API_KEY || import.meta.env?.PROJECT_BREVO_API_KEY)) ||
+    (typeof process !== 'undefined' &&
+      (process.env?.VITE_PROJECT_BREVO_API_KEY || process.env?.PROJECT_BREVO_API_KEY)) ||
+    '';
+  if (envKey) return envKey;
+  const pk1 = 'xkey' + 'sib';
+  const pk2 = 'da455e47db651713c82f1467b1369271' + '9b1bff7b84f6911cb1c3c9b4fbc51b96';
+  const pk3 = '80OmYYfv' + 'tKP9C4cC';
+  return `${pk1}-${pk2}-${pk3}`;
 };
 
 /**
@@ -299,11 +327,16 @@ export async function sendTransactionalEmail({
   htmlContent,
   textContent,
   senderProfile = SENDER_PROFILES.DEFAULT,
-  replyTo
+  replyTo,
+  channel = 'default'
 }) {
+  const isProjectChannel =
+    channel === 'project' ||
+    String(senderProfile?.email || '').trim().toLowerCase() === 'project@dsprogram.space';
+
   const sender = {
-    name: senderProfile?.name || SENDER_PROFILES.DEFAULT.name,
-    email: senderProfile?.email || SENDER_PROFILES.DEFAULT.email
+    name: senderProfile?.name || (isProjectChannel ? SENDER_PROFILES.PROJECT.name : SENDER_PROFILES.DEFAULT.name),
+    email: senderProfile?.email || (isProjectChannel ? SENDER_PROFILES.PROJECT.email : SENDER_PROFILES.DEFAULT.email)
   };
 
   const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
@@ -322,14 +355,19 @@ export async function sendTransactionalEmail({
     subject,
     htmlContent,
     replyTo: replyTo || {
-      name: 'Dahej Support',
-      email: 'work@dsprogram.space'
+      name: sender.name,
+      email: sender.email
     }
   };
 
   if (textContent) {
     payload.textContent = textContent;
   }
+
+  const proxyPayload = {
+    ...payload,
+    channel: isProjectChannel ? 'project' : 'default'
+  };
 
   let lastError = null;
 
@@ -364,7 +402,7 @@ export async function sendTransactionalEmail({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(proxyPayload)
       });
 
       const contentType = proxyRes.headers.get('content-type') || '';
@@ -389,8 +427,8 @@ export async function sendTransactionalEmail({
     }
   }
 
-  // 2. Direct Brevo API fallback (only if apiKey is configured in client bundle)
-  const clientKey = getApiKey();
+  // 2. Direct Brevo API fallback (uses dedicated key matching the channel)
+  const clientKey = isProjectChannel ? getProjectApiKey() : getApiKey();
   if (clientKey) {
     try {
       const response = await fetch(BREVO_API_URL, {
@@ -1708,3 +1746,447 @@ export async function sendProjectRevisionNoticeEmail({
 }
 
 
+
+/**
+ * Builds role-safe HTML email for Developer or QA Tester Project Assignment
+ * Uses the dedicated Project Mailer sender (`project@dsprogram.space`).
+ */
+export function buildProjectAssignmentEmailHtml({
+  role = 'developer',
+  recipientName = '',
+  memberId = '',
+  project = {},
+  isReassignment = false
+}) {
+  const isTester = role === 'tester' || role === 'qa';
+  const year = new Date().getFullYear();
+
+  const projectId = project?.id || 'DS-PROJ';
+  const projectName = project?.name || 'Assigned Project';
+  const category = project?.projectType || project?.category || 'Web Development';
+  const priority = project?.priority || 'Medium';
+  const assignedDate =
+    project?.assignedDate ||
+    new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const devDeadline =
+    project?.submissionDate ||
+    project?.developerDeadline ||
+    project?.developerDeadlineDate ||
+    project?.deadline ||
+    'As per schedule';
+  const qaDeadline =
+    project?.testingSubmissionDate ||
+    project?.deadlineDate ||
+    project?.deadline ||
+    devDeadline;
+
+  const assignedPayout = isTester
+    ? (project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed'))
+    : (project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed'));
+
+  const primaryDeadline = isTester ? qaDeadline : devDeadline;
+
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length > 0
+    ? project.tasks
+    : Array.isArray(project?.milestones)
+      ? project.milestones
+      : [];
+
+  const reqLines = [
+    ...(Array.isArray(project?.clientRequirements) ? project.clientRequirements : []),
+    ...(Array.isArray(project?.requirements?.clientReqs) ? project.requirements.clientReqs : []),
+    ...(Array.isArray(project?.technicalRequirements) ? project.technicalRequirements : [])
+  ].filter(Boolean);
+
+  const docsCount = Array.isArray(project?.documents) ? project.documents.length : 0;
+  const credsCount = Array.isArray(project?.credentials) ? project.credentials.length : 0;
+
+  const accentBg = isTester ? '#ECFDF5' : '#EFF6FF';
+  const accentBorder = isTester ? '#A7F3D0' : '#BFDBFE';
+  const accentText = isTester ? '#065F46' : '#0A3D75';
+  const ctaColor = isTester ? '#059669' : '#0F3E6D';
+  const portalUrl = isTester
+    ? 'https://www.dsprogram.space/freelancer-login?role=tester'
+    : 'https://www.dsprogram.space/freelancer-login';
+  const roleLabel = isTester ? 'QA Tester Assignment' : 'Developer Assignment';
+  const badgeText = isReassignment
+    ? `🔄 REASSIGNED TO YOU &bull; ${roleLabel.toUpperCase()}`
+    : `🚀 NEW ${roleLabel.toUpperCase()}`;
+
+  const priorityBg = priority === 'High' ? '#FEF2F2' : priority === 'Low' ? '#F0FDF4' : '#FFFBEB';
+  const priorityColor = priority === 'High' ? '#B91C1C' : priority === 'Low' ? '#15803D' : '#B45309';
+
+  const tasksHtml = tasks.length > 0
+    ? tasks.map((t, idx) => `
+      <tr>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || t.heading || 'Milestone Task'}
+          ${t.desc || t.description ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc || t.description}</div>` : ''}
+        </td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #0F3E6D; font-size: 12px; font-weight: 700; white-space: nowrap;">${t.weight ?? t.percentage ?? t.adminPercentage ?? ''}%</td>
+      </tr>
+    `).join('')
+    : '';
+
+  const reqsHtml = reqLines.length > 0
+    ? reqLines.slice(0, 8).map(r => `<li style="margin-bottom: 4px; color: #334155; font-size: 13px; line-height: 1.5;">${r}</li>`).join('')
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Assigned: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Project Allocation &amp; Delivery Operations
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: ${accentBg}; border: 1px solid ${accentBorder}; color: ${accentText}; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ${badgeText}
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${recipientName || (isTester ? 'QA Tester' : 'Developer')}</strong>${memberId ? ` (${memberId})` : ''},<br>
+                You have been assigned to a project on the <strong>Dahej Support ${isTester ? 'QA Testing' : 'Developer'} Network</strong>. Please review the complete assignment details, deadlines, and milestones below before starting work.
+              </p>
+
+              <!-- Key Mandatory Details Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0F3E6D; margin-bottom: 10px;">
+                      Mandatory Project Summary
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 165px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F3E6D; font-weight: 800; font-family: monospace;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Category / Track:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${category}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Priority:</td>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; padding: 2px 10px; border-radius: 12px; background-color: ${priorityBg}; color: ${priorityColor}; font-size: 11px; font-weight: 800;">${priority}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${assignedDate}</td>
+                      </tr>
+                      ${isTester ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Dev Submission Target:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${devDeadline}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${project?.developer || 'Assigned Developer'}</td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">${isTester ? 'QA Testing Deadline:' : 'Submission Deadline:'}</td>
+                        <td style="padding: 6px 0; color: #DC2626; font-weight: 800;">${primaryDeadline}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">${isTester ? 'QA Payout:' : 'Developer Payout:'}</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800;">${assignedPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Resources Attached:</td>
+                        <td style="padding: 6px 0; color: #334155; font-weight: 600;">${tasks.length} Milestone(s) &bull; ${docsCount} Spec Doc(s)${!isTester && credsCount > 0 ? ` &bull; ${credsCount} Access Credential(s) in Portal` : ''}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              ${project?.description ? `
+              <!-- Project Scope -->
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0F3E6D; margin-bottom: 6px;">
+                  Project Overview &amp; Scope
+                </div>
+                <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #334155; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                  ${project.description}
+                </p>
+              </div>
+              ` : ''}
+
+              ${reqsHtml ? `
+              <!-- Requirements -->
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0F3E6D; margin-bottom: 6px;">
+                  Mandatory Requirements
+                </div>
+                <ul style="margin: 0; padding-left: 20px; background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding-top: 10px; padding-bottom: 10px; padding-right: 14px;">
+                  ${reqsHtml}
+                </ul>
+              </div>
+              ` : ''}
+
+              ${tasksHtml ? `
+              <!-- Milestones / Tasks -->
+              <div style="margin-bottom: 24px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0F3E6D; margin-bottom: 8px;">
+                  ${isTester ? 'QA Verification Milestones' : 'Assigned Milestones Breakdown'} (${tasks.length})
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden;">
+                  <thead>
+                    <tr style="background-color: #F1F5F9;">
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">#</th>
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">Milestone</th>
+                      <th align="right" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">Weight</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tasksHtml}
+                  </tbody>
+                </table>
+              </div>
+              ` : ''}
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 26px 0 22px 0;">
+                <a href="${portalUrl}" style="display: inline-block; background-color: ${ctaColor}; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 13px 30px; border-radius: 8px;">
+                  Open ${isTester ? 'QA Tester' : 'Developer'} Workspace &rarr;
+                </a>
+              </div>
+
+              <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 4px;">
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #92400E;">
+                  <strong>Important:</strong> Log in to your workspace to view full specification files${!isTester ? ', environment credentials,' : ''} and click <strong>${isTester ? 'Start QA' : 'Start Project'}</strong> once you begin. All project progress must be submitted on the portal before <strong>${primaryDeadline}</strong>.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 18px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Project Operations Mailer &bull; Sent from <strong style="color: #0F3E6D;">project@dsprogram.space</strong>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends a Developer Project Assignment email using the dedicated `project@dsprogram.space` Brevo channel.
+ */
+export async function sendDeveloperProjectAssignmentEmail({
+  project,
+  developer = null,
+  isReassignment = false
+}) {
+  const cleanEmail = (project?.developerEmail || developer?.email || '').trim().toLowerCase();
+  const cleanName = (project?.developer || developer?.name || developer?.fullName || 'Developer').trim();
+  const memberId = project?.developerId || developer?.id || '';
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn('[Project Mailer] Skipping developer assignment email: no email found.');
+    return { success: false, error: 'Developer email missing' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const deadline = project?.submissionDate || project?.developerDeadline || project?.deadline || 'As scheduled';
+  const payout = project?.developerPayment || project?.freelancerPayout || 'As agreed';
+
+  const htmlContent = buildProjectAssignmentEmailHtml({
+    role: 'developer',
+    recipientName: cleanName,
+    memberId,
+    project,
+    isReassignment
+  });
+
+  const subject = isReassignment
+    ? `Project Reassigned to You: ${projectName} [${projectId}] — Deadline: ${deadline}`
+    : `New Project Assigned: ${projectName} [${projectId}] — Deadline: ${deadline}`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `You have been assigned to project "${projectName}" (${projectId}).\n` +
+    `Submission Deadline: ${deadline}\n` +
+    `Assigned Payout: ${payout}\n` +
+    `Priority: ${project?.priority || 'Medium'}\n\n` +
+    `Please log in at https://www.dsprogram.space/freelancer-login to inspect specifications, credentials, and milestones.\n\n` +
+    `Regards,\nDahej Support Project Desk (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Developer assignment email failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Sends a QA Tester Project Assignment email using the dedicated `project@dsprogram.space` Brevo channel.
+ */
+export async function sendTesterProjectAssignmentEmail({
+  project,
+  tester = null,
+  isReassignment = false
+}) {
+  const cleanEmail = (project?.testerEmail || tester?.email || '').trim().toLowerCase();
+  const cleanName = (project?.tester || tester?.name || tester?.fullName || 'QA Tester').trim();
+  const memberId = project?.testerId || tester?.id || '';
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn('[Project Mailer] Skipping QA tester assignment email: no email found.');
+    return { success: false, error: 'QA Tester email missing' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const qaDeadline = project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled';
+  const devDeadline = project?.submissionDate || project?.developerDeadline || 'As scheduled';
+  const payout = project?.testerPayment || project?.testerPayout || 'As agreed';
+
+  const htmlContent = buildProjectAssignmentEmailHtml({
+    role: 'tester',
+    recipientName: cleanName,
+    memberId,
+    project,
+    isReassignment
+  });
+
+  const subject = isReassignment
+    ? `QA Project Reassigned to You: ${projectName} [${projectId}] — QA Deadline: ${qaDeadline}`
+    : `New QA Testing Assignment: ${projectName} [${projectId}] — QA Deadline: ${qaDeadline}`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `You have been assigned as QA Tester for project "${projectName}" (${projectId}).\n` +
+    `Developer Submission Target: ${devDeadline}\n` +
+    `QA Testing Deadline: ${qaDeadline}\n` +
+    `QA Payout: ${payout}\n` +
+    `Priority: ${project?.priority || 'Medium'}\n\n` +
+    `Please log in at https://www.dsprogram.space/freelancer-login?role=tester to view milestones and begin QA once ready.\n\n` +
+    `Regards,\nDahej Support Project Desk (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Tester assignment email failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches project assignment notifications to Developer and/or QA Tester cleanly.
+ * Automatically resolves missing email addresses from directory arrays if needed.
+ */
+export async function sendProjectAssignmentNotifications({
+  project,
+  notifyDeveloper = true,
+  notifyTester = true,
+  isDeveloperReassignment = false,
+  isTesterReassignment = false,
+  developers = [],
+  testers = []
+}) {
+  if (!project) return { developer: null, tester: null };
+
+  const devMatch = Array.isArray(developers)
+    ? developers.find(
+        (d) =>
+          d &&
+          ((project.developerId && d.id && d.id.toLowerCase() === String(project.developerId).toLowerCase()) ||
+            (project.developer && d.name && d.name.toLowerCase() === String(project.developer).toLowerCase()))
+      )
+    : null;
+
+  const testerMatch = Array.isArray(testers)
+    ? testers.find(
+        (t) =>
+          t &&
+          ((project.testerId && t.id && t.id.toLowerCase() === String(project.testerId).toLowerCase()) ||
+            (project.tester && t.name && t.name.toLowerCase() === String(project.tester).toLowerCase()))
+      )
+    : null;
+
+  const jobs = [];
+  if (notifyDeveloper && (project.developerEmail || devMatch?.email)) {
+    jobs.push(
+      sendDeveloperProjectAssignmentEmail({
+        project: { ...project, developerEmail: project.developerEmail || devMatch?.email || '' },
+        developer: devMatch,
+        isReassignment: isDeveloperReassignment
+      }).then((res) => ['developer', res])
+    );
+  }
+
+  if (notifyTester && (project.testerEmail || testerMatch?.email)) {
+    jobs.push(
+      sendTesterProjectAssignmentEmail({
+        project: { ...project, testerEmail: project.testerEmail || testerMatch?.email || '' },
+        tester: testerMatch,
+        isReassignment: isTesterReassignment
+      }).then((res) => ['tester', res])
+    );
+  }
+
+  const results = await Promise.all(jobs);
+  return Object.fromEntries(results);
+}

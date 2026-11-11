@@ -70,7 +70,7 @@ import {
   isProjectAssignedToTester,
   toTesterSafeProject 
 } from './services/testerApiService';
-import { saveMemberPassword, removeMemberPassword } from './services/emailService';
+import { saveMemberPassword, removeMemberPassword, sendProjectAssignmentNotifications } from './services/emailService';
 import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
 export default function App() {
@@ -607,7 +607,9 @@ export default function App() {
   // Admin update (syncs master projects list and updates developer & tester assignments)
   const handleUpdateAdminProject = (updatedProj) => {
     const targetId = (updatedProj.id || '').toUpperCase();
-    const updatedProjectsList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
+    const prevProj = adminProjects.find(p => (p.id || '').toUpperCase() === targetId) || null;
+    const mergedProj = prevProj ? { ...prevProj, ...updatedProj } : updatedProj;
+    const updatedProjectsList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
     const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
 
     setAdminProjects(updatedProjectsList);
@@ -616,6 +618,43 @@ export default function App() {
       localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedProjectsList));
       localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
     } catch (e) {}
+
+    // Dispatch assignment emails via dedicated project@dsprogram.space channel when developer or QA tester changes
+    const prevDevId = prevProj?.developerId || '';
+    const nextDevId = mergedProj?.developerId || '';
+    const prevDevName = prevProj?.developer || '';
+    const nextDevName = mergedProj?.developer || '';
+    const hasDevAssigned = Boolean((nextDevId && nextDevId !== 'Unassigned') || (nextDevName && nextDevName !== 'Unassigned'));
+    const devChanged = hasDevAssigned && (
+      nextDevId !== prevDevId ||
+      nextDevName !== prevDevName ||
+      Boolean(mergedProj.developerEmail && mergedProj.developerEmail !== prevProj?.developerEmail)
+    );
+
+    const prevTesterId = prevProj?.testerId || '';
+    const nextTesterId = mergedProj?.testerId || '';
+    const prevTesterName = prevProj?.tester || '';
+    const nextTesterName = mergedProj?.tester || '';
+    const hasTesterAssigned = Boolean((nextTesterId && nextTesterId !== 'Unassigned') || (nextTesterName && nextTesterName !== 'Unassigned'));
+    const testerChanged = hasTesterAssigned && (
+      nextTesterId !== prevTesterId ||
+      nextTesterName !== prevTesterName ||
+      Boolean(mergedProj.testerEmail && mergedProj.testerEmail !== prevProj?.testerEmail)
+    );
+
+    if (devChanged || testerChanged) {
+      const wasDevPreviouslyAssigned = Boolean((prevDevId && prevDevId !== 'Unassigned') || (prevDevName && prevDevName !== 'Unassigned'));
+      const wasTesterPreviouslyAssigned = Boolean((prevTesterId && prevTesterId !== 'Unassigned') || (prevTesterName && prevTesterName !== 'Unassigned'));
+      sendProjectAssignmentNotifications({
+        project: mergedProj,
+        notifyDeveloper: devChanged,
+        notifyTester: testerChanged,
+        isDeveloperReassignment: devChanged && wasDevPreviouslyAssigned,
+        isTesterReassignment: testerChanged && wasTesterPreviouslyAssigned,
+        developers,
+        testers
+      }).catch(() => {});
+    }
 
     // Dynamic sync of developers active workloads & availability
     setDevelopers(prevDevs => prevDevs.map(d => {
@@ -1235,6 +1274,17 @@ export default function App() {
         currentProjects: allTesterProjs
       };
     }));
+
+    // Dispatch assignment emails to Developer & QA Tester via dedicated project@dsprogram.space channel
+    sendProjectAssignmentNotifications({
+      project: newProj,
+      notifyDeveloper: true,
+      notifyTester: true,
+      isDeveloperReassignment: false,
+      isTesterReassignment: false,
+      developers,
+      testers
+    }).catch(() => {});
 
     setSelectedAdminProjectId(newProj.id);
     navigateTo(`admin/projects/${newProj.id}`);
