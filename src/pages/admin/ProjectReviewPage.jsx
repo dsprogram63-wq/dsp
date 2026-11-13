@@ -491,11 +491,19 @@ export default function ProjectReviewPage({
                     </span>
                   </div>
                   {(t.notes || t.developerNotes || t.freelancerNotes) && (
-                    <div style={{ background: '#F8FAFC', borderLeft: '3px solid #0A3D75', padding: '8px 10px', borderRadius: '4px', width: '100%', boxSizing: 'border-box' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0A3D75', display: 'block', marginBottom: '3px', textTransform: 'uppercase' }}>
-                        Developer Note:
-                      </span>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#334155', whiteSpace: 'pre-line', lineHeight: 1.4 }}>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderLeft: '3px solid #0A3D75', padding: '8px 12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0A3D75', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase' }}>
+                          <FileText size={12} />
+                          Developer Task Note ({project.developer || 'Developer'}):
+                        </span>
+                        {(t.updatedAt || t.lastUpdated) && (
+                          <span style={{ fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>
+                            {t.lastUpdated || (t.updatedAt ? new Date(t.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#1E293B', whiteSpace: 'pre-line', lineHeight: 1.45 }}>
                         {t.notes || t.developerNotes || t.freelancerNotes}
                       </p>
                     </div>

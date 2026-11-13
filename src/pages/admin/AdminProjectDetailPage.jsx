@@ -1280,7 +1280,7 @@ export default function AdminProjectDetailPage({
                           Developer Notes ({project.developer || 'Assigned Developer'})
                         </span>
                         <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
-                          {t.lastUpdated ? `Last updated: ${t.lastUpdated}` : 'Recorded'}
+                          {t.lastUpdated || (t.updatedAt ? new Date(t.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recorded')}
                         </span>
                       </div>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: '#1E293B', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
