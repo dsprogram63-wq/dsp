@@ -1162,6 +1162,35 @@ export default function ProjectDetailPage({
                     </div>
                   </div>
                   <p className="task-item-desc">{task.desc}</p>
+
+                  {/* Task Notes Block (Visible to Developer, QA Tester & Admin) */}
+                  {(task.notes || task.developerNotes || task.freelancerNotes) ? (
+                    <div 
+                      className="task-dev-notes-box" 
+                      onClick={(e) => { e.stopPropagation(); handleOpenTask(task); }}
+                      title="Click to edit task notes in drawer"
+                    >
+                      <div className="task-dev-notes-header">
+                        <span className="task-dev-notes-title">
+                          <FileText size={12} />
+                          <span>Freelancer Task Notes (Visible to QA Tester & Admin)</span>
+                        </span>
+                        {task.updatedAt && (
+                          <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 500 }}>
+                            {new Date(task.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="task-dev-notes-text">
+                        {task.notes || task.developerNotes || task.freelancerNotes}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '5px', fontSize: '0.73rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FileText size={11} />
+                      <span>Click to add task notes & update status</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Progress bar + Arrow */}

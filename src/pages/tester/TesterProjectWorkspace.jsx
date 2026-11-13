@@ -874,14 +874,35 @@ export default function TesterProjectWorkspace({
                             </span>
                           </div>
                         )}
-                        {(task.notes || task.developerNotes || task.freelancerNotes) && (
-                          <div style={{ marginTop: '6px', background: '#F8FAFC', borderLeft: '3px solid #0A3D75', padding: '6px 8px', borderRadius: '4px' }}>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0A3D75', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
-                              Developer Note:
-                            </span>
-                            <span style={{ fontSize: '0.78rem', color: '#334155', whiteSpace: 'pre-line' }}>
+                        {(task.notes || task.developerNotes || task.freelancerNotes) ? (
+                          <div style={{
+                            marginTop: '8px',
+                            background: '#F0F9FF',
+                            border: '1px solid #BAE6FD',
+                            borderLeft: '4px solid #0284C7',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369A1', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <FileText size={12} />
+                                Developer Task Note ({project.developer || 'Developer'}):
+                              </span>
+                              {task.updatedAt && (
+                                <span style={{ fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>
+                                  {new Date(task.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#0F172A', lineHeight: 1.5, whiteSpace: 'pre-line', fontWeight: 500 }}>
                               {task.notes || task.developerNotes || task.freelancerNotes}
-                            </span>
+                            </p>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '6px', fontSize: '0.72rem', color: '#94A3B8', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FileText size={11} />
+                            <span>No developer notes submitted for this task</span>
                           </div>
                         )}
                       </td>
@@ -1226,6 +1247,57 @@ export default function TesterProjectWorkspace({
             </div>
           </div>
 
+          {/* Milestone Tasks & Developer Notes Breakdown */}
+          <div style={{ marginBottom: '28px' }}>
+            <h3 style={{ fontSize: '0.95rem', color: '#0A3D75', fontWeight: 800, margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckSquare size={16} color="#0A3D75" />
+              <span>Milestone Deliverables & Developer Task Notes ({tasks.length})</span>
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {tasks.map((t, idx) => (
+                <div key={t.id || idx} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
+                        {t.number || (idx + 1 < 10 ? `0${idx + 1}` : idx + 1)}. {t.name}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0A3D75', background: '#EBF3FA', padding: '2px 6px', borderRadius: '4px' }}>
+                        Weight: {t.weight !== undefined ? t.weight : 20}%
+                      </span>
+                    </div>
+                    <StatusBadge status={t.status || 'Pending'} size="small" />
+                  </div>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.82rem', color: '#64748B' }}>
+                    {t.desc || t.description || 'Deliverable specification'}
+                  </p>
+                  {(t.notes || t.developerNotes || t.freelancerNotes) ? (
+                    <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '6px', border: '1px solid #BAE6FD', borderLeft: '4px solid #0284C7' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369A1', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <FileText size={12} />
+                          Developer Task Note ({project.developer || 'Developer'}):
+                        </span>
+                        {t.updatedAt && (
+                          <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 500 }}>
+                            {new Date(t.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.84rem', color: '#0F172A', lineHeight: 1.45, whiteSpace: 'pre-line', fontWeight: 500 }}>
+                        {t.notes || t.developerNotes || t.freelancerNotes}
+                      </p>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.74rem', color: '#94A3B8', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FileText size={11} />
+                      <span>No task notes submitted by developer yet</span>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '0.95rem', color: '#0A3D75', fontWeight: 800, margin: 0 }}>
               Project Access Credentials ({(project.credentials || []).length})
@@ -1391,6 +1463,7 @@ export default function TesterProjectWorkspace({
         checklistTitle={activeTaskForIssue?.name || ''}
         relatedTaskDefault={activeTaskForIssue?.name || ''}
         relatedTaskId={activeTaskForIssue?.id || null}
+        taskNotes={activeTaskForIssue?.notes || activeTaskForIssue?.developerNotes || activeTaskForIssue?.freelancerNotes || ''}
         onClose={() => {
           setShowIssueModal(false);
           setActiveTaskForIssue(null);

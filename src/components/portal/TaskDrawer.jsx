@@ -5,8 +5,16 @@ import StatusBadge from './StatusBadge';
 export default function TaskDrawer({ task, project, isOpen, onClose, onSave, onUpdateStatus }) {
   if (!isOpen || !task) return null;
 
-  const [notes, setNotes] = useState(task.notes || task.developerNotes || '');
+  const [notes, setNotes] = useState(task.notes || task.developerNotes || task.freelancerNotes || '');
   const [currentStatus, setCurrentStatus] = useState(task.status || 'Pending');
+
+  // Synchronize internal state whenever task changes or drawer opens
+  React.useEffect(() => {
+    if (task) {
+      setNotes(task.notes || task.developerNotes || task.freelancerNotes || '');
+      setCurrentStatus(task.status || 'Pending');
+    }
+  }, [task?.id, task?.notes, task?.developerNotes, task?.freelancerNotes, task?.status]);
 
   // Derive Admin-assigned weight for this task
   const taskWeight = task.weight !== undefined 
@@ -189,9 +197,17 @@ export default function TaskDrawer({ task, project, isOpen, onClose, onSave, onU
 
           {/* Freelancer Notes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#17212B', textTransform: 'uppercase' }}>
-              Freelancer Task Notes (Visible to Admin & QA Tester)
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0A3D75', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <FileText size={13} color="#F3821D" />
+                Freelancer Task Notes (Visible to Admin & QA Tester)
+              </span>
+              {(task.notes || task.developerNotes || task.freelancerNotes) && (
+                <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 700, background: '#ECFDF5', padding: '1px 6px', borderRadius: '4px', border: '1px solid #A7F3D0' }}>
+                  ✓ Saved
+                </span>
+              )}
+            </div>
             <textarea
               rows={4}
               value={notes}
@@ -208,6 +224,9 @@ export default function TaskDrawer({ task, project, isOpen, onClose, onSave, onU
                 boxSizing: 'border-box'
               }}
             />
+            <span style={{ fontSize: '0.72rem', color: '#64748B', lineHeight: 1.4 }}>
+              💡 Whatever text you save here will be directly visible to both the <strong>QA Tester</strong> on their verification checklist & defect report and to you on this task card.
+            </span>
           </div>
         </div>
 

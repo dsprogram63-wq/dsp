@@ -7,7 +7,8 @@ export default function IssueModal({
   onAddIssue, 
   checklistTitle = '',
   relatedTaskDefault = '',
-  relatedTaskId = null
+  relatedTaskId = null,
+  taskNotes = ''
 }) {
   const [formData, setFormData] = useState({
     title: checklistTitle ? `Issue: ${checklistTitle}` : '',
@@ -108,6 +109,42 @@ export default function IssueModal({
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body-qa">
+          {taskNotes ? (
+            <div style={{
+              background: '#F0F9FF',
+              border: '1px solid #BAE6FD',
+              borderLeft: '4px solid #0284C7',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#0369A1',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                marginBottom: '4px'
+              }}>
+                <FileText size={13} />
+                Freelancer / Developer Task Note:
+              </span>
+              <p style={{
+                margin: 0,
+                fontSize: '0.84rem',
+                color: '#0F172A',
+                lineHeight: 1.45,
+                whiteSpace: 'pre-line',
+                fontWeight: 500
+              }}>
+                {taskNotes}
+              </p>
+            </div>
+          ) : null}
+
           {/* Issue Title */}
           <div className="form-group-qa">
             <label>Issue Title <span className="req">*</span></label>

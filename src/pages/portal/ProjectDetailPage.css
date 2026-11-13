@@ -556,9 +556,50 @@
   margin: 3px 0 0 0;
   font-size: 0.8rem;
   color: #64748B;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.task-dev-notes-box {
+  margin-top: 8px;
+  background: #F0F7FF;
+  border: 1px solid #BFDBFE;
+  border-left: 3.5px solid #0284C7;
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: all 0.15s ease;
+}
+
+.task-dev-notes-box:hover {
+  background: #E0F2FE;
+  border-color: #93C5FD;
+}
+
+.task-dev-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.task-dev-notes-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0369A1;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.3px;
+}
+
+.task-dev-notes-text {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #0F172A;
+  line-height: 1.45;
+  white-space: pre-line;
+  font-weight: 500;
 }
 
 .task-item-end {

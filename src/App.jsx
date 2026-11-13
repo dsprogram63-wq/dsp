@@ -609,15 +609,24 @@ export default function App() {
       }
     }
     const targetId = (updatedProj.id || '').toUpperCase();
-    const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
-    const updatedAdminList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
+    const prevProj = adminProjects.find(p => (p.id || '').toUpperCase() === targetId) || null;
+    const mergedProj = prevProj ? { ...prevProj, ...updatedProj } : updatedProj;
+    const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
+    const updatedAdminList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
+
+    // Synchronously update cloud snapshot ref & immediately persist to cloud to prevent 10s poll races
+    const projectsSnap = JSON.stringify(updatedAdminList);
+    lastCloudSnapshotRef.current.adminProjects = projectsSnap;
 
     setProjects(updatedDevList);
     setAdminProjects(updatedAdminList);
     try {
       localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
-      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedAdminList));
+      localStorage.setItem('dahej_real_v2_admin_projects', projectsSnap);
+      localStorage.setItem('dahej_admin_projects', projectsSnap);
     } catch (e) {}
+
+    saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
   };
 
   // Tester project update (syncs to master projects list with strict ownership validation)
@@ -630,15 +639,24 @@ export default function App() {
       }
     }
     const targetId = (updatedProj.id || '').toUpperCase();
-    const updatedAdminList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
-    const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? { ...p, ...updatedProj } : p);
+    const prevProj = adminProjects.find(p => (p.id || '').toUpperCase() === targetId) || null;
+    const mergedProj = prevProj ? { ...prevProj, ...updatedProj } : updatedProj;
+    const updatedAdminList = adminProjects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
+    const updatedDevList = projects.map(p => (p.id || '').toUpperCase() === targetId ? mergedProj : p);
+
+    // Synchronously update cloud snapshot ref & immediately persist to cloud to prevent 10s poll races
+    const projectsSnap = JSON.stringify(updatedAdminList);
+    lastCloudSnapshotRef.current.adminProjects = projectsSnap;
 
     setAdminProjects(updatedAdminList);
     setProjects(updatedDevList);
     try {
-      localStorage.setItem('dahej_real_v2_admin_projects', JSON.stringify(updatedAdminList));
+      localStorage.setItem('dahej_real_v2_admin_projects', projectsSnap);
+      localStorage.setItem('dahej_admin_projects', projectsSnap);
       localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevList));
     } catch (e) {}
+
+    saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
   };
 
   // Admin update (syncs master projects list and updates developer & tester assignments)
