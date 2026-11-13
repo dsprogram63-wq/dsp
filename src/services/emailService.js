@@ -74,7 +74,7 @@ const getProjectApiKey = () => {
  * In-memory, SessionStorage & LocalStorage synchronized OTP store
  * Keyed by normalized lowercase email
  */
-const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes (ensures OTP remains valid during relay lag)
 const STORAGE_PREFIX = 'ds_otp_';
 
 export function generateOtpCode() {
@@ -299,7 +299,7 @@ function buildOtpEmailHtml({ toName, otpCode, role }) {
           <tr>
             <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
               <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
-                Sent via Dahej Support Automated Mail Service • Official Sender: <strong style="color: #0F3E6D;">work@dsprogram.space</strong>
+                Sent via Dahej Support Automated Mail Service • Official Senders: <strong style="color: #0F3E6D;">work@dsprogram.space</strong> & <strong style="color: #0F3E6D;">project@dsprogram.space</strong>
               </p>
               <p style="margin: 0; font-size: 11px; color: #94A3B8;">
                 © ${new Date().getFullYear()} Dahej Support Freelancer Network. All rights reserved.
@@ -333,6 +333,7 @@ export async function sendTransactionalEmail({
   const isProjectChannel =
     channel === 'project' ||
     String(senderProfile?.email || '').trim().toLowerCase() === 'project@dsprogram.space';
+  const isDualChannel = channel === 'dual' || channel === 'all';
 
   const sender = {
     name: senderProfile?.name || (isProjectChannel ? SENDER_PROFILES.PROJECT.name : SENDER_PROFILES.DEFAULT.name),
@@ -366,7 +367,7 @@ export async function sendTransactionalEmail({
 
   const proxyPayload = {
     ...payload,
-    channel: isProjectChannel ? 'project' : 'default'
+    channel: isDualChannel ? 'dual' : (isProjectChannel ? 'project' : 'default')
   };
 
   let lastError = null;
@@ -411,7 +412,8 @@ export async function sendTransactionalEmail({
         if (proxyRes.ok && (data.success || data.messageId)) {
           return {
             success: true,
-            messageId: data.messageId
+            messageId: data.messageId,
+            dual: data.dual || false
           };
         } else {
           lastError = data.error || `Server returned error (${proxyRes.status})`;
@@ -428,7 +430,57 @@ export async function sendTransactionalEmail({
   }
 
   // 2. Direct Brevo API fallback (uses dedicated key matching the channel)
-  const clientKey = isProjectChannel ? getProjectApiKey() : getApiKey();
+  const clientProjectKey = getProjectApiKey();
+  const clientDefaultKey = getApiKey();
+
+  // In dual channel mode, attempt both direct Brevo keys concurrently
+  if (isDualChannel && (clientProjectKey || clientDefaultKey)) {
+    const directProjectPayload = {
+      ...payload,
+      sender: { name: SENDER_PROFILES.PROJECT.name, email: SENDER_PROFILES.PROJECT.email }
+    };
+    const directDefaultPayload = {
+      ...payload,
+      sender: { name: SENDER_PROFILES.DEFAULT.name, email: SENDER_PROFILES.DEFAULT.email }
+    };
+
+    const directCalls = [];
+    if (clientProjectKey) {
+      directCalls.push(
+        fetch(BREVO_API_URL, {
+          method: 'POST',
+          headers: { 'api-key': clientProjectKey, 'content-type': 'application/json' },
+          body: JSON.stringify(directProjectPayload)
+        }).then(async r => {
+          const d = await r.json().catch(() => ({}));
+          return { ok: r.ok && (d.messageId || r.status === 201), messageId: d.messageId };
+        }).catch(err => ({ ok: false, error: err.message }))
+      );
+    }
+    if (clientDefaultKey) {
+      directCalls.push(
+        fetch(BREVO_API_URL, {
+          method: 'POST',
+          headers: { 'api-key': clientDefaultKey, 'content-type': 'application/json' },
+          body: JSON.stringify(directDefaultPayload)
+        }).then(async r => {
+          const d = await r.json().catch(() => ({}));
+          return { ok: r.ok && (d.messageId || r.status === 201), messageId: d.messageId };
+        }).catch(err => ({ ok: false, error: err.message }))
+      );
+    }
+
+    try {
+      const results = await Promise.allSettled(directCalls);
+      const successful = results.find(r => r.status === 'fulfilled' && r.value?.ok);
+      if (successful) {
+        return { success: true, messageId: successful.value.messageId, dual: true };
+      }
+    } catch (e) {}
+  }
+
+  // Single-channel direct fallback
+  const clientKey = isProjectChannel ? clientProjectKey : clientDefaultKey;
   if (clientKey) {
     try {
       const response = await fetch(BREVO_API_URL, {
@@ -459,12 +511,14 @@ export async function sendTransactionalEmail({
 
 /**
  * High-Level Helper: Send OTP Email for Developer / QA Tester Verification
+ * Dispatches via high-speed dual channel by default to eliminate Gmail/Brevo queue delays
  */
 export async function sendOtpVerificationEmail({
   toEmail,
   toName = '',
   role = 'developer',
-  senderProfile = SENDER_PROFILES.DEFAULT
+  senderProfile = SENDER_PROFILES.DEFAULT,
+  channel = 'dual'
 }) {
   if (!toEmail) {
     throw new Error('Recipient email is required.');
@@ -484,10 +538,11 @@ export async function sendOtpVerificationEmail({
   });
 
   const roleTitle = (role === 'tester' || role === 'qa') ? 'QA Tester' : 'Developer';
-  const subject = `${otpCode} is your Dahej Support ${roleTitle} Verification Code`;
-  const textContent = `Hello ${toName || 'Applicant'},\n\nYour 6-digit verification code for Dahej Support ${roleTitle} Program is: ${otpCode}\n\nThis OTP is valid for 10 minutes. Please enter it on the website to verify your email.\n\nBest regards,\nDahej Support Team\nOfficial Email: work@dsprogram.space`;
+  // High-deliverability subject format (prevents spam scoring from bare numbers)
+  const subject = `Dahej Support Security Code: ${otpCode} [${roleTitle} Verification]`;
+  const textContent = `Hello ${toName || 'Applicant'},\n\nYour 6-digit verification code for Dahej Support ${roleTitle} Program is: ${otpCode}\n\nThis OTP is valid for 15 minutes. Please enter it on the website to verify your email.\n\nBest regards,\nDahej Support Team\nOfficial Email: work@dsprogram.space & project@dsprogram.space`;
 
-  // 4. Send via Brevo
+  // 4. Send via Brevo (Dual channel dispatch guarantees instant receipt)
   const result = await sendTransactionalEmail({
     to: {
       email: toEmail.trim(),
@@ -496,13 +551,15 @@ export async function sendOtpVerificationEmail({
     subject,
     htmlContent,
     textContent,
-    senderProfile
+    senderProfile,
+    channel
   });
 
   return {
     success: true,
     messageId: result.messageId,
-    email: toEmail.trim()
+    email: toEmail.trim(),
+    dual: result.dual || false
   };
 }
 
@@ -929,7 +986,7 @@ export async function sendSponsorAuthorizationOtpEmail({
           <tr>
             <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 20px 36px; text-align: center;">
               <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
-                Sent via Dahej Support Automated Mail Service • Official Sender: <strong style="color: #0F3E6D;">work@dsprogram.space</strong>
+                Sent via Dahej Support Automated Mail Service • Official Senders: <strong style="color: #0F3E6D;">work@dsprogram.space</strong> & <strong style="color: #0F3E6D;">project@dsprogram.space</strong>
               </p>
               <p style="margin: 0; font-size: 11px; color: #94A3B8;">
                 © ${new Date().getFullYear()} Dahej Support Freelancer Network. All rights reserved.

@@ -151,8 +151,8 @@ export default function FreelancerLogin({
   }, [resetOtpTimer]);
 
   // Step 1: Handle Login Send OTP via Brevo Mailer
-  const handleSendLoginOtp = async (e) => {
-    if (e) e.preventDefault();
+  const handleSendLoginOtp = async (e, forceChannel = 'dual') => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const idTrimmed = identifier.trim();
     const passTrimmed = password.trim();
 
@@ -341,15 +341,17 @@ export default function FreelancerLogin({
         toEmail: targetEmail,
         toName: targetName,
         role: actualRole === 'tester' ? 'tester' : 'developer',
-        senderProfile: actualRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
+        senderProfile: actualRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK,
+        channel: forceChannel || 'dual'
       });
 
       setLoginOtpSent(true);
-      setLoginOtpTimer(60);
+      setLoginOtpTimer(120); // 120s timer for reliable delivery window
       setLoginOtpCode(''); // Clean empty field, real OTP required from email
+      const isProjectServer = forceChannel === 'project';
       setNoticeMessage({
         type: 'success',
-        text: `✓ 6-Digit Security verification OTP sent to ${targetEmail}. Please check your inbox (and Spam folder).`
+        text: `✓ 6-Digit Security verification OTP dispatched to ${targetEmail} via ${isProjectServer ? 'Dedicated Project Mailer' : 'High-Priority Brevo Network'}. Check Inbox & Spam/Junk folder.`
       });
     } catch (err) {
       console.error('Error sending login OTP:', err);
@@ -551,8 +553,8 @@ export default function FreelancerLogin({
 
 
   // Handle Forgot Password Send OTP via Brevo
-  const handleSendResetOtp = async (e) => {
-    e.preventDefault();
+  const handleSendResetOtp = async (e, forceChannel = 'dual') => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const emailTrimmed = resetEmail.trim();
     if (!emailTrimmed || !emailTrimmed.includes('@')) {
       setNoticeMessage({
@@ -573,15 +575,16 @@ export default function FreelancerLogin({
         toEmail: emailTrimmed,
         toName: 'Account Owner',
         role: selectedRole === 'tester' ? 'tester' : 'developer',
-        senderProfile: selectedRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK
+        senderProfile: selectedRole === 'tester' ? SENDER_PROFILES.QA_DESK : SENDER_PROFILES.DEVELOPER_DESK,
+        channel: forceChannel || 'dual'
       });
 
       setResetOtpSent(true);
-      setResetOtpTimer(60);
+      setResetOtpTimer(120);
       setResetOtpCode('');
       setNoticeMessage({
         type: 'success',
-        text: `✓ Password reset OTP has been sent to ${emailTrimmed}. Please check your inbox.`
+        text: `✓ Password reset OTP dispatched to ${emailTrimmed}. Please check your inbox and Spam folder.`
       });
     } catch (err) {
       console.error('Error sending reset OTP:', err);
@@ -943,7 +946,7 @@ export default function FreelancerLogin({
                     ) : (
                       <button
                         type="button"
-                        onClick={handleSendLoginOtp}
+                        onClick={(e) => handleSendLoginOtp(e, 'dual')}
                         className="btn-resend-text"
                       >
                         Resend OTP
@@ -978,9 +981,33 @@ export default function FreelancerLogin({
                     </button>
                   </div>
 
-                  <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                    Enter the 6-digit security OTP sent to {identifier}.
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                      Enter the 6-digit security OTP sent to <strong>{identifier}</strong>.
+                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
+                      <span style={{ color: '#D97706', fontWeight: 500 }}>
+                        💡 Check your <strong>Spam / Junk</strong> folder if not in Inbox.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSendLoginOtp(e, 'project')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#0284C7',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: '0.74rem',
+                          textDecoration: 'underline',
+                          fontWeight: 600
+                        }}
+                        title="Resend code via dedicated project mail server"
+                      >
+                        ⚡ Resend via Project Mailer
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1080,7 +1107,7 @@ export default function FreelancerLogin({
                       ) : (
                         <button
                           type="button"
-                          onClick={handleSendResetOtp}
+                          onClick={(e) => handleSendResetOtp(e, 'dual')}
                           className="btn-resend-text"
                         >
                           Resend OTP
@@ -1099,9 +1126,33 @@ export default function FreelancerLogin({
                         autoFocus
                       />
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                      Enter the 6-digit verification OTP sent to {resetEmail}.
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                        Enter the 6-digit verification OTP sent to <strong>{resetEmail}</strong>.
+                      </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
+                        <span style={{ color: '#D97706', fontWeight: 500 }}>
+                          💡 Check your <strong>Spam / Junk</strong> folder if not in Inbox.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleSendResetOtp(e, 'project')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0284C7',
+                            cursor: 'pointer',
+                            padding: 0,
+                            fontSize: '0.74rem',
+                            textDecoration: 'underline',
+                            fontWeight: 600
+                          }}
+                          title="Resend code via dedicated project mail server"
+                        >
+                          ⚡ Resend via Project Mailer
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="login-form-group">

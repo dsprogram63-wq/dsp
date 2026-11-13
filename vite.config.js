@@ -59,20 +59,18 @@ export default defineConfig(({ mode }) => {
                 const PROJECT_FALLBACK_KEY = `${pk1}-${pk2}-${pk3}`;
 
                 const { to, subject, htmlContent, textContent, sender, replyTo, channel } = body;
-                const isProjectChannel =
-                  channel === 'project' ||
-                  (sender?.email && String(sender.email).trim().toLowerCase() === 'project@dsprogram.space');
 
-                const apiKey = isProjectChannel
-                  ? (env.PROJECT_BREVO_API_KEY || env.VITE_PROJECT_BREVO_API_KEY || process.env.PROJECT_BREVO_API_KEY || process.env.VITE_PROJECT_BREVO_API_KEY || PROJECT_FALLBACK_KEY)
-                  : (env.VITE_BREVO_API_KEY || env.BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || DEFAULT_FALLBACK_KEY);
+                const defaultKey = (env.VITE_BREVO_API_KEY || env.BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || DEFAULT_FALLBACK_KEY).trim().replace(/^["']|["']$/g, '');
+                const defaultSender = {
+                  name: (env.VITE_BREVO_SENDER_NAME || env.BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, ''),
+                  email: (env.VITE_BREVO_SENDER_EMAIL || env.BREVO_SENDER_EMAIL || 'work@dsprogram.space').trim().replace(/^["']|["']$/g, '')
+                };
 
-                const senderEmail = isProjectChannel
-                  ? (env.PROJECT_BREVO_SENDER_EMAIL || env.VITE_PROJECT_BREVO_SENDER_EMAIL || 'project@dsprogram.space')
-                  : (env.VITE_BREVO_SENDER_EMAIL || env.BREVO_SENDER_EMAIL || 'work@dsprogram.space');
-                const senderName = isProjectChannel
-                  ? (env.PROJECT_BREVO_SENDER_NAME || env.VITE_PROJECT_BREVO_SENDER_NAME || 'Dahej Support')
-                  : (env.VITE_BREVO_SENDER_NAME || env.BREVO_SENDER_NAME || 'Dahej Support');
+                const projectKey = (env.PROJECT_BREVO_API_KEY || env.VITE_PROJECT_BREVO_API_KEY || process.env.PROJECT_BREVO_API_KEY || process.env.VITE_PROJECT_BREVO_API_KEY || PROJECT_FALLBACK_KEY).trim().replace(/^["']|["']$/g, '');
+                const projectSender = {
+                  name: (env.PROJECT_BREVO_SENDER_NAME || env.VITE_PROJECT_BREVO_SENDER_NAME || 'Dahej Support').trim().replace(/^["']|["']$/g, ''),
+                  email: (env.PROJECT_BREVO_SENDER_EMAIL || env.VITE_PROJECT_BREVO_SENDER_EMAIL || 'project@dsprogram.space').trim().replace(/^["']|["']$/g, '')
+                };
 
                 const formattedTo = (Array.isArray(to) ? to : [to]).map(item => {
                   if (typeof item === 'string') {
@@ -84,33 +82,78 @@ export default defineConfig(({ mode }) => {
                   return { email: cleanEmail, name: cleanName };
                 }).filter(item => Boolean(item.email));
 
-                const payload = {
-                  sender: isProjectChannel ? { name: senderName, email: senderEmail } : (sender || { name: senderName, email: senderEmail }),
-                  to: formattedTo,
-                  subject,
-                  htmlContent: htmlContent || `<p>${textContent || ''}</p>`
+                const contentHtml = htmlContent || `<p>${textContent || ''}</p>`;
+                const isExplicitProject = channel === 'project' || (sender?.email && String(sender.email).trim().toLowerCase() === 'project@dsprogram.space');
+                const isDualChannel = channel === 'dual' || channel === 'all';
+
+                const dispatchBrevo = async (key, snd, timeoutMs = 8000) => {
+                  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                  const tId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+                  try {
+                    const payload = {
+                      sender: snd,
+                      to: formattedTo,
+                      subject,
+                      htmlContent: contentHtml,
+                      replyTo: replyTo || { name: snd.name, email: snd.email }
+                    };
+                    if (textContent) payload.textContent = textContent;
+
+                    const resBrevo = await fetch('https://api.brevo.com/v3/smtp/email', {
+                      method: 'POST',
+                      headers: {
+                        'accept': 'application/json',
+                        'api-key': key.trim(),
+                        'content-type': 'application/json'
+                      },
+                      body: JSON.stringify(payload),
+                      signal: controller ? controller.signal : undefined
+                    });
+                    const d = await resBrevo.json().catch(() => ({}));
+                    return { ok: resBrevo.ok, status: resBrevo.status, data: d };
+                  } catch (err) {
+                    return { ok: false, status: 504, error: err.message };
+                  } finally {
+                    if (tId) clearTimeout(tId);
+                  }
                 };
 
-                if (textContent) payload.textContent = textContent;
-                if (replyTo) payload.replyTo = replyTo;
+                if (isDualChannel) {
+                  const [pRes, dRes] = await Promise.allSettled([
+                    dispatchBrevo(projectKey, projectSender, 7500),
+                    dispatchBrevo(defaultKey, sender || defaultSender, 7500)
+                  ]);
+                  const pVal = pRes.status === 'fulfilled' ? pRes.value : null;
+                  const dVal = dRes.status === 'fulfilled' ? dRes.value : null;
 
-                const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-                  method: 'POST',
-                  headers: {
-                    'accept': 'application/json',
-                    'api-key': apiKey,
-                    'content-type': 'application/json'
-                  },
-                  body: JSON.stringify(payload)
-                });
+                  if (pVal?.ok || dVal?.ok) {
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: true, dual: true, messageId: pVal?.data?.messageId || dVal?.data?.messageId }));
+                    return;
+                  }
+                  res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                  res.end(JSON.stringify({ error: 'Both channels failed', details: { project: pVal, default: dVal } }));
+                  return;
+                }
 
-                const data = await brevoRes.json().catch(() => ({}));
+                if (isExplicitProject) {
+                  let r = await dispatchBrevo(projectKey, projectSender);
+                  if (!r.ok) {
+                    console.warn('[Vite Proxy] Project channel failed, falling back to default:', r.error || r.data);
+                    r = await dispatchBrevo(defaultKey, sender || defaultSender);
+                  }
+                  res.writeHead(r.status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                  res.end(JSON.stringify(r.data || { error: r.error }));
+                  return;
+                }
 
-                res.writeHead(brevoRes.status, {
-                  'Content-Type': 'application/json',
-                  'Access-Control-Allow-Origin': '*'
-                });
-                res.end(JSON.stringify(data));
+                let r = await dispatchBrevo(defaultKey, sender || defaultSender);
+                if (!r.ok) {
+                  console.warn('[Vite Proxy] Default channel failed, falling back to project:', r.error || r.data);
+                  r = await dispatchBrevo(projectKey, projectSender);
+                }
+                res.writeHead(r.status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify(r.data || { error: r.error }));
               } catch (err) {
                 console.error('[Vite Brevo Dev Proxy Error]:', err);
                 res.writeHead(500, {

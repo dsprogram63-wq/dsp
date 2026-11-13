@@ -75,8 +75,8 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   }, [resetOtpTimer]);
 
   // Step 1: Send Admin Login OTP via Brevo
-  const handleSendLoginOtp = async (e) => {
-    e.preventDefault();
+  const handleSendLoginOtp = async (e, forceChannel = 'dual') => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     if (!adminEmail.trim() || !adminPassword.trim()) {
       setNoticeMessage({
         type: 'warning',
@@ -129,15 +129,17 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       await sendOtpVerificationEmail({
         toEmail: adminEmail.trim(),
         toName: 'Platform Administrator',
-        role: 'developer'
+        role: 'developer',
+        channel: forceChannel || 'dual'
       });
 
       setOtpSent(true);
-      setOtpTimer(60);
+      setOtpTimer(120);
       setOtpCode(''); // Clean field, requires real email OTP
+      const isProjectServer = forceChannel === 'project';
       setNoticeMessage({
         type: 'success',
-        text: `✓ 6-Digit Security OTP sent to ${adminEmail.trim()}. Please check your inbox (and Spam folder).`
+        text: `✓ 6-Digit Security OTP dispatched to ${adminEmail.trim()} via ${isProjectServer ? 'Dedicated Project Mailer' : 'High-Priority Brevo Network'}. Check Inbox & Spam folder.`
       });
     } catch (err) {
       console.error('Error sending admin OTP:', err);
@@ -295,8 +297,8 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   };
 
   // Forgot Password: Send Reset OTP via Brevo
-  const handleSendResetOtp = async (e) => {
-    e.preventDefault();
+  const handleSendResetOtp = async (e, forceChannel = 'dual') => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const emailTrimmed = resetEmail.trim();
     if (!emailTrimmed || !emailTrimmed.includes('@')) {
       setNoticeMessage({
@@ -316,15 +318,16 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
       await sendOtpVerificationEmail({
         toEmail: emailTrimmed,
         toName: 'Platform Administrator',
-        role: 'developer'
+        role: 'developer',
+        channel: forceChannel || 'dual'
       });
 
       setResetOtpSent(true);
-      setResetOtpTimer(60);
+      setResetOtpTimer(120);
       setResetOtpCode('');
       setNoticeMessage({
         type: 'success',
-        text: `✓ Admin reset verification OTP sent to ${emailTrimmed}. Please check your inbox.`
+        text: `✓ Admin reset verification OTP dispatched to ${emailTrimmed}. Please check your inbox and Spam folder.`
       });
     } catch (err) {
       console.error('Error sending reset OTP:', err);
@@ -564,7 +567,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                     ) : (
                       <button
                         type="button"
-                        onClick={handleSendLoginOtp}
+                        onClick={(e) => handleSendLoginOtp(e, 'dual')}
                         className="admin-resend-btn"
                       >
                         Resend OTP
@@ -591,9 +594,33 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                     </button>
                   </div>
 
-                  <span className="admin-otp-hint">
-                    Enter the 6-digit 2FA code sent to your registered email.
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>
+                    <span className="admin-otp-hint" style={{ margin: 0 }}>
+                      Enter the 6-digit 2FA code sent to <strong>{adminEmail}</strong>.
+                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
+                      <span style={{ color: '#D97706', fontWeight: 500 }}>
+                        💡 Check your <strong>Spam / Junk</strong> folder if not in Inbox.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSendLoginOtp(e, 'project')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#0284C7',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: '0.74rem',
+                          textDecoration: 'underline',
+                          fontWeight: 600
+                        }}
+                        title="Resend code via dedicated project mail server"
+                      >
+                        ⚡ Resend via Project Mailer
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -686,7 +713,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                       ) : (
                         <button
                           type="button"
-                          onClick={handleSendResetOtp}
+                          onClick={(e) => handleSendResetOtp(e, 'dual')}
                           className="admin-resend-btn"
                         >
                           Resend OTP
@@ -705,9 +732,33 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                         autoFocus
                       />
                     </div>
-                    <span className="admin-otp-hint">
-                      Enter the 6-digit OTP sent to {resetEmail}.
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>
+                      <span className="admin-otp-hint" style={{ margin: 0 }}>
+                        Enter the 6-digit OTP sent to <strong>{resetEmail}</strong>.
+                      </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
+                        <span style={{ color: '#D97706', fontWeight: 500 }}>
+                          💡 Check your <strong>Spam / Junk</strong> folder if not in Inbox.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleSendResetOtp(e, 'project')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0284C7',
+                            cursor: 'pointer',
+                            padding: 0,
+                            fontSize: '0.74rem',
+                            textDecoration: 'underline',
+                            fontWeight: 600
+                          }}
+                          title="Resend code via dedicated project mail server"
+                        >
+                          ⚡ Resend via Project Mailer
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="admin-form-group">
