@@ -26,6 +26,7 @@ import StatusBadge from '../../components/portal/StatusBadge';
 import RevisionModal from '../../components/admin/RevisionModal';
 import ApproveModal from '../../components/admin/ApproveModal';
 import EmptyState from '../../components/portal/EmptyState';
+import { getRevisionSource } from '../../utils/projectStatusUtils';
 import { sendProjectRevisionNoticeEmail } from '../../services/emailService';
 import './ProjectReviewPage.css';
 
@@ -125,6 +126,11 @@ export default function ProjectReviewPage({
       ...project,
       adminRejected: true,
       adminRejectedAt: new Date().toISOString(),
+      revisionOrigin: 'admin',
+      changesRequestedBy: 'admin',
+      requestedByRole: 'admin',
+      requestedByName: 'Admin',
+      revisionRequestedAt: new Date().toISOString(),
       adminRejectionComment: revData.adminRejectionComment || revData.revisionReason,
       adminFeedback: revData.adminRejectionComment || revData.revisionReason,
       adminRejectionDocument: revData.adminRejectionDocument,
@@ -247,6 +253,116 @@ export default function ProjectReviewPage({
           </div>
         </div>
       </div>
+
+      {/* Revision / Defect Notice Banner */}
+      {isRevision && (() => {
+        const revSource = getRevisionSource(project);
+        const isTester = revSource.isTester;
+        const openIssues = (project.testingIssues || []).filter(i => i.status !== 'Resolved');
+        const primaryIssue = openIssues[0] || (project.testingIssues || [])[0] || null;
+        const reqDate = project.revisionRequestedAt || project.adminRejectedAt;
+
+        return (
+          <div className="portal-card" style={{ borderLeft: '4px solid #DC2626', backgroundColor: '#FEF2F2', padding: '16px 20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+              <ShieldAlert size={24} color="#DC2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h4 style={{ margin: 0, color: '#991B1B', fontSize: '1rem', fontWeight: 800 }}>
+                      {isTester 
+                        ? `Defect / Changes Reported by QA Tester (${project.tester || revSource.name || 'QA Specialist'})` 
+                        : `Changes Requested by Admin (${project.adminName || revSource.name || 'Master Admin'})`}
+                    </h4>
+                    <span style={{ 
+                      background: '#FEE2E2', 
+                      color: '#991B1B', 
+                      border: '1px solid #FECACA', 
+                      padding: '2px 8px', 
+                      borderRadius: '4px', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 800,
+                      textTransform: 'uppercase'
+                    }}>
+                      {isTester ? 'Raised by QA Tester' : 'Raised by Admin'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', color: '#991B1B', fontWeight: 700 }}>
+                    {reqDate ? `Requested on ${new Date(reqDate).toLocaleDateString('en-GB')}` : 'Action Pending'}
+                  </span>
+                </div>
+
+                {isTester ? (
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '0.88rem', color: '#7F1D1D', lineHeight: 1.5 }}>
+                      <strong>Reported QA Defect:</strong>{' '}
+                      {primaryIssue?.title || project.adminRejectionComment?.replace(/^QA Defect Reported:\s*/i, '') || 'Issue identified during testing verification'}
+                    </div>
+
+                    {primaryIssue && (
+                      <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginTop: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ 
+                              fontSize: '0.72rem', 
+                              fontWeight: 800, 
+                              color: '#FFFFFF', 
+                              background: primaryIssue.severity === 'Critical' ? '#DC2626' : (primaryIssue.severity === 'High' ? '#EA580C' : '#D97706'),
+                              padding: '2px 7px',
+                              borderRadius: '4px'
+                            }}>
+                              {primaryIssue.severity || 'High'} Severity
+                            </span>
+                            {primaryIssue.category && (
+                              <span style={{ fontSize: '0.72rem', color: '#0A3D75', background: '#EBF3FA', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                {primaryIssue.category}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>
+                              Target Task: {primaryIssue.task || primaryIssue.taskName || project.revisionTask || 'Milestone Deliverable'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                            Reporter: {primaryIssue.reporter || project.tester || 'QA Tester'}
+                          </span>
+                        </div>
+
+                        {primaryIssue.description && (
+                          <p style={{ margin: '0 0 8px 0', fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                            <strong>Description:</strong> {primaryIssue.description}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem', background: '#F8FAFC', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                          <div>
+                            <strong style={{ color: '#047857', display: 'block', marginBottom: '2px' }}>Expected Result:</strong>
+                            <span style={{ color: '#475569' }}>{primaryIssue.expected || primaryIssue.expectedResult || 'Deliverable functions cleanly according to requirements.'}</span>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#DC2626', display: 'block', marginBottom: '2px' }}>Actual Result:</strong>
+                            <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '8px' }}>
+                    <p style={{ margin: '0 0 6px 0', fontSize: '0.88rem', color: '#7F1D1D', lineHeight: 1.5 }}>
+                      <strong>Problems & Required Corrections:</strong> {project.adminRejectionComment || project.adminFeedback || project.revisionReason || 'Revisions requested from developer.'}
+                    </p>
+                    {project.revisionTask && project.revisionTask !== 'General Project Revision' && (
+                      <div style={{ fontSize: '0.82rem', color: '#991B1B', fontWeight: 700, marginTop: '4px' }}>
+                        Target Task: {project.revisionTask}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* DEVELOPER SUBMISSION DELIVERABLES (LIVE URL & GOOGLE DRIVE LINK) */}
       <div className="portal-card" style={{ border: '1.5px solid #0A3D75', boxShadow: '0 4px 14px rgba(10, 61, 117, 0.08)' }}>

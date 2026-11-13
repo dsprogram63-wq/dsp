@@ -38,7 +38,8 @@ import {
   getDevProgress, 
   formatINR,
   calculateProjectProgressFromTasks,
-  areAllTasksCompleted
+  areAllTasksCompleted,
+  getRevisionSource
 } from '../../utils/projectStatusUtils';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
 import './ProjectDetailPage.css';
@@ -559,48 +560,135 @@ export default function ProjectDetailPage({
             )}
           </div>
           <div className="revision-alert-content">
-            <div className="revision-alert-header">
-              <span 
-                className="revision-tag" 
-                style={{ 
-                  background: devProg === 100 && allTasksDone ? '#DCFCE7' : '#FEE2E2', 
-                  color: devProg === 100 && allTasksDone ? '#166534' : '#B91C1C', 
-                  fontWeight: 800 
-                }}
-              >
-                {devProg === 100 && allTasksDone 
-                  ? '✓ All QA Defects Resolved (100% Completed)' 
-                  : `Action Required: QA Rework Needed (${unresolvedIssuesCount} Open Issues)`}
-              </span>
-              <span className="revision-date">Posted {project.adminRejectedAt ? new Date(project.adminRejectedAt).toLocaleDateString('en-GB') : 'Recently'}</span>
-            </div>
-            <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px' }}>
-              <strong>{devProg === 100 && allTasksDone ? 'Status:' : 'QA / Admin Instructions:'}</strong>{' '}
-              {devProg === 100 && allTasksDone 
-                ? 'All defect items have been addressed and all milestone tasks are marked completed. Click "Resubmit for QA Review" to proceed.' 
-                : (project.adminRejectionComment || project.adminFeedback || project.testingNotes || 'Please resolve the reported defect items listed below, mark the tasks completed, and resubmit.')}
-            </p>
-            {project.revisionTask && project.revisionTask !== 'General Project Revision' && (
-              <div style={{ fontSize: '0.82rem', color: '#991B1B', fontWeight: 700, marginTop: '4px' }}>
-                Target Task: {project.revisionTask}
-              </div>
-            )}
-            {project.adminRejectionDocument && (
-              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', background: '#FFFFFF', padding: '8px 12px', borderRadius: '6px', border: '1px solid #FECACA', width: 'fit-content' }}>
-                <FileText size={16} color="#DC2626" />
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#991B1B' }}>
-                  {typeof project.adminRejectionDocument === 'string' ? project.adminRejectionDocument : (project.adminRejectionDocument.name || 'Revision_Guidelines.pdf')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDownloadDoc(typeof project.adminRejectionDocument === 'object' ? project.adminRejectionDocument : { name: project.adminRejectionDocument, type: 'PDF', size: '1.5 MB', date: 'Revision' })}
-                  style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 800, marginLeft: '8px' }}
-                >
-                  <Download size={13} />
-                  <span>Download Doc</span>
-                </button>
-              </div>
-            )}
+            {(() => {
+              const revSource = getRevisionSource(project);
+              const isTester = revSource.isTester;
+              const openIssues = (project.testingIssues || []).filter(i => i.status !== 'Resolved');
+              const primaryIssue = openIssues[0] || (project.testingIssues || [])[0] || null;
+              const reqDate = project.revisionRequestedAt || project.adminRejectedAt;
+
+              if (devProg === 100 && allTasksDone) {
+                return (
+                  <>
+                    <div className="revision-alert-header">
+                      <span 
+                        className="revision-tag" 
+                        style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800 }}
+                      >
+                        ✓ All QA Defects Resolved (100% Completed)
+                      </span>
+                      <span className="revision-date">Ready to Resubmit</span>
+                    </div>
+                    <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px' }}>
+                      <strong>Status:</strong> All defect items have been addressed and all milestone tasks are marked completed. Click "Resubmit for QA Review" to proceed.
+                    </p>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <div className="revision-alert-header">
+                    <span 
+                      className="revision-tag" 
+                      style={{ background: '#FEE2E2', color: '#B91C1C', fontWeight: 800 }}
+                    >
+                      {isTester 
+                        ? `Action Required: Defect Reported by QA Tester (${project.tester || revSource.name || 'QA Specialist'})` 
+                        : `Action Required: Revision Requested by Admin (${project.adminName || revSource.name || 'Master Admin'})`}
+                    </span>
+                    <span className="revision-date">Posted {reqDate ? new Date(reqDate).toLocaleDateString('en-GB') : 'Recently'}</span>
+                  </div>
+
+                  <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px', marginBottom: '8px' }}>
+                    <strong>
+                      {isTester 
+                        ? `QA Tester Issue (${project.tester || revSource.name || 'QA Specialist'}):` 
+                        : `Admin Instructions (${project.adminName || revSource.name || 'Master Admin'}):`}
+                    </strong>{' '}
+                    {isTester 
+                      ? (primaryIssue?.title || project.adminRejectionComment?.replace(/^QA Defect Reported:\s*/i, '') || 'Please resolve the reported defect items listed below and resubmit.') 
+                      : (project.adminRejectionComment || project.adminFeedback || project.revisionReason || 'Please resolve the requested revisions, mark the tasks completed, and resubmit.')}
+                  </p>
+
+                  {isTester && primaryIssue && (
+                    <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ 
+                            fontSize: '0.72rem', 
+                            fontWeight: 800, 
+                            color: '#FFFFFF', 
+                            background: primaryIssue.severity === 'Critical' ? '#DC2626' : (primaryIssue.severity === 'High' ? '#EA580C' : '#D97706'),
+                            padding: '2px 7px',
+                            borderRadius: '4px'
+                          }}>
+                            {primaryIssue.severity || 'High'} Severity
+                          </span>
+                          {primaryIssue.category && (
+                            <span style={{ fontSize: '0.72rem', color: '#0A3D75', background: '#EBF3FA', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              {primaryIssue.category}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>
+                            Target Task: {primaryIssue.task || primaryIssue.taskName || project.revisionTask || 'Milestone Deliverable'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                          Reporter: {primaryIssue.reporter || project.tester || 'QA Tester'}
+                        </span>
+                      </div>
+
+                      {primaryIssue.description && (
+                        <p style={{ margin: '0 0 8px 0', fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                          <strong>Description:</strong> {primaryIssue.description}
+                        </p>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem', background: '#F8FAFC', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                        <div>
+                          <strong style={{ color: '#047857', display: 'block', marginBottom: '2px' }}>Expected Result:</strong>
+                          <span style={{ color: '#475569' }}>{primaryIssue.expected || primaryIssue.expectedResult || 'Deliverable functions cleanly according to requirements.'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#DC2626', display: 'block', marginBottom: '2px' }}>Actual Result:</strong>
+                          <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isTester && project.revisionTask && project.revisionTask !== 'General Project Revision' && (
+                    <div style={{ fontSize: '0.82rem', color: '#991B1B', fontWeight: 700, marginTop: '4px', marginBottom: '8px' }}>
+                      Target Task: {project.revisionTask}
+                    </div>
+                  )}
+
+                  {!isTester && project.adminRejectionDocument && (
+                    <div style={{ marginTop: '10px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', background: '#FFFFFF', padding: '8px 12px', borderRadius: '6px', border: '1px solid #FECACA', width: 'fit-content' }}>
+                      <FileText size={16} color="#DC2626" />
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#991B1B' }}>
+                        {typeof project.adminRejectionDocument === 'string' ? project.adminRejectionDocument : (project.adminRejectionDocument.name || 'Revision_Guidelines.pdf')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDoc(typeof project.adminRejectionDocument === 'object' ? project.adminRejectionDocument : { name: project.adminRejectionDocument, type: 'PDF', size: '1.5 MB', date: 'Revision' })}
+                        style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 800, marginLeft: '8px' }}
+                      >
+                        <Download size={13} />
+                        <span>Download Doc</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isTester && openIssues.length > 1 && (
+                    <div style={{ fontSize: '0.78rem', color: '#991B1B', fontWeight: 700, marginBottom: '8px' }}>
+                      ⚠️ Total {openIssues.length} open QA defects reported. (See full details in the Issues Raised by QA Tester section below)
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <div className="revision-action-row" style={{ marginTop: '12px' }}>
               <button 
                 type="button" 

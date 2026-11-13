@@ -604,3 +604,84 @@ export function validateSettlementPayments({
   };
 }
 
+/**
+ * Determines whether the active revision / changes request was raised by QA Tester or Admin,
+ * and extracts full origin information with fallback support for legacy project records.
+ */
+export function getRevisionSource(project) {
+  if (!project) return { isRevision: false, isTester: false, isAdmin: false, role: null, name: '' };
+
+  const s = (project.status || '').toLowerCase().trim();
+  const ts = (project.testingStatus || '').toLowerCase().trim();
+  const isRevision = Boolean(
+    project.adminRejected === true || 
+    s === 'changes requested' || 
+    s === 'revision required' || 
+    ts === 'changes requested' ||
+    (Array.isArray(project.testingIssues) && project.testingIssues.some(i => i.status !== 'Resolved')) ||
+    (Array.isArray(project.tasks) && project.tasks.some(t => t.status === 'Failed' || t.qaStatus === 'Failed' || t.qaStatus === 'Fail'))
+  );
+
+  if (!isRevision) {
+    return { isRevision: false, isTester: false, isAdmin: false, role: null, name: '' };
+  }
+
+  // 1. Explicit author origin flag takes highest precedence
+  const isExplicitTester = Boolean(
+    project.changesRequestedBy === 'tester' ||
+    project.revisionOrigin === 'tester' ||
+    project.requestedByRole === 'tester'
+  );
+
+  const isExplicitAdmin = Boolean(
+    project.changesRequestedBy === 'admin' ||
+    project.revisionOrigin === 'admin' ||
+    project.requestedByRole === 'admin'
+  );
+
+  if (isExplicitTester) {
+    return {
+      isRevision: true,
+      isTester: true,
+      isAdmin: false,
+      role: 'QA Tester',
+      name: project.requestedByName || project.tester || 'QA Tester'
+    };
+  }
+
+  if (isExplicitAdmin) {
+    return {
+      isRevision: true,
+      isTester: false,
+      isAdmin: true,
+      role: 'Admin',
+      name: project.requestedByName || project.adminName || 'Admin'
+    };
+  }
+
+  // 2. Intelligent heuristics for existing / legacy project records
+  const comment = String(project.adminRejectionComment || project.adminFeedback || '');
+  const hasTesterComment = comment.startsWith('QA Defect Reported:') || comment.toLowerCase().includes('qa defect') || comment.toLowerCase().includes('issue in');
+  const hasOpenTesterIssues = Array.isArray(project.testingIssues) && project.testingIssues.some(i => i.status !== 'Resolved');
+  const hasFailedQATasks = Array.isArray(project.tasks) && project.tasks.some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail' || t.status === 'Failed');
+
+  if (hasTesterComment || hasOpenTesterIssues || (hasFailedQATasks && !project.adminRejectionDocument)) {
+    return {
+      isRevision: true,
+      isTester: true,
+      isAdmin: false,
+      role: 'QA Tester',
+      name: project.tester || 'QA Tester'
+    };
+  }
+
+  return {
+    isRevision: true,
+    isTester: false,
+    isAdmin: true,
+    role: 'Admin',
+    name: project.adminName || 'Admin'
+  };
+}
+
+
