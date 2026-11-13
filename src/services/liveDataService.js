@@ -61,12 +61,68 @@ export function sanitizeLivePlatformState(state) {
     );
   }
 
-  // 3. Projects
+  // 3. Projects with cross-reconciliation
+  const validDevs = Array.isArray(state.developers) ? state.developers : [];
+  const validTesters = Array.isArray(state.testers) ? state.testers : [];
+
+  const reconcileProjectAssignments = (list) => {
+    if (!Array.isArray(list)) return list;
+    return list.map((p) => {
+      if (!p || !p.id) return p;
+      let pCopy = { ...p };
+
+      if (!pCopy.developer || pCopy.developer === 'Unassigned' || !pCopy.developerId) {
+        const assignedDev = validDevs.find((d) =>
+          Array.isArray(d.currentProjects) &&
+          d.currentProjects.some(
+            (cp) => cp && String(cp.id).toUpperCase() === String(pCopy.id).toUpperCase()
+          )
+        );
+        if (assignedDev) {
+          const devProj = assignedDev.currentProjects.find(
+            (cp) => cp && String(cp.id).toUpperCase() === String(pCopy.id).toUpperCase()
+          );
+          pCopy.developer = devProj?.developer || assignedDev.name || assignedDev.fullName;
+          pCopy.developerId = devProj?.developerId || assignedDev.id || assignedDev.developerId;
+          pCopy.developerEmail = devProj?.developerEmail || assignedDev.email || '';
+          pCopy.developerSkill = devProj?.developerSkill || assignedDev.primarySkill || '';
+          pCopy.developerAvatar = devProj?.developerAvatar || assignedDev.avatar || '';
+        }
+      }
+
+      if (!pCopy.tester || pCopy.tester === 'Unassigned' || !pCopy.testerId) {
+        const assignedTester = validTesters.find((t) =>
+          Array.isArray(t.currentProjects) &&
+          t.currentProjects.some(
+            (cp) => cp && String(cp.id).toUpperCase() === String(pCopy.id).toUpperCase()
+          )
+        );
+        if (assignedTester) {
+          const testerProj = assignedTester.currentProjects.find(
+            (cp) => cp && String(cp.id).toUpperCase() === String(pCopy.id).toUpperCase()
+          );
+          pCopy.tester = testerProj?.tester || assignedTester.name || assignedTester.fullName;
+          pCopy.testerId = testerProj?.testerId || assignedTester.id || assignedTester.testerId;
+          pCopy.testerEmail = testerProj?.testerEmail || assignedTester.email || '';
+          pCopy.testerSpecialization =
+            testerProj?.testerSpecialization || assignedTester.specialization || assignedTester.role || '';
+          pCopy.testerAvatar = testerProj?.testerAvatar || assignedTester.avatar || '';
+        }
+      }
+
+      return pCopy;
+    });
+  };
+
   if (Array.isArray(state.adminProjects)) {
-    state.adminProjects = state.adminProjects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id));
+    state.adminProjects = reconcileProjectAssignments(
+      state.adminProjects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id))
+    );
   }
   if (Array.isArray(state.projects)) {
-    state.projects = state.projects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id));
+    state.projects = reconcileProjectAssignments(
+      state.projects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id))
+    );
   }
 
   return state;
@@ -297,7 +353,39 @@ export async function saveLivePlatformData(updates = {}) {
     });
     (incoming || []).forEach((item) => {
       if (item?.id && !currentDeletedIds.has(String(item.id).toLowerCase().trim())) {
-        map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+        const existing = map.get(item.id) || {};
+        const merged = { ...existing, ...item };
+
+        // Assignment Protection: If existing project had an assigned developer, do not allow
+        // a blanket sync with 'Unassigned' or null to strip the developer assignment
+        if (
+          existing.developer &&
+          existing.developer !== 'Unassigned' &&
+          (!item.developer || item.developer === 'Unassigned') &&
+          !item.explicitUnassignDeveloper
+        ) {
+          merged.developer = existing.developer;
+          merged.developerId = existing.developerId;
+          merged.developerEmail = existing.developerEmail || merged.developerEmail;
+          merged.developerSkill = existing.developerSkill || merged.developerSkill;
+          merged.developerAvatar = existing.developerAvatar || merged.developerAvatar;
+        }
+
+        // Assignment Protection: Same for QA Tester
+        if (
+          existing.tester &&
+          existing.tester !== 'Unassigned' &&
+          (!item.tester || item.tester === 'Unassigned') &&
+          !item.explicitUnassignTester
+        ) {
+          merged.tester = existing.tester;
+          merged.testerId = existing.testerId;
+          merged.testerEmail = existing.testerEmail || merged.testerEmail;
+          merged.testerSpecialization = existing.testerSpecialization || merged.testerSpecialization;
+          merged.testerAvatar = existing.testerAvatar || merged.testerAvatar;
+        }
+
+        map.set(item.id, merged);
       }
     });
     return Array.from(map.values());

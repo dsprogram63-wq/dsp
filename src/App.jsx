@@ -375,6 +375,7 @@ export default function App() {
     developers: null,
     testers: null
   });
+  const hasCompletedFirstCloudSyncRef = useRef(false);
 
   // Live Cloud Synchronization with Automatic Polling & Focus Sync
   const syncFromCloud = useCallback(() => {
@@ -416,6 +417,7 @@ export default function App() {
             localStorage.setItem('dahej_testers', snap);
           } catch (e) {}
         }
+        hasCompletedFirstCloudSyncRef.current = true;
       }
     }).catch(err => console.warn('Live platform sync background notice:', err));
   }, []);
@@ -480,6 +482,7 @@ export default function App() {
         const snap = JSON.stringify(adminProjects);
         localStorage.setItem('dahej_real_v2_admin_projects', snap);
         localStorage.setItem('dahej_admin_projects', snap);
+        if (!hasCompletedFirstCloudSyncRef.current) return;
         if (lastCloudSnapshotRef.current.adminProjects === snap) return;
         const timer = setTimeout(() => {
           lastCloudSnapshotRef.current.adminProjects = snap;
@@ -509,6 +512,7 @@ export default function App() {
         const snap = JSON.stringify(developers);
         localStorage.setItem('dahej_real_v2_developers', snap);
         localStorage.setItem('dahej_developers', snap);
+        if (!hasCompletedFirstCloudSyncRef.current) return;
         if (lastCloudSnapshotRef.current.developers === snap) return;
         const timer = setTimeout(() => {
           lastCloudSnapshotRef.current.developers = snap;
@@ -527,6 +531,7 @@ export default function App() {
         const snap = JSON.stringify(testers);
         localStorage.setItem('dahej_real_v2_testers', snap);
         localStorage.setItem('dahej_testers', snap);
+        if (!hasCompletedFirstCloudSyncRef.current) return;
         if (lastCloudSnapshotRef.current.testers === snap) return;
         const timer = setTimeout(() => {
           lastCloudSnapshotRef.current.testers = snap;
@@ -715,40 +720,57 @@ export default function App() {
     }
 
     // Dynamic sync of developers active workloads & availability
-    setDevelopers(prevDevs => prevDevs.map(d => {
-      const allDevProjs = updatedProjectsList.filter(
-        p => (p.developer && p.developer.toLowerCase() === d.name.toLowerCase()) || (p.developerId && p.developerId === d.id)
-      );
-      const activeCount = allDevProjs.filter(p => p.status !== 'Completed').length;
-      let avail = d.availability;
-      if (d.status === 'Active') {
-        avail = activeCount > 0 ? 'Busy' : 'Available';
-      }
-      return {
-        ...d,
-        activeProjectsCount: activeCount,
-        availability: avail,
-        currentProjects: allDevProjs
-      };
-    }));
+    let updatedDevsList = null;
+    setDevelopers(prevDevs => {
+      const updated = prevDevs.map(d => {
+        const allDevProjs = updatedProjectsList.filter(
+          p => (p.developer && p.developer.toLowerCase() === d.name.toLowerCase()) || (p.developerId && p.developerId === d.id)
+        );
+        const activeCount = allDevProjs.filter(p => p.status !== 'Completed').length;
+        let avail = d.availability;
+        if (d.status === 'Active') {
+          avail = activeCount > 0 ? 'Busy' : 'Available';
+        }
+        return {
+          ...d,
+          activeProjectsCount: activeCount,
+          availability: avail,
+          currentProjects: allDevProjs
+        };
+      });
+      updatedDevsList = updated;
+      return updated;
+    });
 
     // Dynamic sync of testers active workloads & availability
-    setTesters(prevTesters => prevTesters.map(t => {
-      const allTesterProjs = updatedProjectsList.filter(
-        p => (p.tester && p.tester.toLowerCase() === t.name.toLowerCase()) || (p.testerId && p.testerId === t.id)
-      );
-      const activeCount = allTesterProjs.filter(p => p.status !== 'Completed').length;
-      let avail = t.availability;
-      if (t.status === 'Active') {
-        avail = activeCount > 0 ? 'Busy' : 'Available';
-      }
-      return {
-        ...t,
-        activeTestingProjects: activeCount,
-        availability: avail,
-        currentProjects: allTesterProjs
-      };
-    }));
+    let updatedTestersList = null;
+    setTesters(prevTesters => {
+      const updated = prevTesters.map(t => {
+        const allTesterProjs = updatedProjectsList.filter(
+          p => (p.tester && p.tester.toLowerCase() === t.name.toLowerCase()) || (p.testerId && p.testerId === t.id)
+        );
+        const activeCount = allTesterProjs.filter(p => p.status !== 'Completed').length;
+        let avail = t.availability;
+        if (t.status === 'Active') {
+          avail = activeCount > 0 ? 'Busy' : 'Available';
+        }
+        return {
+          ...t,
+          activeTestingProjects: activeCount,
+          availability: avail,
+          currentProjects: allTesterProjs
+        };
+      });
+      updatedTestersList = updated;
+      return updated;
+    });
+
+    // Atomic sync of updated project, developer, and tester records to cloud
+    saveLivePlatformData({
+      updateProject: mergedProj,
+      ...(updatedDevsList ? { developers: updatedDevsList } : {}),
+      ...(updatedTestersList ? { testers: updatedTestersList } : {})
+    }).catch(() => {});
 
     return emailDispatchPromise;
   };

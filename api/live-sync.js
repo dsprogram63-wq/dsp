@@ -108,7 +108,39 @@ function mergeRowsById(prev = [], incoming = [], replace = false, deletedIds = n
   });
   incoming.forEach((item) => {
     if (item?.id && !deletedIds.has(String(item.id).toLowerCase().trim())) {
-      map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+      const existing = map.get(item.id) || {};
+      const merged = { ...existing, ...item };
+
+      // Assignment Protection: If existing project had an assigned developer, do not allow
+      // a blanket sync with 'Unassigned' or null to strip the developer assignment
+      if (
+        existing.developer &&
+        existing.developer !== 'Unassigned' &&
+        (!item.developer || item.developer === 'Unassigned') &&
+        !item.explicitUnassignDeveloper
+      ) {
+        merged.developer = existing.developer;
+        merged.developerId = existing.developerId;
+        merged.developerEmail = existing.developerEmail || merged.developerEmail;
+        merged.developerSkill = existing.developerSkill || merged.developerSkill;
+        merged.developerAvatar = existing.developerAvatar || merged.developerAvatar;
+      }
+
+      // Assignment Protection: Same for QA Tester
+      if (
+        existing.tester &&
+        existing.tester !== 'Unassigned' &&
+        (!item.tester || item.tester === 'Unassigned') &&
+        !item.explicitUnassignTester
+      ) {
+        merged.tester = existing.tester;
+        merged.testerId = existing.testerId;
+        merged.testerEmail = existing.testerEmail || merged.testerEmail;
+        merged.testerSpecialization = existing.testerSpecialization || merged.testerSpecialization;
+        merged.testerAvatar = existing.testerAvatar || merged.testerAvatar;
+      }
+
+      map.set(item.id, merged);
     }
   });
   return Array.from(map.values());
@@ -301,10 +333,82 @@ async function loadAllTables(supabase) {
   const rawApplications = appFile?.rows || legacy?.applications || [];
   const passwords = authFile?.passwords || legacy?.passwords || {};
 
+  const validDevelopers = filterValidDevelopers(rawDevelopers, deletedSet);
+  const validTesters = filterValidTesters(rawTesters, deletedSet);
+  const validProjects = filterValidProjects(rawProjects);
+
+  // Cross-reconcile project assignments from developer & tester records
+  let projectsReconciled = false;
+  const reconciledProjects = validProjects.map((p) => {
+    if (!p || !p.id) return p;
+    let projCopy = { ...p };
+
+    const isDevUnassigned =
+      !projCopy.developer ||
+      projCopy.developer === 'Unassigned' ||
+      !projCopy.developerId;
+
+    if (isDevUnassigned) {
+      const assignedDev = validDevelopers.find((d) =>
+        Array.isArray(d.currentProjects) &&
+        d.currentProjects.some(
+          (cp) => cp && String(cp.id).toUpperCase() === String(projCopy.id).toUpperCase()
+        )
+      );
+      if (assignedDev) {
+        const devProj = assignedDev.currentProjects.find(
+          (cp) => cp && String(cp.id).toUpperCase() === String(projCopy.id).toUpperCase()
+        );
+        projCopy.developer = devProj?.developer || assignedDev.name || assignedDev.fullName;
+        projCopy.developerId = devProj?.developerId || assignedDev.id || assignedDev.developerId;
+        projCopy.developerEmail = devProj?.developerEmail || assignedDev.email || '';
+        projCopy.developerSkill = devProj?.developerSkill || assignedDev.primarySkill || '';
+        projCopy.developerAvatar = devProj?.developerAvatar || assignedDev.avatar || '';
+        projectsReconciled = true;
+      }
+    }
+
+    const isTesterUnassigned =
+      !projCopy.tester ||
+      projCopy.tester === 'Unassigned' ||
+      !projCopy.testerId;
+
+    if (isTesterUnassigned) {
+      const assignedTester = validTesters.find((t) =>
+        Array.isArray(t.currentProjects) &&
+        t.currentProjects.some(
+          (cp) => cp && String(cp.id).toUpperCase() === String(projCopy.id).toUpperCase()
+        )
+      );
+      if (assignedTester) {
+        const testerProj = assignedTester.currentProjects.find(
+          (cp) => cp && String(cp.id).toUpperCase() === String(projCopy.id).toUpperCase()
+        );
+        projCopy.tester = testerProj?.tester || assignedTester.name || assignedTester.fullName;
+        projCopy.testerId = testerProj?.testerId || assignedTester.id || assignedTester.testerId;
+        projCopy.testerEmail = testerProj?.testerEmail || assignedTester.email || '';
+        projCopy.testerSpecialization =
+          testerProj?.testerSpecialization || assignedTester.specialization || assignedTester.role || '';
+        projCopy.testerAvatar = testerProj?.testerAvatar || assignedTester.avatar || '';
+        projectsReconciled = true;
+      }
+    }
+
+    return projCopy;
+  });
+
+  if (projectsReconciled && supabase) {
+    writeStorageJson(supabase, TABLE_PATHS.projects, {
+      table: 'projects',
+      updatedAt: new Date().toISOString(),
+      rows: reconciledProjects,
+    }).catch(() => {});
+  }
+
   return {
-    developers: filterValidDevelopers(rawDevelopers, deletedSet),
-    testers: filterValidTesters(rawTesters, deletedSet),
-    projects: filterValidProjects(rawProjects),
+    developers: validDevelopers,
+    testers: validTesters,
+    projects: reconciledProjects,
     applications: Array.isArray(rawApplications) ? rawApplications : [],
     passwords,
     deletedMemberIds,
