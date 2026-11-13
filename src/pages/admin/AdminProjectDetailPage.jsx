@@ -41,7 +41,11 @@ import CredentialModal from '../../components/portal/CredentialModal';
 import { initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
-import { sendProjectAssignmentNotifications } from '../../services/emailService';
+import { 
+  sendProjectAssignmentNotifications,
+  sendDeveloperDeadlineWarningEmail,
+  sendTesterDeadlineWarningEmail
+} from '../../services/emailService';
 import './AdminProjectDetailPage.css';
 
 export default function AdminProjectDetailPage({ 
@@ -63,6 +67,7 @@ export default function AdminProjectDetailPage({
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
   const [sendingRoleMail, setSendingRoleMail] = useState(null);
+  const [sendingWarningMail, setSendingWarningMail] = useState(null);
   const adminDocInputRef = useRef(null);
   const toastTimerRef = useRef(null);
 
@@ -423,6 +428,53 @@ export default function AdminProjectDetailPage({
       showToast(`Email dispatch failed: ${err?.message || 'Network error'}`, 5500);
     } finally {
       setSendingRoleMail(null);
+    }
+  };
+
+  const handleSendDeadlineWarningMail = async (targetRole) => {
+    const isDev = targetRole === 'developer';
+    setSendingWarningMail(targetRole);
+    setToastMessage(`Dispatching 24-hr deadline warning to ${isDev ? 'Developer' : 'QA Tester'} via project@dsprogram.space...`);
+    try {
+      let res;
+      if (isDev) {
+        res = await sendDeveloperDeadlineWarningEmail({
+          project,
+          developer: currentDevObj,
+          deadlineFormatted: project.submissionDate || project.developerDeadline || project.deadline,
+          daysRemaining: 1
+        });
+      } else {
+        res = await sendTesterDeadlineWarningEmail({
+          project,
+          tester: currentTesterObj,
+          deadlineFormatted: project.testingSubmissionDate || project.testingDeadline || project.deadline,
+          daysRemaining: 1
+        });
+      }
+
+      if (res?.success) {
+        const updateKey = isDev ? 'developerDeadlineWarningSentAt' : 'testerDeadlineWarningSentAt';
+        const dateKey = isDev ? 'developerDeadlineWarningDate' : 'testerDeadlineWarningDate';
+        const deadlineVal = isDev
+          ? (project.submissionDateIso || project.submissionDate || project.developerDeadline || project.deadline)
+          : (project.testingSubmissionDateIso || project.testingSubmissionDate || project.testingDeadline || project.deadline);
+
+        if (onUpdateProject) {
+          onUpdateProject({
+            ...project,
+            [updateKey]: new Date().toISOString(),
+            [dateKey]: deadlineVal
+          });
+        }
+        showToast(`✓ Deadline warning sent to ${res.recipient} from project@dsprogram.space`, 5500);
+      } else {
+        showToast(`Warning email failed: ${res?.error || 'Check email address'}`, 5500);
+      }
+    } catch (err) {
+      showToast(`Warning dispatch failed: ${err?.message || 'Network error'}`, 5500);
+    } finally {
+      setSendingWarningMail(null);
     }
   };
 
@@ -806,20 +858,50 @@ export default function AdminProjectDetailPage({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px' }}>
+            {/* Developer Deadline & Automated Warning Info */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '6px 10px', fontSize: '0.72rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748B' }}>Submission Deadline: <strong style={{ color: '#0F172A' }}>{project.submissionDate || project.developerDeadline || project.deadline || '—'}</strong></span>
+                {isDevSubmitted ? (
+                  <span style={{ color: '#16A34A', fontWeight: 700 }}>✓ Submitted (100%)</span>
+                ) : project.developerDeadlineWarningDate ? (
+                  <span style={{ color: '#0A3D75', fontWeight: 700 }} title={`Sent at ${project.developerDeadlineWarningSentAt || ''}`}>
+                    ✓ Warning Sent ({new Date(project.developerDeadlineWarningSentAt || Date.now()).toLocaleDateString('en-GB')})
+                  </span>
+                ) : (
+                  <span style={{ color: '#D97706', fontWeight: 700 }}>⏰ Auto Warning: 5:00 PM IST (Day Before)</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px', flexWrap: 'wrap' }}>
               <span>Availability: <strong style={{ color: currentDevAvailability === 'Available' ? '#16A34A' : '#D97706' }}>{currentDevAvailability}</strong></span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {project.developer && project.developer !== 'Unassigned' && (
-                  <button
-                    type="button"
-                    disabled={sendingRoleMail === 'developer'}
-                    onClick={() => handleSendRoleAssignmentMail('developer')}
-                    style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 8px', color: '#0A3D75', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
-                    title="Send or resend assignment details from project@dsprogram.space"
-                  >
-                    <Mail size={12} />
-                    <span>{sendingRoleMail === 'developer' ? 'Sending...' : 'Send Mail'}</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={sendingRoleMail === 'developer'}
+                      onClick={() => handleSendRoleAssignmentMail('developer')}
+                      style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 8px', color: '#0A3D75', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                      title="Send or resend assignment details from project@dsprogram.space"
+                    >
+                      <Mail size={12} />
+                      <span>{sendingRoleMail === 'developer' ? 'Sending...' : 'Assignment Mail'}</span>
+                    </button>
+                    {!isDevSubmitted && (
+                      <button
+                        type="button"
+                        disabled={sendingWarningMail === 'developer'}
+                        onClick={() => handleSendDeadlineWarningMail('developer')}
+                        style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', padding: '3px 8px', color: '#B91C1C', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                        title="Send 24-hr submission deadline warning email now via project@dsprogram.space"
+                      >
+                        <Clock size={12} />
+                        <span>{sendingWarningMail === 'developer' ? 'Sending...' : 'Warning Mail'}</span>
+                      </button>
+                    )}
+                  </>
                 )}
                 {!isFinalizedOrLocked && (
                   <button 
@@ -866,20 +948,50 @@ export default function AdminProjectDetailPage({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px' }}>
+            {/* Tester Deadline & Automated Warning Info */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '6px 10px', fontSize: '0.72rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748B' }}>QA Deadline: <strong style={{ color: '#0F172A' }}>{project.testingSubmissionDate || project.testingDeadline || project.deadline || '—'}</strong></span>
+                {isTesterApproved || isTesterSubmitted ? (
+                  <span style={{ color: '#16A34A', fontWeight: 700 }}>✓ QA Finalized</span>
+                ) : project.testerDeadlineWarningDate ? (
+                  <span style={{ color: '#C2410C', fontWeight: 700 }} title={`Sent at ${project.testerDeadlineWarningSentAt || ''}`}>
+                    ✓ Warning Sent ({new Date(project.testerDeadlineWarningSentAt || Date.now()).toLocaleDateString('en-GB')})
+                  </span>
+                ) : (
+                  <span style={{ color: '#D97706', fontWeight: 700 }}>⏰ Auto Warning: 5:00 PM IST (Day Before)</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B', gap: '8px', flexWrap: 'wrap' }}>
               <span>QA Testing: <strong style={{ color: isTesterApproved ? '#16A34A' : '#C2410C' }}>{project.testingProgress || 0}% Verified</strong></span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {project.tester && project.tester !== 'Unassigned' && (
-                  <button
-                    type="button"
-                    disabled={sendingRoleMail === 'tester'}
-                    onClick={() => handleSendRoleAssignmentMail('tester')}
-                    style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '6px', padding: '3px 8px', color: '#C2410C', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
-                    title="Send or resend QA assignment details from project@dsprogram.space"
-                  >
-                    <Mail size={12} />
-                    <span>{sendingRoleMail === 'tester' ? 'Sending...' : 'Send Mail'}</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={sendingRoleMail === 'tester'}
+                      onClick={() => handleSendRoleAssignmentMail('tester')}
+                      style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '6px', padding: '3px 8px', color: '#C2410C', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                      title="Send or resend QA assignment details from project@dsprogram.space"
+                    >
+                      <Mail size={12} />
+                      <span>{sendingRoleMail === 'tester' ? 'Sending...' : 'Assignment Mail'}</span>
+                    </button>
+                    {!isTesterApproved && !isTesterSubmitted && (
+                      <button
+                        type="button"
+                        disabled={sendingWarningMail === 'tester'}
+                        onClick={() => handleSendDeadlineWarningMail('tester')}
+                        style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', padding: '3px 8px', color: '#B91C1C', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
+                        title="Send 24-hr QA testing deadline warning email now via project@dsprogram.space"
+                      >
+                        <Clock size={12} />
+                        <span>{sendingWarningMail === 'tester' ? 'Sending...' : 'Warning Mail'}</span>
+                      </button>
+                    )}
+                  </>
                 )}
                 {!isFinalizedOrLocked && (
                   <button 

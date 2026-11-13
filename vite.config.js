@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import cronDeadlineWarningsHandler from './api/cron-deadline-warnings.js';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -10,6 +11,18 @@ export default defineConfig(({ mode }) => {
       {
         name: 'brevo-email-dev-proxy',
         configureServer(server) {
+          server.middlewares.use('/api/cron-deadline-warnings', async (req, res) => {
+            try {
+              await cronDeadlineWarningsHandler(req, res);
+            } catch (err) {
+              console.error('[Vite Cron Deadline Dev Middleware Error]:', err);
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message || 'Cron error' }));
+              }
+            }
+          });
+
           server.middlewares.use('/api/send-email', (req, res) => {
             if (req.method === 'OPTIONS') {
               res.writeHead(200, {

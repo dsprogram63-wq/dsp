@@ -442,6 +442,37 @@ export default function App() {
     };
   }, [syncFromCloud]);
 
+  // Dual-redundancy automated deadline warning monitor (runs in background after 5 PM IST)
+  const lastWarningCheckRef = useRef(0);
+  useEffect(() => {
+    const triggerDeadlineCheck = async () => {
+      const now = Date.now();
+      // Throttle to at most once every 15 minutes per browser session
+      if (now - lastWarningCheckRef.current < 15 * 60 * 1000) return;
+      lastWarningCheckRef.current = now;
+
+      try {
+        const response = await fetch('/api/cron-deadline-warnings', { method: 'GET' });
+        if (response.ok) {
+          const result = await response.json();
+          if (result && ((result.developerWarningsCount || 0) > 0 || (result.testerWarningsCount || 0) > 0)) {
+            syncFromCloud();
+          }
+        }
+      } catch (e) {
+        // Non-blocking background attempt
+      }
+    };
+
+    const initialTimeout = setTimeout(triggerDeadlineCheck, 4000);
+    const interval = setInterval(triggerDeadlineCheck, 15 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [syncFromCloud]);
+
   // Sync real data to LocalStorage & Live Cloud (skips echo if state matches cloud snapshot)
   useEffect(() => {
     try {

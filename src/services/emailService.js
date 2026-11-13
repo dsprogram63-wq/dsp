@@ -2221,3 +2221,733 @@ export async function sendProjectAssignmentNotifications({
   const results = await Promise.all(jobs);
   return Object.fromEntries(results);
 }
+
+/**
+ * =========================================================================
+ * AUTOMATED DEADLINE WARNING SYSTEM (DEVELOPER & QA TESTER)
+ * =========================================================================
+ * Rules:
+ * 1. For Developer: Triggered the day before `submissionDate` at 5:00 PM IST (17:00).
+ *    Skipped if Developer has already completed 100% or submitted work.
+ * 2. For QA Tester: Triggered the day before `testingSubmissionDate` at 5:00 PM IST (17:00).
+ *    Skipped if Tester has already finalized or approved 100% of testing.
+ * 3. Dispatched from `project@dsprogram.space` via Brevo Project Key (`channel: 'project'`).
+ * 4. Idempotent: Never double-sends for the same deadline date once marked sent.
+ */
+
+/**
+ * Normalizes varied human or ISO date representations into YYYY-MM-DD
+ */
+export function parseDateToIso(rawDate) {
+  if (!rawDate) return null;
+  const str = String(rawDate).trim();
+  if (!str) return null;
+
+  // 1. If already YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const y = isoMatch[1];
+    const m = isoMatch[2].padStart(2, '0');
+    const d = isoMatch[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 2. Format DD/MM/YYYY or DD/MM/YY or DD-MM-YYYY
+  const slashMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (slashMatch) {
+    const d = slashMatch[1].padStart(2, '0');
+    const m = slashMatch[2].padStart(2, '0');
+    let y = slashMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    return `${y}-${m}-${d}`;
+  }
+
+  // 3. Format DD Mon YYYY (e.g. "14 Nov 2026" or "14-Nov-2026")
+  const months = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+  };
+  const textMatch = str.match(/^(\d{1,2})[\s\-]+([a-zA-Z]{3,})[\s\-]+(\d{2,4})/);
+  if (textMatch) {
+    const d = textMatch[1].padStart(2, '0');
+    const monKey = textMatch[2].toLowerCase().slice(0, 3);
+    const m = months[monKey];
+    let y = textMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // 4. Fallback to Date.parse
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
+}
+
+/**
+ * Returns current date and time in Indian Standard Time (IST / Asia/Kolkata)
+ */
+export function getIstDateTime(referenceDate = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(referenceDate);
+
+  const map = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+
+  const year = map.year;
+  const month = map.month;
+  const day = map.day;
+  const hour = parseInt(map.hour, 10);
+  const minute = parseInt(map.minute, 10);
+  const second = parseInt(map.second, 10);
+
+  const dateIso = `${year}-${month}-${day}`;
+  return {
+    dateIso,
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second,
+    isEvening5pmOrLater: hour >= 17
+  };
+}
+
+/**
+ * Calculates calendar day difference between two ISO dates (targetDate - currentDate)
+ */
+export function getDaysDifference(currentDateIso, targetDateIso) {
+  if (!currentDateIso || !targetDateIso) return null;
+  const [cy, cm, cd] = currentDateIso.split('-').map(Number);
+  const [ty, tm, td] = targetDateIso.split('-').map(Number);
+  const cUtc = Date.UTC(cy, cm - 1, cd);
+  const tUtc = Date.UTC(ty, tm - 1, td);
+  const diffMs = tUtc - cUtc;
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Builds HTML Email for Developer 24-Hour Submission Deadline Warning
+ * Strictly protects client price, client name, and tester payout.
+ */
+export function buildDeveloperDeadlineWarningEmailHtml({
+  developerName = '',
+  memberId = '',
+  project = {},
+  deadlineFormatted = '',
+  daysRemaining = 1
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devProgress = project?.developerProgress ?? project?.progress ?? 0;
+  const assignedPayout = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : [];
+  const pendingTasks = tasks.filter(t => t.status !== 'Completed' && Number(t.progress || 0) < 100);
+  const portalUrl = 'https://www.dsprogram.space/freelancer-login';
+
+  const tasksHtml = pendingTasks.length > 0
+    ? pendingTasks.slice(0, 6).map((t, idx) => `
+      <tr>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || t.heading || 'Milestone Task'}
+          ${t.desc || t.description ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc || t.description}</div>` : ''}
+        </td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #DC2626; font-size: 12px; font-weight: 700; white-space: nowrap;">Pending</td>
+      </tr>
+    `).join('')
+    : `<tr><td colspan="3" style="padding: 10px; font-size: 12px; color: #64748B; text-align: center;">Please review milestone tasks in your workspace.</td></tr>`;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urgent: Submission Deadline Warning — ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Action Required: Submission deadline for ${projectName} [${projectId}] is tomorrow. Please submit your work before the deadline.
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Project Delivery &amp; Milestone Operations
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #FEF2F2; border: 1px solid #FECACA; color: #B91C1C; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ⚠️ DEADLINE WARNING &bull; ${daysRemaining === 1 ? '24 HOURS REMAINING' : 'SUBMISSION DUE'}
+              </div>
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${developerName || 'Developer'}</strong>${memberId ? ` (${memberId})` : ''},<br>
+                This is an automated deadline reminder from the <strong>Dahej Support Project Operations Desk</strong>. The developer submission deadline for <strong>${projectName}</strong> is ${daysRemaining === 1 ? 'tomorrow' : 'approaching'}, <strong>${deadlineFormatted}</strong> at 11:59 PM IST.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #92400E; margin-bottom: 10px;">
+                      Submission Schedule &amp; Deliverable Status
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #78350F; width: 170px;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 800; font-family: monospace;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #78350F;">Submission Deadline:</td>
+                        <td style="padding: 6px 0; color: #DC2626; font-weight: 800; font-size: 14px;">${deadlineFormatted} (11:59 PM IST)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #78350F;">Current Progress:</td>
+                        <td style="padding: 6px 0; color: #0A3D75; font-weight: 700;">${devProgress}% Completed</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #78350F;">Developer Payout:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800;">${assignedPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #78350F;">Pending Tasks:</td>
+                        <td style="padding: 6px 0; color: #B45309; font-weight: 700;">${pendingTasks.length} milestone(s) remaining</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <div style="margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0F3E6D; margin-bottom: 8px;">
+                  Pending Milestones Checklist (${pendingTasks.length})
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden;">
+                  <thead>
+                    <tr style="background-color: #F1F5F9;">
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">#</th>
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">Milestone</th>
+                      <th align="right" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tasksHtml}
+                  </tbody>
+                </table>
+              </div>
+              <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 14px 18px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #92400E;">
+                  Action Required Before Deadline:
+                </p>
+                <ol style="margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.6; color: #78350F;">
+                  <li>Log in to your Developer Workspace and ensure all tasks are checked off.</li>
+                  <li>Verify all repository/drive deliverables are attached.</li>
+                  <li>Click <strong>Submit Project</strong> in your workspace so QA Testing can begin.</li>
+                </ol>
+              </div>
+              <div style="text-align: center; margin: 26px 0 20px 0;">
+                <a href="${portalUrl}" style="display: inline-block; background-color: #F3821D; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 13px 32px; border-radius: 8px;">
+                  Open Developer Workspace &rarr;
+                </a>
+              </div>
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #94A3B8; text-align: center;">
+                If you have already submitted your completed deliverables or if progress is at 100%, you may safely disregard this reminder.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 18px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Automated Deadline Monitor &bull; Sent from <strong style="color: #0F3E6D;">project@dsprogram.space</strong>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Builds HTML Email for QA Tester 24-Hour Testing Deadline Warning
+ * Strictly protects client price and developer payout.
+ */
+export function buildTesterDeadlineWarningEmailHtml({
+  testerName = '',
+  memberId = '',
+  project = {},
+  deadlineFormatted = '',
+  daysRemaining = 1
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const assignedDev = project?.developer || 'Assigned Developer';
+  const testingProgress = project?.testingProgress ?? 0;
+  const assignedPayout = project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : [];
+  const pendingQaTasks = tasks.filter(t => t.qaStatus !== 'Pass' && t.qaStatus !== 'Passed');
+  const portalUrl = 'https://www.dsprogram.space/freelancer-login?role=tester';
+
+  const tasksHtml = pendingQaTasks.length > 0
+    ? pendingQaTasks.slice(0, 6).map((t, idx) => `
+      <tr>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || t.heading || 'QA Checklist Task'}
+        </td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #D97706; font-size: 12px; font-weight: 700; white-space: nowrap;">${t.qaStatus || 'Pending QA'}</td>
+      </tr>
+    `).join('')
+    : `<tr><td colspan="3" style="padding: 10px; font-size: 12px; color: #64748B; text-align: center;">Please finalize QA report checklist.</td></tr>`;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urgent: QA Testing Deadline Warning — ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Action Required: QA testing deadline for ${projectName} [${projectId}] is tomorrow. Please finalize QA verification before the deadline.
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Quality Assurance &amp; Verification Desk
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #FEF2F2; border: 1px solid #FECACA; color: #B91C1C; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ⚠️ QA DEADLINE WARNING &bull; ${daysRemaining === 1 ? '24 HOURS REMAINING' : 'TESTING DUE'}
+              </div>
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${testerName || 'QA Tester'}</strong>${memberId ? ` (${memberId})` : ''},<br>
+                This is an automated 24-hour reminder from the <strong>Dahej Support QA Verification Desk</strong>. The testing deadline for <strong>${projectName}</strong> is ${daysRemaining === 1 ? 'tomorrow' : 'approaching'}, <strong>${deadlineFormatted}</strong> at 11:59 PM IST.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #065F46; margin-bottom: 10px;">
+                      QA Schedule &amp; Verification Summary
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46; width: 170px;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 800; font-family: monospace;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46;">Assigned Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${assignedDev}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46;">QA Testing Deadline:</td>
+                        <td style="padding: 6px 0; color: #DC2626; font-weight: 800; font-size: 14px;">${deadlineFormatted} (11:59 PM IST)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46;">QA Progress:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 700;">${testingProgress}% Verified</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46;">QA Tester Payout:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800;">${assignedPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #065F46;">Pending QA Checks:</td>
+                        <td style="padding: 6px 0; color: #B45309; font-weight: 700;">${pendingQaTasks.length} milestone(s) awaiting sign-off</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <div style="margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0F3E6D; margin-bottom: 8px;">
+                  Pending QA Verification Items (${pendingQaTasks.length})
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden;">
+                  <thead>
+                    <tr style="background-color: #F1F5F9;">
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">#</th>
+                      <th align="left" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">Checklist Item</th>
+                      <th align="right" style="padding: 8px 10px; font-size: 11px; color: #475569; text-transform: uppercase;">QA Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tasksHtml}
+                  </tbody>
+                </table>
+              </div>
+              <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 14px 18px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #92400E;">
+                  Next Steps Before QA Deadline:
+                </p>
+                <ol style="margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.6; color: #78350F;">
+                  <li>Open the QA Workspace and run test scenarios for remaining items.</li>
+                  <li>Log any identified defect tickets or revisions.</li>
+                  <li>Click <strong>Finalize QA</strong> once all checks pass to route for Admin approval and payout release.</li>
+                </ol>
+              </div>
+              <div style="text-align: center; margin: 26px 0 20px 0;">
+                <a href="${portalUrl}" style="display: inline-block; background-color: #059669; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 13px 32px; border-radius: 8px;">
+                  Open QA Workspace &rarr;
+                </a>
+              </div>
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #94A3B8; text-align: center;">
+                If you have already finalized testing and approved this project, you may safely disregard this reminder.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 18px 36px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748B;">
+                Automated QA Deadline Monitor &bull; Sent from <strong style="color: #0F3E6D;">project@dsprogram.space</strong>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends a Developer Deadline Warning email using the dedicated `project@dsprogram.space` Brevo channel.
+ */
+export async function sendDeveloperDeadlineWarningEmail({
+  project,
+  developer = null,
+  deadlineFormatted = '',
+  daysRemaining = 1
+}) {
+  const cleanEmail = (project?.developerEmail || developer?.email || '').trim().toLowerCase();
+  const cleanName = (project?.developer || developer?.name || developer?.fullName || 'Developer').trim();
+  const memberId = project?.developerId || developer?.id || '';
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    return { success: false, error: 'Developer email missing' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const displayDeadline = deadlineFormatted || project?.submissionDate || project?.developerDeadline || 'Tomorrow';
+
+  const htmlContent = buildDeveloperDeadlineWarningEmailHtml({
+    developerName: cleanName,
+    memberId,
+    project,
+    deadlineFormatted: displayDeadline,
+    daysRemaining
+  });
+
+  const subject = `⚠️ Action Required: 24-Hour Submission Deadline Notice — ${projectName} [${projectId}]`;
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `This is an automated 24-hour deadline reminder from Dahej Support Project Operations Desk.\n` +
+    `The developer submission deadline for "${projectName}" (${projectId}) is tomorrow, ${displayDeadline} at 11:59 PM IST.\n\n` +
+    `Please log in to your Developer Workspace at https://www.dsprogram.space/freelancer-login to complete all tasks and submit before the deadline.\n\n` +
+    `Regards,\nDahej Support Project Desk (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Developer deadline warning failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Sends a QA Tester Deadline Warning email using the dedicated `project@dsprogram.space` Brevo channel.
+ */
+export async function sendTesterDeadlineWarningEmail({
+  project,
+  tester = null,
+  deadlineFormatted = '',
+  daysRemaining = 1
+}) {
+  const cleanEmail = (project?.testerEmail || tester?.email || '').trim().toLowerCase();
+  const cleanName = (project?.tester || tester?.name || tester?.fullName || 'QA Tester').trim();
+  const memberId = project?.testerId || tester?.id || '';
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    return { success: false, error: 'QA Tester email missing' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const displayDeadline = deadlineFormatted || project?.testingSubmissionDate || project?.deadlineDate || 'Tomorrow';
+
+  const htmlContent = buildTesterDeadlineWarningEmailHtml({
+    testerName: cleanName,
+    memberId,
+    project,
+    deadlineFormatted: displayDeadline,
+    daysRemaining
+  });
+
+  const subject = `⚠️ Action Required: 24-Hour QA Testing Deadline Notice — ${projectName} [${projectId}]`;
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `This is an automated 24-hour deadline reminder from Dahej Support Quality Assurance Desk.\n` +
+    `The QA testing deadline for "${projectName}" (${projectId}) is tomorrow, ${displayDeadline} at 11:59 PM IST.\n\n` +
+    `Please log in to your QA Workspace at https://www.dsprogram.space/freelancer-login?role=tester to complete your review and finalize before the deadline.\n\n` +
+    `Regards,\nDahej Support Quality Assurance Desk (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Tester deadline warning failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Core Evaluation Engine: Checks all active projects for upcoming 24-hour deadlines
+ * and automatically dispatches warning emails to Developer and/or QA Tester.
+ *
+ * Rules:
+ * - Deadline is tomorrow (`daysDiff === 1`) and current IST time is 5:00 PM (17:00) or later (or `force === true`).
+ * - Also fires if deadline is today (`daysDiff === 0`) and warning was not sent yesterday.
+ * - Skips Developer if developerProgress is 100%, developerSubmitted is true, or project is Submitted/Approved.
+ * - Skips QA Tester if testingProgress is 100%, testerFinalized is true, or QA is Approved/Finalized.
+ * - Idempotent: Never sends more than once for the same target deadline date.
+ */
+export async function checkAndDispatchDeadlineWarnings({
+  projects = [],
+  developers = [],
+  testers = [],
+  now = new Date(),
+  force = false
+}) {
+  if (!Array.isArray(projects) || projects.length === 0) {
+    return {
+      evaluatedCount: 0,
+      developerWarnings: [],
+      testerWarnings: [],
+      updatedProjects: []
+    };
+  }
+
+  const ist = getIstDateTime(now);
+  const isTimeEligible = ist.isEvening5pmOrLater || force;
+
+  const devWarnings = [];
+  const qaWarnings = [];
+  const updatedProjectsMap = new Map();
+
+  for (const project of projects) {
+    if (!project || !project.id) continue;
+    const statusLower = String(project.status || '').toLowerCase().trim();
+    if (statusLower === 'completed' || statusLower === 'archived') {
+      continue;
+    }
+
+    let projectModified = false;
+    let projCopy = { ...project };
+
+    // =========================================================================
+    // 1. DEVELOPER DEADLINE EVALUATION
+    // =========================================================================
+    const hasDevAssigned = Boolean(
+      (projCopy.developerId && String(projCopy.developerId).toLowerCase() !== 'unassigned') ||
+      (projCopy.developer && String(projCopy.developer).toLowerCase() !== 'unassigned')
+    );
+
+    const isDevCompleted = Boolean(
+      (projCopy.developerProgress !== undefined && Number(projCopy.developerProgress) === 100) ||
+      (projCopy.progress !== undefined && Number(projCopy.progress) === 100) ||
+      (projCopy.freelancerProgress !== undefined && Number(projCopy.freelancerProgress) === 100) ||
+      projCopy.developerSubmitted === true ||
+      projCopy.freelancerSubmitted === true ||
+      Boolean(projCopy.developerSubmittedAt || projCopy.freelancerSubmittedAt) ||
+      ['submitted', 'under review', 'finalized', 'approved', 'completed'].includes(statusLower) ||
+      (Array.isArray(projCopy.tasks) && projCopy.tasks.length > 0 && projCopy.tasks.every(t => t.status === 'Completed' || Number(t.progress || 0) === 100))
+    );
+
+    const devDeadlineRaw = projCopy.submissionDateIso || projCopy.submissionDate || projCopy.developerDeadline || projCopy.deadline;
+    const devDeadlineIso = parseDateToIso(devDeadlineRaw);
+
+    if (hasDevAssigned && !isDevCompleted && devDeadlineIso) {
+      const daysDiff = getDaysDifference(ist.dateIso, devDeadlineIso);
+      const isDueTomorrow = daysDiff === 1 && isTimeEligible;
+      const isDueToday = daysDiff === 0;
+
+      const alreadySentForDate = projCopy.developerDeadlineWarningDate === devDeadlineIso;
+
+      if ((isDueTomorrow || isDueToday) && !alreadySentForDate) {
+        const devMatch = Array.isArray(developers)
+          ? developers.find(d => d && (
+              (projCopy.developerId && String(d.id || d.developerId).toLowerCase() === String(projCopy.developerId).toLowerCase()) ||
+              (projCopy.developer && String(d.name || d.fullName).toLowerCase() === String(projCopy.developer).toLowerCase())
+            ))
+          : null;
+
+        const devEmail = (projCopy.developerEmail || devMatch?.email || devMatch?.emailAddress || '').trim();
+        if (devEmail && devEmail.toLowerCase() !== 'unassigned') {
+          const res = await sendDeveloperDeadlineWarningEmail({
+            project: { ...projCopy, developerEmail: devEmail },
+            developer: devMatch,
+            deadlineFormatted: projCopy.submissionDate || devDeadlineIso,
+            daysRemaining: Math.max(0, daysDiff)
+          });
+
+          if (res.success) {
+            projCopy.developerDeadlineWarningSentAt = new Date().toISOString();
+            projCopy.developerDeadlineWarningDate = devDeadlineIso;
+            projectModified = true;
+            devWarnings.push({
+              projectId: projCopy.id,
+              projectName: projCopy.name,
+              recipient: devEmail,
+              deadlineIso: devDeadlineIso,
+              daysDiff
+            });
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // 2. QA TESTER DEADLINE EVALUATION
+    // =========================================================================
+    const hasTesterAssigned = Boolean(
+      (projCopy.testerId && String(projCopy.testerId).toLowerCase() !== 'unassigned') ||
+      (projCopy.tester && String(projCopy.tester).toLowerCase() !== 'unassigned')
+    );
+
+    const testingStatusLower = String(projCopy.testingStatus || '').toLowerCase().trim();
+    const isTesterCompleted = Boolean(
+      (projCopy.testingProgress !== undefined && Number(projCopy.testingProgress) === 100) ||
+      projCopy.testerFinalized === true ||
+      projCopy.qaFinalized === true ||
+      Boolean(projCopy.testerFinalizedAt) ||
+      ['tester approved', 'finalized', 'approved', 'completed'].includes(testingStatusLower) ||
+      ['finalized', 'approved', 'completed'].includes(statusLower)
+    );
+
+    const qaDeadlineRaw = projCopy.testingSubmissionDateIso || projCopy.testingSubmissionDate || projCopy.deadlineDate || projCopy.deadline;
+    const qaDeadlineIso = parseDateToIso(qaDeadlineRaw);
+
+    if (hasTesterAssigned && !isTesterCompleted && qaDeadlineIso) {
+      const daysDiff = getDaysDifference(ist.dateIso, qaDeadlineIso);
+      const isDueTomorrow = daysDiff === 1 && isTimeEligible;
+      const isDueToday = daysDiff === 0;
+
+      const alreadySentForDate = projCopy.testerDeadlineWarningDate === qaDeadlineIso;
+
+      if ((isDueTomorrow || isDueToday) && !alreadySentForDate) {
+        const testerMatch = Array.isArray(testers)
+          ? testers.find(t => t && (
+              (projCopy.testerId && String(t.id || t.testerId).toLowerCase() === String(projCopy.testerId).toLowerCase()) ||
+              (projCopy.tester && String(t.name || t.fullName).toLowerCase() === String(projCopy.tester).toLowerCase())
+            ))
+          : null;
+
+        const testerEmail = (projCopy.testerEmail || testerMatch?.email || testerMatch?.emailAddress || '').trim();
+        if (testerEmail && testerEmail.toLowerCase() !== 'unassigned') {
+          const res = await sendTesterDeadlineWarningEmail({
+            project: { ...projCopy, testerEmail },
+            tester: testerMatch,
+            deadlineFormatted: projCopy.testingSubmissionDate || qaDeadlineIso,
+            daysRemaining: Math.max(0, daysDiff)
+          });
+
+          if (res.success) {
+            projCopy.testerDeadlineWarningSentAt = new Date().toISOString();
+            projCopy.testerDeadlineWarningDate = qaDeadlineIso;
+            projectModified = true;
+            qaWarnings.push({
+              projectId: projCopy.id,
+              projectName: projCopy.name,
+              recipient: testerEmail,
+              deadlineIso: qaDeadlineIso,
+              daysDiff
+            });
+          }
+        }
+      }
+    }
+
+    if (projectModified) {
+      updatedProjectsMap.set(projCopy.id, projCopy);
+    }
+  }
+
+  const updatedProjects = Array.from(updatedProjectsMap.values());
+  return {
+    evaluatedCount: projects.length,
+    istTime: ist,
+    developerWarnings: devWarnings,
+    testerWarnings: qaWarnings,
+    updatedProjects
+  };
+}
