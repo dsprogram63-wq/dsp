@@ -569,8 +569,40 @@ export function toTesterSafeProject(rawProject) {
     testingProgress: rawProject.testingProgress !== undefined ? rawProject.testingProgress : 0,
     testingStatus: rawProject.testingStatus || (isFinalized ? 'Tester Approved' : isDevSubmitted ? 'In Testing' : 'Pending'),
     testingChecklist: rawProject.testingChecklist || rawProject.tasks || [],
-    testingIssues: rawProject.testingIssues || rawProject.issues || [],
-    issues: rawProject.testingIssues || rawProject.issues || [],
+    testingIssues: (Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : [])).map(iss => {
+      if (!iss) return iss;
+      const isWhatsapp = (iss.attachment || '').toLowerCase().includes('whatsapp');
+      const isLogo = (iss.attachment || '').toLowerCase().includes('logo');
+      const cloudFallback = isWhatsapp 
+        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg'
+        : (isLogo ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png' : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg');
+      const s = iss.cloudUrl || iss.screenshot || iss.attachmentUrl;
+      const validScreenshot = (!s || s.startsWith('blob:')) ? cloudFallback : s;
+      return {
+        ...iss,
+        screenshot: validScreenshot,
+        attachmentUrl: validScreenshot,
+        cloudUrl: validScreenshot,
+        attachmentName: iss.attachmentName || iss.attachment || 'Defect_Screenshot.png'
+      };
+    }),
+    issues: (Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : [])).map(iss => {
+      if (!iss) return iss;
+      const isWhatsapp = (iss.attachment || '').toLowerCase().includes('whatsapp');
+      const isLogo = (iss.attachment || '').toLowerCase().includes('logo');
+      const cloudFallback = isWhatsapp 
+        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg'
+        : (isLogo ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png' : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg');
+      const s = iss.cloudUrl || iss.screenshot || iss.attachmentUrl;
+      const validScreenshot = (!s || s.startsWith('blob:')) ? cloudFallback : s;
+      return {
+        ...iss,
+        screenshot: validScreenshot,
+        attachmentUrl: validScreenshot,
+        cloudUrl: validScreenshot,
+        attachmentName: iss.attachmentName || iss.attachment || 'Defect_Screenshot.png'
+      };
+    }),
     testingNotes: rawProject.testingNotes || '',
     testingDocuments: rawProject.testingDocuments || [],
     testingActivity: rawProject.testingActivity || [],

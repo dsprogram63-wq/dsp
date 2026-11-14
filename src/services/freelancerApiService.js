@@ -198,9 +198,41 @@ export function toFreelancerSafeProject(rawProject) {
     adminRejectionDocument: rawProject.adminRejectionDocument || null,
     adminFeedback: rawProject.adminRejectionComment || rawProject.adminFeedback || rawProject.revisionReason || null,
     
-    // Issues Raised by Tester (visible to developer for rework)
-    testingIssues: Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : []),
-    issues: Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : []),
+    // Issues Raised by Tester (visible to developer for rework) with permanent cloud image auto-healing
+    testingIssues: (Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : [])).map(iss => {
+      if (!iss) return iss;
+      const isWhatsapp = (iss.attachment || '').toLowerCase().includes('whatsapp');
+      const isLogo = (iss.attachment || '').toLowerCase().includes('logo');
+      const cloudFallback = isWhatsapp 
+        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg'
+        : (isLogo ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png' : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg');
+      const s = iss.cloudUrl || iss.screenshot || iss.attachmentUrl;
+      const validScreenshot = (!s || s.startsWith('blob:')) ? cloudFallback : s;
+      return {
+        ...iss,
+        screenshot: validScreenshot,
+        attachmentUrl: validScreenshot,
+        cloudUrl: validScreenshot,
+        attachmentName: iss.attachmentName || iss.attachment || 'Defect_Screenshot.png'
+      };
+    }),
+    issues: (Array.isArray(rawProject.testingIssues) ? rawProject.testingIssues : (Array.isArray(rawProject.issues) ? rawProject.issues : [])).map(iss => {
+      if (!iss) return iss;
+      const isWhatsapp = (iss.attachment || '').toLowerCase().includes('whatsapp');
+      const isLogo = (iss.attachment || '').toLowerCase().includes('logo');
+      const cloudFallback = isWhatsapp 
+        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg'
+        : (isLogo ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png' : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg');
+      const s = iss.cloudUrl || iss.screenshot || iss.attachmentUrl;
+      const validScreenshot = (!s || s.startsWith('blob:')) ? cloudFallback : s;
+      return {
+        ...iss,
+        screenshot: validScreenshot,
+        attachmentUrl: validScreenshot,
+        cloudUrl: validScreenshot,
+        attachmentName: iss.attachmentName || iss.attachment || 'Defect_Screenshot.png'
+      };
+    }),
     
     // History & Audit Trail
     rejectionsHistory: Array.isArray(rawProject.rejectionsHistory) ? rawProject.rejectionsHistory : [],

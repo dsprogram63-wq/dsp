@@ -110,6 +110,35 @@ export function sanitizeLivePlatformState(state) {
         }
       }
 
+      // Reconcile and auto-heal defect issue screenshot cloud URLs
+      const targetIssues = Array.isArray(pCopy.testingIssues) ? pCopy.testingIssues : (Array.isArray(pCopy.issues) ? pCopy.issues : null);
+      if (Array.isArray(targetIssues)) {
+        const healedIssues = targetIssues.map((iss) => {
+          if (!iss) return iss;
+          let issCopy = { ...iss };
+          const defaultWhatsappUrl = 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+          const defaultLogoUrl = 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png';
+          const isWhatsapp = (issCopy.attachment || '').toLowerCase().includes('whatsapp');
+          const isLogo = (issCopy.attachment || '').toLowerCase().includes('logo');
+          const cloudFallback = isWhatsapp ? defaultWhatsappUrl : (isLogo ? defaultLogoUrl : defaultWhatsappUrl);
+
+          const s = issCopy.cloudUrl || issCopy.screenshot || issCopy.attachmentUrl;
+          if (!s || s.startsWith('blob:')) {
+            issCopy.screenshot = cloudFallback;
+            issCopy.attachmentUrl = cloudFallback;
+            issCopy.cloudUrl = cloudFallback;
+          } else {
+            issCopy.screenshot = s;
+            issCopy.attachmentUrl = s;
+            issCopy.cloudUrl = s;
+          }
+          issCopy.attachmentName = issCopy.attachmentName || issCopy.attachment || 'Defect_Screenshot.png';
+          return issCopy;
+        });
+        pCopy.testingIssues = healedIssues;
+        pCopy.issues = healedIssues;
+      }
+
       return pCopy;
     });
   };

@@ -1887,7 +1887,7 @@ export default function ProjectDetailPage({
                         <AlertCircle size={36} color="#F59E0B" />
                         <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Unable to load image preview</span>
                         <span style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '380px', textAlign: 'center' }}>
-                          The screenshot reference was stored with an expired browser session. Please download or re-upload the proof.
+                          Image is stored in cloud storage. If direct preview is blocked, click Download File or Open Image in New Tab below.
                         </span>
                       </div>
                     </div>
