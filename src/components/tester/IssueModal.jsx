@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, UploadCloud, FileText, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { X, AlertCircle, UploadCloud, FileText, CheckCircle2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { uploadFileToBucket } from '../../services/storageService.js';
 
 export default function IssueModal({ 
   isOpen, 
@@ -10,6 +11,7 @@ export default function IssueModal({
   relatedTaskId = null,
   taskNotes = ''
 }) {
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: checklistTitle ? `Issue: ${checklistTitle}` : '',
     description: '',
@@ -23,11 +25,13 @@ export default function IssueModal({
     hasAttachment: false,
     attachmentUrl: null,
     attachmentDataUrl: null,
+    cloudUrl: null,
     screenshot: null
   });
 
   useEffect(() => {
     if (isOpen) {
+      setIsUploading(false);
       setFormData({
         title: checklistTitle ? `Issue in ${checklistTitle}` : '',
         description: '',
@@ -41,6 +45,7 @@ export default function IssueModal({
         hasAttachment: false,
         attachmentUrl: null,
         attachmentDataUrl: null,
+        cloudUrl: null,
         screenshot: null
       });
     }
@@ -48,19 +53,20 @@ export default function IssueModal({
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
     const fileName = file.name;
     const isImage = file.type.startsWith('image/');
+    setIsUploading(true);
 
+    // 1. Generate Base64 for instant local preview & offline backup
     const reader = new FileReader();
     reader.onload = (event) => {
       const rawDataUrl = event.target.result;
 
       if (isImage) {
-        // Compress/downscale large screenshots so they fit cleanly in localStorage & Supabase JSON
         const img = new Image();
         img.onload = () => {
           const MAX_WIDTH = 1280;
@@ -91,9 +97,9 @@ export default function IssueModal({
             ...prev,
             attachmentName: fileName,
             hasAttachment: true,
-            attachmentUrl: compressedDataUrl,
             attachmentDataUrl: compressedDataUrl,
-            screenshot: compressedDataUrl
+            attachmentUrl: prev.cloudUrl || compressedDataUrl,
+            screenshot: prev.cloudUrl || compressedDataUrl
           }));
         };
         img.onerror = () => {
@@ -101,9 +107,9 @@ export default function IssueModal({
             ...prev,
             attachmentName: fileName,
             hasAttachment: true,
-            attachmentUrl: rawDataUrl,
             attachmentDataUrl: rawDataUrl,
-            screenshot: rawDataUrl
+            attachmentUrl: prev.cloudUrl || rawDataUrl,
+            screenshot: prev.cloudUrl || rawDataUrl
           }));
         };
         img.src = rawDataUrl;
@@ -112,22 +118,49 @@ export default function IssueModal({
           ...prev,
           attachmentName: fileName,
           hasAttachment: true,
-          attachmentUrl: rawDataUrl,
           attachmentDataUrl: rawDataUrl,
-          screenshot: rawDataUrl
+          attachmentUrl: prev.cloudUrl || rawDataUrl,
+          screenshot: prev.cloudUrl || rawDataUrl
         }));
       }
     };
     reader.readAsDataURL(file);
+
+    // 2. Upload file directly to Supabase Storage bucket for permanent public URL
+    try {
+      const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniquePath = `bugs/${Date.now()}_${cleanName}`;
+      
+      // Try bug-screenshots first, fallback to avatars
+      let res = await uploadFileToBucket('bug-screenshots', uniquePath, file);
+      if (!res.url) {
+        res = await uploadFileToBucket('avatars', uniquePath, file);
+      }
+
+      if (res.url) {
+        setFormData(prev => ({
+          ...prev,
+          cloudUrl: res.url,
+          attachmentUrl: res.url,
+          screenshot: res.url
+        }));
+      }
+    } catch (err) {
+      console.warn('Direct cloud screenshot upload fallback:', err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleRemoveAttachment = () => {
+    setIsUploading(false);
     setFormData(prev => ({
       ...prev,
       attachmentName: '',
       hasAttachment: false,
       attachmentUrl: null,
       attachmentDataUrl: null,
+      cloudUrl: null,
       screenshot: null
     }));
   };
@@ -144,7 +177,9 @@ export default function IssueModal({
       return;
     }
 
-    const fileData = formData.hasAttachment ? (formData.screenshot || formData.attachmentUrl || formData.attachmentDataUrl) : null;
+    // Always prefer permanent cloud HTTPS URL, fallback to high-res Base64
+    const fileData = formData.hasAttachment ? (formData.cloudUrl || formData.screenshot || formData.attachmentUrl || formData.attachmentDataUrl) : null;
+    const backupDataUrl = formData.hasAttachment ? (formData.attachmentDataUrl || fileData) : null;
     const fileName = formData.hasAttachment ? (formData.attachmentName || 'screenshot_defect_proof.png') : null;
 
     const newIssue = {
@@ -166,8 +201,9 @@ export default function IssueModal({
       attachment: fileName,
       attachmentName: fileName,
       attachmentUrl: fileData,
-      attachmentDataUrl: fileData,
-      screenshot: fileData
+      attachmentDataUrl: backupDataUrl,
+      screenshot: fileData,
+      cloudUrl: formData.cloudUrl || null
     };
 
     onAddIssue(newIssue);
@@ -333,26 +369,31 @@ export default function IssueModal({
             <label>Screenshot / Defect Proof Attachment</label>
             <div className="mock-upload-box-qa" style={{ position: 'relative' }}>
               <div className="upload-left">
-                {formData.hasAttachment ? (
+                {isUploading ? (
+                  <Loader2 size={20} color="#0A3D75" className="file-icon spin" style={{ animation: 'spin 1s linear infinite' }} />
+                ) : formData.hasAttachment ? (
                   <CheckCircle2 size={20} color="#10B981" className="file-icon" />
                 ) : (
                   <UploadCloud size={20} color="#0A3D75" className="file-icon" />
                 )}
                 <div className="upload-file-info">
-                  <span className="file-name">{formData.hasAttachment ? formData.attachmentName : 'No file chosen yet'}</span>
+                  <span className="file-name">
+                    {isUploading ? 'Uploading screenshot to cloud...' : formData.hasAttachment ? formData.attachmentName : 'No file chosen yet'}
+                  </span>
                   <span className="file-meta">
-                    {formData.hasAttachment ? '✓ File loaded and ready to attach' : 'Upload PNG, JPG or PDF screenshot'}
+                    {isUploading ? 'Storing in Supabase cloud storage...' : formData.hasAttachment ? '✓ Cloud screenshot attached' : 'Upload PNG, JPG or PDF screenshot'}
                   </span>
                 </div>
               </div>
               <label 
                 className="mock-change-file-btn"
-                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                style={{ cursor: isUploading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', opacity: isUploading ? 0.6 : 1 }}
               >
-                <span>{formData.hasAttachment ? 'Change File' : 'Browse File'}</span>
+                <span>{isUploading ? 'Uploading...' : formData.hasAttachment ? 'Change File' : 'Browse File'}</span>
                 <input 
                   type="file" 
                   accept="image/*,.pdf" 
+                  disabled={isUploading}
                   onChange={handleFileUpload} 
                   style={{ display: 'none' }} 
                 />
@@ -360,24 +401,30 @@ export default function IssueModal({
             </div>
 
             {/* Thumbnail Preview Box */}
-            {formData.hasAttachment && (formData.screenshot || formData.attachmentUrl) && (
+            {formData.hasAttachment && (formData.screenshot || formData.attachmentUrl || formData.attachmentDataUrl) && (
               <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '12px', background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                 <img 
-                  src={formData.screenshot || formData.attachmentUrl} 
+                  src={formData.screenshot || formData.attachmentUrl || formData.attachmentDataUrl} 
                   alt="Defect Proof Preview" 
                   style={{ width: '84px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #CBD5E1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                  onError={(e) => {
+                    if (formData.attachmentDataUrl && e.currentTarget.src !== formData.attachmentDataUrl) {
+                      e.currentTarget.src = formData.attachmentDataUrl;
+                    }
+                  }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {formData.attachmentName}
                   </div>
                   <div style={{ fontSize: '0.74rem', color: '#16A34A', fontWeight: 600, marginTop: '2px' }}>
-                    ✓ Screenshot proof attached (saved in high resolution)
+                    ✓ Screenshot proof attached (saved in cloud storage)
                   </div>
                 </div>
                 <button 
                   type="button" 
                   onClick={handleRemoveAttachment}
+                  disabled={isUploading}
                   style={{ background: '#FEE2E2', border: '1px solid #FECACA', color: '#DC2626', padding: '5px 10px', borderRadius: '5px', fontSize: '0.74rem', cursor: 'pointer', fontWeight: 700 }}
                 >
                   Remove
@@ -387,12 +434,12 @@ export default function IssueModal({
           </div>
 
           <div className="modal-footer-qa">
-            <button type="button" className="btn-cancel-qa" onClick={onClose}>
+            <button type="button" className="btn-cancel-qa" onClick={onClose} disabled={isUploading}>
               Cancel
             </button>
-            <button type="submit" className="btn-submit-qa btn-danger-action">
-              <AlertCircle size={16} />
-              <span>Add Issue & Mark Fail</span>
+            <button type="submit" className="btn-submit-qa btn-danger-action" disabled={isUploading}>
+              {isUploading ? <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} /> : <AlertCircle size={16} />}
+              <span>{isUploading ? 'Uploading Image...' : 'Add Issue & Mark Fail'}</span>
             </button>
           </div>
         </form>

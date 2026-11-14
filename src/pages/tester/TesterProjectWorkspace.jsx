@@ -1160,11 +1160,20 @@ export default function TesterProjectWorkspace({
                                 src={iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl} 
                                 alt="Defect Proof" 
                                 style={{ width: '80px', height: '52px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                                onError={(e) => {
+                                  if (iss.attachmentDataUrl && e.currentTarget.src !== iss.attachmentDataUrl) {
+                                    e.currentTarget.src = iss.attachmentDataUrl;
+                                  } else {
+                                    e.currentTarget.style.display = 'none';
+                                  }
+                                }}
                                 onClick={() => setPreviewDoc({
                                   name: iss.attachmentName || iss.attachment || `Defect_Screenshot_${iss.title || 'proof'}.png`,
                                   type: 'image/png',
                                   size: 'Defect Attachment',
                                   date: iss.date || 'Today',
+                                  url: iss.screenshot || iss.attachmentUrl,
+                                  cloudUrl: iss.cloudUrl || iss.screenshot,
                                   dataUrl: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl,
                                   fileData: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl
                                 })}
@@ -1622,12 +1631,24 @@ export default function TesterProjectWorkspace({
 
                 if (previewSrc && isImg) {
                   return (
-                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px' }}>
+                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px', minHeight: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       <img
                         src={previewSrc}
                         alt={previewDoc.name}
-                        style={{ maxWidth: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '4px' }}
+                        style={{ maxWidth: '100%', maxHeight: '520px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const errBox = document.getElementById('preview-img-err-tester');
+                          if (errBox) errBox.style.display = 'flex';
+                        }}
                       />
+                      <div id="preview-img-err-tester" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#F8FAFC', padding: '24px' }}>
+                        <AlertCircle size={36} color="#F59E0B" />
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Unable to load image preview</span>
+                        <span style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '380px', textAlign: 'center' }}>
+                          The screenshot reference was stored with an expired browser session. Please download or re-upload the proof.
+                        </span>
+                      </div>
                     </div>
                   );
                 }
@@ -1668,7 +1689,7 @@ export default function TesterProjectWorkspace({
               })()}
             </div>
 
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#FAFCFE' }}>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', background: '#FAFCFE', flexWrap: 'wrap' }}>
               <button 
                 type="button" 
                 onClick={() => setPreviewDoc(null)}
@@ -1677,6 +1698,24 @@ export default function TesterProjectWorkspace({
               >
                 Close Preview
               </button>
+              {(() => {
+                const previewSrc = getDocPreviewSource(previewDoc, project);
+                if (previewSrc && (previewSrc.startsWith('http://') || previewSrc.startsWith('https://'))) {
+                  return (
+                    <a
+                      href={previewSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-navy-action"
+                      style={{ background: '#EBF3FA', color: '#0A3D75', border: '1px solid #CBD5E1', padding: '8px 14px', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.82rem' }}
+                    >
+                      <ExternalLink size={14} />
+                      <span>Open Image in New Tab</span>
+                    </a>
+                  );
+                }
+                return null;
+              })()}
               <button 
                 type="button" 
                 onClick={() => handleDownloadDoc(previewDoc)}
@@ -1684,7 +1723,7 @@ export default function TesterProjectWorkspace({
                 style={{ padding: '8px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Download size={14} />
-                <span>Download Document</span>
+                <span>Download File</span>
               </button>
             </div>
           </div>

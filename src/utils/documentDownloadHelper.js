@@ -144,9 +144,13 @@ export function downloadProjectDocument(doc, project = {}, onToast) {
 
 export function getDocPreviewSource(doc, project = {}) {
   if (!doc) return null;
-  if (doc.dataUrl || doc.fileData || doc.url) {
-    return doc.dataUrl || doc.fileData || doc.url;
-  }
+  const candidates = [doc.url, doc.cloudUrl, doc.screenshot, doc.dataUrl, doc.fileData, doc.attachmentUrl].filter(Boolean);
+  
+  // Prefer permanent https://, http://, or base64 data: over ephemeral blob:
+  const permanent = candidates.find(u => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:')));
+  if (permanent) return permanent;
+  if (candidates.length > 0) return candidates[0];
+
   if (doc.name?.toLowerCase().endsWith('.pdf') || (doc.type && doc.type.toLowerCase().includes('pdf'))) {
     try {
       const blob = generateValidPdfBlob(doc.name, project);
