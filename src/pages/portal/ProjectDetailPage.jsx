@@ -42,13 +42,16 @@ import {
   getRevisionSource
 } from '../../utils/projectStatusUtils';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
+import { sendProjectSubmissionNotifications } from '../../services/emailService';
 import './ProjectDetailPage.css';
 
 export default function ProjectDetailPage({ 
   project, 
   onBack, 
   onUpdateProject, 
-  onNavigate 
+  onNavigate,
+  testers = [],
+  developers = []
 }) {
   const [activeTask, setActiveTask] = useState(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
@@ -448,15 +451,16 @@ export default function ProjectDetailPage({
       resolvedBy: project.developer || 'Developer'
     }));
 
-    onUpdateProject({
+    const nowIso = new Date().toISOString();
+    const submittedProject = {
       ...project,
       tasks: updatedTasks,
       testingIssues: resolvedIssues,
       issues: resolvedIssues,
       freelancerSubmitted: true,
-      freelancerSubmittedAt: new Date().toISOString(),
+      freelancerSubmittedAt: nowIso,
       developerSubmitted: true,
-      developerSubmittedAt: new Date().toISOString(),
+      developerSubmittedAt: nowIso,
       developerSubmission: 'Submitted',
       submittedDate: submissionDate,
       status: 'Submitted',
@@ -475,6 +479,7 @@ export default function ProjectDetailPage({
       driveLink: driveProjectLink.trim(),
       driveProjectLink: driveProjectLink.trim(),
       submissionData: submissionData,
+      lastSubmissionEmailSentAt: nowIso,
       testingActivity: [
         {
           event: hasReworkRequested ? `Project resubmitted by Developer for QA review (Defects resolved)` : `Project submitted by Developer for QA review`,
@@ -483,9 +488,29 @@ export default function ProjectDetailPage({
         },
         ...(project.testingActivity || [])
       ]
-    });
+    };
+
+    onUpdateProject(submittedProject);
     setIsSubmissionModalOpen(false);
-    showToast(hasReworkRequested ? '🎉 Project resubmitted successfully for QA testing!' : '🎉 Project submitted successfully! Submission is now locked for QA review.');
+    showToast(hasReworkRequested ? '🎉 Project resubmitted! Dispatching notices to QA Tester & Admin from project@dsprogram.space...' : '🎉 Project submitted! Dispatching notices to QA Tester & Admin from project@dsprogram.space...');
+
+    // Asynchronously dispatch project completion & submission emails to QA Tester and Admin via project@dsprogram.space
+    sendProjectSubmissionNotifications({
+      project: submittedProject,
+      isResubmission: hasReworkRequested,
+      testers,
+      developers
+    }).then(res => {
+      const testerOk = res?.tester?.success;
+      const adminOk = res?.admin?.success;
+      if (testerOk && adminOk) {
+        showToast('✓ Submission emails sent to QA Tester & Admin from project@dsprogram.space', 5500);
+      } else if (testerOk || adminOk) {
+        showToast(`✓ Submission email sent to ${testerOk ? 'QA Tester' : 'Admin'} from project@dsprogram.space`, 5500);
+      }
+    }).catch(err => {
+      console.error('[Project Mailer] Failed to dispatch submission emails:', err);
+    });
   };
 
   return (

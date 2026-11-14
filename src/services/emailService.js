@@ -3008,3 +3008,596 @@ export async function checkAndDispatchDeadlineWarnings({
     updatedProjects
   };
 }
+
+/**
+ * Resolves the official Master Admin notification email address.
+ * Prioritizes custom environment variables, saved admin profile, or default 'dahejsupport@gmail.com'.
+ */
+export function getAdminNotificationEmail() {
+  try {
+    const custom = (
+      (typeof process !== 'undefined' && (process.env?.ADMIN_EMAIL || process.env?.VITE_ADMIN_EMAIL)) ||
+      (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_ADMIN_EMAIL || import.meta.env?.ADMIN_EMAIL))
+    );
+    if (custom && String(custom).includes('@')) return String(custom).trim().toLowerCase();
+
+    if (typeof localStorage !== 'undefined') {
+      const storedAdmin = localStorage.getItem('dahej_admin_profile');
+      if (storedAdmin) {
+        const parsed = JSON.parse(storedAdmin);
+        if (parsed?.email && String(parsed.email).includes('@')) {
+          return String(parsed.email).trim().toLowerCase();
+        }
+      }
+    }
+  } catch (e) {}
+  return 'dahejsupport@gmail.com';
+}
+
+/**
+ * Builds responsive HTML email to notify QA Tester that Developer completed 100% of the project and submitted it.
+ * Dispatched from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export function buildDeveloperSubmittedTesterEmailHtml({
+  project = {},
+  testerName = '',
+  submissionDate = '',
+  isResubmission = false
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Project';
+  const projectId = project?.id || 'DS-PROJ';
+  const devName = project?.developer || 'Developer';
+  const devId = project?.developerId ? ` (${project.developerId})` : '';
+  const devEmail = project?.developerEmail ? ` &bull; ${project.developerEmail}` : '';
+  const dateStr = submissionDate || project?.submittedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const liveUrl = (project?.liveLink || project?.liveProjectLink || '').trim();
+  const driveUrl = (project?.driveLink || project?.driveProjectLink || '').trim();
+  const qaDeadline = project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled';
+  const qaPayout = project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length > 0 ? project.tasks : [];
+  const totalTasks = tasks.length || 5;
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length || totalTasks;
+  const credsCount = Array.isArray(project?.credentials) ? project.credentials.length : 0;
+
+  const tasksHtml = tasks.length > 0
+    ? tasks.map((t, idx) => `
+      <tr>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || 'Milestone Task'}
+          ${t.desc ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc}</div>` : ''}
+          ${(t.notes || t.developerNotes || t.freelancerNotes) ? `<div style="font-size: 11px; color: #0369A1; font-weight: 500; margin-top: 3px; background: #F0F9FF; padding: 3px 6px; border-radius: 4px; border-left: 2px solid #0284C7;">Dev Note: ${t.notes || t.developerNotes || t.freelancerNotes}</div>` : ''}
+        </td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #059669; font-size: 12px; font-weight: 800; white-space: nowrap;">✓ 100% Done</td>
+      </tr>
+    `).join('')
+    : '';
+
+  const badgeText = isResubmission
+    ? '🔄 DEVELOPER RESUBMISSION &bull; QA REWORK READY'
+    : '🎉 DEVELOPER COMPLETED 100% &bull; READY FOR QA';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Developer Completed Project: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #064E3B 0%, #065F46 50%, #0A3D75 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #34D399;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #A7F3D0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Quality Assurance &bull; Project Delivery Dispatch
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ${badgeText}
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${testerName || 'QA Specialist'}</strong>,<br>
+                Developer <strong>${devName}${devId}</strong> has successfully completed 100% of the milestone deliverables and submitted <strong>${projectName} [${projectId}]</strong> for your formal quality inspection and verification checklist audit.
+              </p>
+
+              <!-- Submission Snapshot Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #065F46; margin-bottom: 10px;">
+                      Developer Submission Summary
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 170px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Completed By Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${devName}${devEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Submission Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${dateStr}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer Progress:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800;">100% Completed (${completedTasks} / ${totalTasks} Tasks)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Testing Deadline:</td>
+                        <td style="padding: 6px 0; color: #B45309; font-weight: 800;">${qaDeadline}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Payout:</td>
+                        <td style="padding: 6px 0; color: #047857; font-weight: 800;">${qaPayout}</td>
+                      </tr>
+                      ${liveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Live Application URL:</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${liveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${liveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      ${driveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Source Archive (Drive ZIP):</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${driveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${driveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Credentials Attached:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${credsCount} credential(s) recorded in workspace</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Milestone Tasks Breakdown -->
+              ${tasksHtml ? `
+              <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-bottom: 8px;">
+                Completed Milestone Deliverables (${tasks.length})
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 22px;">
+                <tr style="background-color: #F1F5F9;">
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">#</th>
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Deliverable &amp; Notes</th>
+                  <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Status</th>
+                </tr>
+                ${tasksHtml}
+              </table>` : ''}
+
+              <!-- Instruction Callout -->
+              <div style="background-color: #F0FDF4; border-left: 4px solid #10B981; padding: 14px 16px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #166534;">
+                  <strong>Action Required:</strong> Please log in to your QA Tester Workspace to test the live deployment, verify responsiveness, inspect source code, and complete your verification checklist. You may pass checklist items or log defects if revisions are needed.
+                </p>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="https://www.dsprogram.space/freelancer-login?role=tester" style="display: inline-block; padding: 14px 34px; background-color: #059669; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+                      Open QA Workspace &amp; Start Testing &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Project Operations Desk
+              </p>
+              <p style="margin: 0;">
+                Project Operations Mailer &bull; Sent from <strong style="color: #065F46;">project@dsprogram.space</strong><br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Builds responsive HTML email to notify Admin that Developer completed 100% of the project and submitted it for QA.
+ * Dispatched from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export function buildDeveloperSubmittedAdminEmailHtml({
+  project = {},
+  adminName = 'Master Admin',
+  submissionDate = '',
+  isResubmission = false
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Project';
+  const projectId = project?.id || 'DS-PROJ';
+  const devName = project?.developer || 'Developer';
+  const devId = project?.developerId ? ` (${project.developerId})` : '';
+  const devEmail = project?.developerEmail ? ` &bull; ${project.developerEmail}` : '';
+  const testerName = project?.tester || 'QA Specialist';
+  const testerEmail = project?.testerEmail ? ` &bull; ${project.testerEmail}` : '';
+  const dateStr = submissionDate || project?.submittedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const liveUrl = (project?.liveLink || project?.liveProjectLink || '').trim();
+  const driveUrl = (project?.driveLink || project?.driveProjectLink || '').trim();
+  const devPayout = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+  const qaDeadline = project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled';
+
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length > 0 ? project.tasks : [];
+  const totalTasks = tasks.length || 5;
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length || totalTasks;
+  const credsCount = Array.isArray(project?.credentials) ? project.credentials.length : 0;
+
+  const tasksHtml = tasks.length > 0
+    ? tasks.map((t, idx) => `
+      <tr>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || 'Milestone Task'}
+          ${t.desc ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc}</div>` : ''}
+          ${(t.notes || t.developerNotes || t.freelancerNotes) ? `<div style="font-size: 11px; color: #0369A1; font-weight: 500; margin-top: 3px; background: #F0F9FF; padding: 3px 6px; border-radius: 4px; border-left: 2px solid #0284C7;">Dev Note: ${t.notes || t.developerNotes || t.freelancerNotes}</div>` : ''}
+        </td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #0F3E6D; font-size: 12px; font-weight: 800; white-space: nowrap;">✓ 100% Done</td>
+      </tr>
+    `).join('')
+    : '';
+
+  const badgeText = isResubmission
+    ? '🔄 DEVELOPER RESUBMITTED &bull; QA TESTING IN PROGRESS'
+    : '🚀 DEVELOPER COMPLETED 100% &bull; SUBMITTED FOR QA';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Developer Completed Project: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #1E40AF 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Operations &bull; Project Completion Dispatch
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ${badgeText}
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${adminName || 'Admin Team'}</strong>,<br>
+                Developer <strong>${devName}${devId}</strong> has completed 100% of the project tasks and officially submitted <strong>${projectName} [${projectId}]</strong>. The project has moved into the <strong>Under Review / QA Testing</strong> phase, and assigned QA Tester <strong>${testerName}</strong> has been notified to commence testing.
+              </p>
+
+              <!-- Submission Snapshot Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0F3E6D; margin-bottom: 10px;">
+                      Project Submission Breakdown
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 175px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${devName}${devEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned QA Specialist:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${testerName}${testerEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Submission Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${dateStr}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Work Progress:</td>
+                        <td style="padding: 6px 0; color: #16A34A; font-weight: 800;">100% Complete (${completedTasks} / ${totalTasks} Tasks)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer Payout:</td>
+                        <td style="padding: 6px 0; color: #0F3E6D; font-weight: 800;">${devPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Deadline:</td>
+                        <td style="padding: 6px 0; color: #B45309; font-weight: 800;">${qaDeadline}</td>
+                      </tr>
+                      ${liveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Live Application Deployment:</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${liveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${liveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      ${driveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Source Archive (Drive ZIP):</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${driveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${driveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project Credentials:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${credsCount} credential(s) recorded</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Milestone Tasks Breakdown -->
+              ${tasksHtml ? `
+              <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-bottom: 8px;">
+                Completed Deliverables Overview (${tasks.length})
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 22px;">
+                <tr style="background-color: #F1F5F9;">
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">#</th>
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Deliverable &amp; Notes</th>
+                  <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Status</th>
+                </tr>
+                ${tasksHtml}
+              </table>` : ''}
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="https://www.dsprogram.space/admin-login" style="display: inline-block; padding: 14px 34px; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(15, 62, 109, 0.25);">
+                      Open Admin Project Workspace &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Official Project Channel &bull; Dispatched from <strong style="color: #0F3E6D;">project@dsprogram.space</strong><br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends Developer Project Submission notification to assigned QA Tester from project@dsprogram.space.
+ */
+export async function sendDeveloperSubmissionTesterEmail({
+  project,
+  tester = null,
+  isResubmission = false
+}) {
+  const cleanEmail = (project?.testerEmail || tester?.email || tester?.emailAddress || '').trim().toLowerCase();
+  const cleanName = (project?.tester || tester?.name || tester?.fullName || 'QA Tester').trim();
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn('[Project Mailer] Skipping QA tester submission email: no tester email found.');
+    return { success: false, error: 'QA Tester email missing' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = project?.developer || 'Developer';
+  const submissionDate = project?.submittedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const htmlContent = buildDeveloperSubmittedTesterEmailHtml({
+    project,
+    testerName: cleanName,
+    submissionDate,
+    isResubmission
+  });
+
+  const subject = isResubmission
+    ? `[Project Resubmitted for QA] ${projectName} (${projectId}) — Rework Completed by ${devName}`
+    : `[Project Completed & Ready for QA] ${projectName} (${projectId}) — Submitted by ${devName}`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Developer ${devName} has completed 100% of the project tasks and submitted "${projectName}" (${projectId}) for QA verification.\n\n` +
+    `Submission Date: ${submissionDate}\n` +
+    `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
+    `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n` +
+    `QA Deadline: ${project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled'}\n` +
+    `QA Payout: ${project?.testerPayment || project?.testerPayout || 'As agreed'}\n\n` +
+    `Please log in to your QA Tester Workspace at https://www.dsprogram.space/freelancer-login?role=tester to inspect deliverables and begin checklist audit.\n\n` +
+    `Regards,\nDahej Support Project Operations (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Tester submission email failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Sends Developer Project Submission notification to Admin from project@dsprogram.space.
+ */
+export async function sendDeveloperSubmissionAdminEmail({
+  project,
+  adminEmail = null,
+  isResubmission = false
+}) {
+  const cleanEmail = (adminEmail || getAdminNotificationEmail()).trim().toLowerCase();
+  const cleanName = 'Master Admin';
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = project?.developer || 'Developer';
+  const submissionDate = project?.submittedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const htmlContent = buildDeveloperSubmittedAdminEmailHtml({
+    project,
+    adminName: cleanName,
+    submissionDate,
+    isResubmission
+  });
+
+  const subject = isResubmission
+    ? `[Project Resubmitted by Developer] ${projectName} (${projectId}) — Handed over for QA Review`
+    : `[Project Completed by Developer] ${projectName} (${projectId}) — Submitted for QA Review`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Developer ${devName} has completed 100% of the milestone tasks for "${projectName}" (${projectId}) and submitted the project deliverables.\n\n` +
+    `Submission Date: ${submissionDate}\n` +
+    `Assigned QA Specialist: ${project?.tester || 'QA Specialist'} (${project?.testerEmail || ''})\n` +
+    `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
+    `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n` +
+    `Developer Payout: ${project?.developerPayment || project?.freelancerPayout || 'As agreed'}\n\n` +
+    `The QA Tester has been notified to begin checklist testing.\n` +
+    `Review project details at: https://www.dsprogram.space/admin-login\n\n` +
+    `Regards,\nDahej Support Project Operations (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Admin submission email failed (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches Developer Submission notification emails to BOTH assigned QA Tester and Admin.
+ * Sent from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export async function sendProjectSubmissionNotifications({
+  project,
+  isResubmission = false,
+  developers = [],
+  testers = [],
+  adminEmail = null
+}) {
+  if (!project) return { tester: null, admin: null };
+
+  const testerMatch = Array.isArray(testers)
+    ? testers.find(
+        (t) =>
+          t &&
+          ((project.testerId &&
+            (t.id || t.testerId) &&
+            String(t.id || t.testerId).toLowerCase() === String(project.testerId).toLowerCase()) ||
+            (project.tester &&
+              (t.name || t.fullName) &&
+              String(t.name || t.fullName).toLowerCase() === String(project.tester).toLowerCase()))
+      )
+    : null;
+
+  const resolvedTesterEmail = (project.testerEmail || testerMatch?.email || testerMatch?.emailAddress || '').trim();
+  const projectWithTesterEmail = {
+    ...project,
+    testerEmail: resolvedTesterEmail || project.testerEmail
+  };
+
+  const [testerRes, adminRes] = await Promise.allSettled([
+    sendDeveloperSubmissionTesterEmail({
+      project: projectWithTesterEmail,
+      tester: testerMatch,
+      isResubmission
+    }),
+    sendDeveloperSubmissionAdminEmail({
+      project: projectWithTesterEmail,
+      adminEmail,
+      isResubmission
+    })
+  ]);
+
+  return {
+    tester: testerRes.status === 'fulfilled' ? testerRes.value : { success: false, error: testerRes.reason?.message },
+    admin: adminRes.status === 'fulfilled' ? adminRes.value : { success: false, error: adminRes.reason?.message }
+  };
+}

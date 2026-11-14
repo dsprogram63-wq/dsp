@@ -70,7 +70,12 @@ import {
   isProjectAssignedToTester,
   toTesterSafeProject 
 } from './services/testerApiService';
-import { saveMemberPassword, removeMemberPassword, sendProjectAssignmentNotifications } from './services/emailService';
+import { 
+  saveMemberPassword, 
+  removeMemberPassword, 
+  sendProjectAssignmentNotifications,
+  sendProjectSubmissionNotifications 
+} from './services/emailService';
 import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
 export default function App() {
@@ -627,6 +632,37 @@ export default function App() {
     } catch (e) {}
 
     saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
+
+    // Dispatch submission notification emails to QA Tester & Admin from project@dsprogram.space
+    const wasSubmitted = Boolean(
+      prevProj?.developerSubmitted === true ||
+      prevProj?.freelancerSubmitted === true ||
+      prevProj?.developerSubmission === 'Submitted' ||
+      prevProj?.status === 'Submitted'
+    );
+    const isNowSubmitted = Boolean(
+      mergedProj?.developerSubmitted === true ||
+      mergedProj?.freelancerSubmitted === true ||
+      mergedProj?.developerSubmission === 'Submitted' ||
+      mergedProj?.status === 'Submitted'
+    );
+    const isNewSubmission = isNowSubmitted && (!wasSubmitted || prevProj?.status === 'Revision Required');
+    const recentlySent = Boolean(
+      mergedProj?.lastSubmissionEmailSentAt &&
+      Date.now() - new Date(mergedProj.lastSubmissionEmailSentAt).getTime() < 15000
+    );
+
+    if (isNewSubmission && !recentlySent) {
+      mergedProj.lastSubmissionEmailSentAt = new Date().toISOString();
+      sendProjectSubmissionNotifications({
+        project: mergedProj,
+        isResubmission: prevProj?.status === 'Revision Required',
+        developers,
+        testers
+      }).catch((err) => {
+        console.error('[Project Mailer] Auto submission notification error:', err);
+      });
+    }
   };
 
   // Tester project update (syncs to master projects list with strict ownership validation)
@@ -2378,6 +2414,8 @@ export default function App() {
             onBack={() => navigateTo('projects')}
             onUpdateProject={handleUpdateProject}
             onNavigate={navigateTo}
+            testers={testers}
+            developers={developers}
           />
         )}
       </PortalLayout>
