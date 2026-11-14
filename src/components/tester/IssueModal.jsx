@@ -19,9 +19,11 @@ export default function IssueModal({
     relatedTaskId: relatedTaskId || null,
     expectedResult: '',
     actualResult: '',
-    attachmentName: 'screenshot_bug_report.png',
+    attachmentName: '',
     hasAttachment: false,
-    attachmentUrl: null
+    attachmentUrl: null,
+    attachmentDataUrl: null,
+    screenshot: null
   });
 
   useEffect(() => {
@@ -35,9 +37,11 @@ export default function IssueModal({
         relatedTaskId: relatedTaskId || null,
         expectedResult: '',
         actualResult: '',
-        attachmentName: 'screenshot_bug_report.png',
+        attachmentName: '',
         hasAttachment: false,
-        attachmentUrl: null
+        attachmentUrl: null,
+        attachmentDataUrl: null,
+        screenshot: null
       });
     }
   }, [isOpen, checklistTitle, relatedTaskDefault, relatedTaskId]);
@@ -46,15 +50,86 @@ export default function IssueModal({
 
   const handleFileUpload = (e) => {
     const file = e.target.files && e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setFormData(prev => ({
-        ...prev,
-        attachmentName: file.name,
-        hasAttachment: true,
-        attachmentUrl: url
-      }));
-    }
+    if (!file) return;
+
+    const fileName = file.name;
+    const isImage = file.type.startsWith('image/');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target.result;
+
+      if (isImage) {
+        // Compress/downscale large screenshots so they fit cleanly in localStorage & Supabase JSON
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1280;
+          const MAX_HEIGHT = 1280;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            if (width > height) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            } else {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const compressedDataUrl = canvas.toDataURL(outputType, 0.85);
+
+          setFormData(prev => ({
+            ...prev,
+            attachmentName: fileName,
+            hasAttachment: true,
+            attachmentUrl: compressedDataUrl,
+            attachmentDataUrl: compressedDataUrl,
+            screenshot: compressedDataUrl
+          }));
+        };
+        img.onerror = () => {
+          setFormData(prev => ({
+            ...prev,
+            attachmentName: fileName,
+            hasAttachment: true,
+            attachmentUrl: rawDataUrl,
+            attachmentDataUrl: rawDataUrl,
+            screenshot: rawDataUrl
+          }));
+        };
+        img.src = rawDataUrl;
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          attachmentName: fileName,
+          hasAttachment: true,
+          attachmentUrl: rawDataUrl,
+          attachmentDataUrl: rawDataUrl,
+          screenshot: rawDataUrl
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAttachment = () => {
+    setFormData(prev => ({
+      ...prev,
+      attachmentName: '',
+      hasAttachment: false,
+      attachmentUrl: null,
+      attachmentDataUrl: null,
+      screenshot: null
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -68,6 +143,9 @@ export default function IssueModal({
       alert('Please fill in all mandatory fields: Issue Title, Detailed Bug Description, Expected Result, and Actual Result.');
       return;
     }
+
+    const fileData = formData.hasAttachment ? (formData.screenshot || formData.attachmentUrl || formData.attachmentDataUrl) : null;
+    const fileName = formData.hasAttachment ? (formData.attachmentName || 'screenshot_defect_proof.png') : null;
 
     const newIssue = {
       id: `iss-${Date.now().toString().slice(-4)}`,
@@ -83,8 +161,13 @@ export default function IssueModal({
       actualResult: formData.actualResult.trim(),
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Open',
-      attachment: formData.hasAttachment ? formData.attachmentName : null,
-      attachmentUrl: formData.attachmentUrl || null
+      reporter: 'Tester',
+      // Multi-format compatibility ensuring all roles & components access the screenshot
+      attachment: fileName,
+      attachmentName: fileName,
+      attachmentUrl: fileData,
+      attachmentDataUrl: fileData,
+      screenshot: fileData
     };
 
     onAddIssue(newIssue);
@@ -258,7 +341,7 @@ export default function IssueModal({
                 <div className="upload-file-info">
                   <span className="file-name">{formData.hasAttachment ? formData.attachmentName : 'No file chosen yet'}</span>
                   <span className="file-meta">
-                    {formData.hasAttachment ? 'Ready for attachment' : 'Upload PNG, JPG or PDF screenshot'}
+                    {formData.hasAttachment ? '✓ File loaded and ready to attach' : 'Upload PNG, JPG or PDF screenshot'}
                   </span>
                 </div>
               </div>
@@ -275,6 +358,32 @@ export default function IssueModal({
                 />
               </label>
             </div>
+
+            {/* Thumbnail Preview Box */}
+            {formData.hasAttachment && (formData.screenshot || formData.attachmentUrl) && (
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '12px', background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <img 
+                  src={formData.screenshot || formData.attachmentUrl} 
+                  alt="Defect Proof Preview" 
+                  style={{ width: '84px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #CBD5E1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {formData.attachmentName}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#16A34A', fontWeight: 600, marginTop: '2px' }}>
+                    ✓ Screenshot proof attached (saved in high resolution)
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={handleRemoveAttachment}
+                  style={{ background: '#FEE2E2', border: '1px solid #FECACA', color: '#DC2626', padding: '5px 10px', borderRadius: '5px', fontSize: '0.74rem', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="modal-footer-qa">

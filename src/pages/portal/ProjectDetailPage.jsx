@@ -23,6 +23,7 @@ import {
   Info,
   X,
   Link as LinkIcon,
+  Image as ImageIcon,
   Trash2
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
@@ -680,6 +681,78 @@ export default function ProjectDetailPage({
                           <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
                         </div>
                       </div>
+
+                      {/* Defect Screenshot / Proof Preview in Developer Revision Banner */}
+                      {(() => {
+                        const bannerScreenshot = primaryIssue.screenshot || primaryIssue.attachmentUrl || primaryIssue.attachmentDataUrl;
+                        if (!bannerScreenshot) return null;
+                        const fileName = primaryIssue.attachmentName || primaryIssue.attachment || 'Defect_Screenshot.png';
+                        return (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <ImageIcon size={14} color="#DC2626" />
+                              <span>Defect Proof Screenshot (Uploaded by QA Tester):</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <img 
+                                src={bannerScreenshot} 
+                                alt="Defect Screenshot" 
+                                style={{ 
+                                  maxHeight: '120px', 
+                                  maxWidth: '220px', 
+                                  objectFit: 'cover', 
+                                  borderRadius: '6px', 
+                                  border: '2px solid #CBD5E1', 
+                                  cursor: 'pointer',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                }}
+                                title="Click to view full screenshot in high resolution"
+                                onClick={() => setPreviewDoc({
+                                  name: fileName,
+                                  type: 'image/png',
+                                  size: 'Defect Attachment',
+                                  date: primaryIssue.date || 'Recent',
+                                  dataUrl: bannerScreenshot,
+                                  fileData: bannerScreenshot
+                                })}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDoc({
+                                    name: fileName,
+                                    type: 'image/png',
+                                    size: 'Defect Attachment',
+                                    date: primaryIssue.date || 'Recent',
+                                    dataUrl: bannerScreenshot,
+                                    fileData: bannerScreenshot
+                                  })}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 12px',
+                                    background: '#FFFFFF',
+                                    border: '1px solid #CBD5E1',
+                                    borderRadius: '6px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: '#0A3D75',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                >
+                                  <Eye size={14} />
+                                  <span>View Full Screenshot</span>
+                                </button>
+                                <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                  {fileName} • Click thumbnail to inspect bug proof
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -1166,25 +1239,55 @@ export default function ProjectDetailPage({
                     </div>
                   </div>
 
-                  {issue.screenshot && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', marginBottom: '10px' }}>
-                      <img 
-                        src={issue.screenshot} 
-                        alt={issue.title} 
-                        style={{ maxHeight: '120px', borderRadius: '6px', border: '1px solid #CBD5E1', objectFit: 'cover', cursor: 'pointer' }}
-                        onClick={() => setPreviewDoc({ name: `Defect Screenshot: ${issue.title}`, type: 'Image', size: 'Defect Attachment', date: issue.date || 'Today' })}
-                      />
-                      <button
-                        type="button"
-                        className="btn-doc-action"
-                        style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={() => setPreviewDoc({ name: `Defect Screenshot: ${issue.title}`, type: 'Image', size: 'Defect Attachment', date: issue.date || 'Today' })}
-                      >
-                        <Eye size={14} />
-                        <span>View Screenshot</span>
-                      </button>
-                    </div>
-                  )}
+                  {/* Defect Screenshot / Proof Attachment */}
+                  {(() => {
+                    const issueScreenshot = issue.screenshot || issue.attachmentUrl || issue.attachmentDataUrl;
+                    if (!issueScreenshot) return null;
+                    const fileName = issue.attachmentName || issue.attachment || `Defect_Screenshot_${issue.title || 'proof'}.png`;
+                    return (
+                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: isResolved ? '1px dashed #BBF7D0' : '1px dashed #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <img 
+                            src={issueScreenshot} 
+                            alt={issue.title} 
+                            style={{ width: '80px', height: '52px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                            onClick={() => setPreviewDoc({ 
+                              name: fileName, 
+                              type: 'image/png', 
+                              size: 'Defect Attachment', 
+                              date: issue.date || 'Today',
+                              dataUrl: issueScreenshot,
+                              fileData: issueScreenshot
+                            })}
+                          />
+                          <div>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>
+                              {fileName}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                              Attached by QA Tester • Click to zoom
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-doc-action"
+                          style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#0A3D75' }}
+                          onClick={() => setPreviewDoc({ 
+                            name: fileName, 
+                            type: 'image/png', 
+                            size: 'Defect Attachment', 
+                            date: issue.date || 'Today',
+                            dataUrl: issueScreenshot,
+                            fileData: issueScreenshot
+                          })}
+                        >
+                          <Eye size={14} />
+                          <span>View Screenshot</span>
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {/* Resolve Action Button on Unresolved Defect Cards */}
                   {!isResolved && (

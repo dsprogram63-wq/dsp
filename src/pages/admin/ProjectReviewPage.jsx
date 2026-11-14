@@ -20,7 +20,9 @@ import {
   ExternalLink,
   Calendar,
   Trash2,
-  Globe
+  Globe,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import RevisionModal from '../../components/admin/RevisionModal';
@@ -28,6 +30,7 @@ import ApproveModal from '../../components/admin/ApproveModal';
 import EmptyState from '../../components/portal/EmptyState';
 import { getRevisionSource } from '../../utils/projectStatusUtils';
 import { sendProjectRevisionNoticeEmail } from '../../services/emailService';
+import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
 import './ProjectReviewPage.css';
 
 export default function ProjectReviewPage({ 
@@ -40,6 +43,16 @@ export default function ProjectReviewPage({
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleDownloadDoc = (doc) => {
+    downloadProjectDocument(doc, project, showToast);
+  };
 
   if (!project) {
     return (
@@ -54,11 +67,6 @@ export default function ProjectReviewPage({
       </div>
     );
   }
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
   const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
@@ -343,6 +351,78 @@ export default function ProjectReviewPage({
                             <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
                           </div>
                         </div>
+
+                        {/* Defect Screenshot / Proof Preview in Review Banner */}
+                        {(() => {
+                          const bannerScreenshot = primaryIssue.screenshot || primaryIssue.attachmentUrl || primaryIssue.attachmentDataUrl;
+                          if (!bannerScreenshot) return null;
+                          const fileName = primaryIssue.attachmentName || primaryIssue.attachment || 'Defect_Screenshot.png';
+                          return (
+                            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <ImageIcon size={14} color="#DC2626" />
+                                <span>Defect Proof Screenshot (Uploaded by QA Tester):</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                <img 
+                                  src={bannerScreenshot} 
+                                  alt="Defect Screenshot" 
+                                  style={{ 
+                                    maxHeight: '120px', 
+                                    maxWidth: '220px', 
+                                    objectFit: 'cover', 
+                                    borderRadius: '6px', 
+                                    border: '2px solid #CBD5E1', 
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                  }}
+                                  title="Click to view full screenshot in high resolution"
+                                  onClick={() => setPreviewDoc({
+                                    name: fileName,
+                                    type: 'image/png',
+                                    size: 'Defect Attachment',
+                                    date: primaryIssue.date || 'Recent',
+                                    dataUrl: bannerScreenshot,
+                                    fileData: bannerScreenshot
+                                  })}
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewDoc({
+                                      name: fileName,
+                                      type: 'image/png',
+                                      size: 'Defect Attachment',
+                                      date: primaryIssue.date || 'Recent',
+                                      dataUrl: bannerScreenshot,
+                                      fileData: bannerScreenshot
+                                    })}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      padding: '6px 12px',
+                                      background: '#FFFFFF',
+                                      border: '1px solid #CBD5E1',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      color: '#0A3D75',
+                                      cursor: 'pointer',
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                    }}
+                                  >
+                                    <Eye size={14} />
+                                    <span>View Full Screenshot</span>
+                                  </button>
+                                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                    {fileName} • Click thumbnail to open lightbox
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -804,6 +884,115 @@ export default function ProjectReviewPage({
         onClose={() => setIsApproveModalOpen(false)}
         onApprove={handleApproveProject}
       />
+
+      {/* Screenshot / Document Preview Modal Lightbox */}
+      {previewDoc && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(7, 34, 61, 0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: (previewDoc.dataUrl || previewDoc.fileData) ? '840px' : '640px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '14px',
+              borderTop: '4px solid #0A3D75',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FAFCFE' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#EBF3FA', color: '#0A3D75', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ImageIcon size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0A3D75' }}>{previewDoc.name}</h3>
+                  <span style={{ fontSize: '0.76rem', color: '#64748B' }}>{previewDoc.type || 'Document'} • {previewDoc.size}</span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setPreviewDoc(null)}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 24px', maxHeight: '560px', overflowY: 'auto' }}>
+              {(() => {
+                const previewSrc = getDocPreviewSource(previewDoc, project);
+                const isPdf = previewDoc.name?.toLowerCase().endsWith('.pdf') || (previewDoc.type && previewDoc.type.toLowerCase().includes('pdf'));
+                const isImg = previewDoc.name?.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i) || (previewDoc.type && previewDoc.type.toLowerCase().includes('image'));
+
+                if (previewSrc && isPdf) {
+                  return (
+                    <div style={{ width: '100%', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                      <iframe
+                        src={previewSrc}
+                        title={previewDoc.name}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                      />
+                    </div>
+                  );
+                }
+
+                if (previewSrc && isImg) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px' }}>
+                      <img
+                        src={previewSrc}
+                        alt={previewDoc.name}
+                        style={{ maxWidth: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '4px' }}
+                      />
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ background: '#F8FAFC', padding: '18px', borderRadius: '8px', border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: '0.84rem', color: '#334155', lineHeight: 1.6 }}>
+                    <div><strong>Document File:</strong> {previewDoc.name}</div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#FAFCFE' }}>
+              <button 
+                type="button" 
+                onClick={() => setPreviewDoc(null)}
+                className="btn btn-navy-action"
+                style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Close Preview
+              </button>
+              <button 
+                type="button" 
+                onClick={() => handleDownloadDoc(previewDoc)}
+                className="btn btn-orange-primary"
+                style={{ padding: '8px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Download size={14} />
+                <span>Download Screenshot</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

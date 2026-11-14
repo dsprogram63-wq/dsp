@@ -1150,14 +1150,69 @@ export default function TesterProjectWorkspace({
                       </div>
                     )}
 
-                    {/* Attachment / Footer Row */}
-                    {iss.attachment && (
-                      <div className="qa-defect-footer">
-                        <div className="qa-attachment-box">
-                          <FileText size={14} color="#0A3D75" />
-                          <span className="attachment-name">{iss.attachment}</span>
-                          <span className="attachment-badge">Attached Screenshot / Proof</span>
-                        </div>
+                    {/* Attachment / Screenshot Footer Row */}
+                    {(iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl || iss.attachment) && (
+                      <div className="qa-defect-footer" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
+                        {(iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl) ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <img 
+                                src={iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl} 
+                                alt="Defect Proof" 
+                                style={{ width: '80px', height: '52px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                                onClick={() => setPreviewDoc({
+                                  name: iss.attachmentName || iss.attachment || `Defect_Screenshot_${iss.title || 'proof'}.png`,
+                                  type: 'image/png',
+                                  size: 'Defect Attachment',
+                                  date: iss.date || 'Today',
+                                  dataUrl: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl,
+                                  fileData: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl
+                                })}
+                              />
+                              <div>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>
+                                  {iss.attachmentName || iss.attachment || 'Defect Proof Screenshot'}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                  Attached by QA Tester • Click to zoom
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '5px', 
+                                fontSize: '0.74rem', 
+                                fontWeight: 700, 
+                                color: '#0A3D75', 
+                                background: '#FFFFFF', 
+                                border: '1px solid #CBD5E1', 
+                                borderRadius: '5px', 
+                                padding: '5px 10px', 
+                                cursor: 'pointer' 
+                              }}
+                              onClick={() => setPreviewDoc({
+                                name: iss.attachmentName || iss.attachment || `Defect_Screenshot_${iss.title || 'proof'}.png`,
+                                type: 'image/png',
+                                size: 'Defect Attachment',
+                                date: iss.date || 'Today',
+                                dataUrl: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl,
+                                fileData: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl
+                              })}
+                            >
+                              <Eye size={13} />
+                              <span>View Screenshot</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="qa-attachment-box">
+                            <FileText size={14} color="#0A3D75" />
+                            <span className="attachment-name">{iss.attachment}</span>
+                            <span className="attachment-badge">Attached Screenshot / Proof</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
