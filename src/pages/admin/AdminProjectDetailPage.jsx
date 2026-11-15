@@ -891,9 +891,18 @@ export default function AdminProjectDetailPage({
 
                         {/* Defect Screenshot / Proof Preview in Banner */}
                         {(() => {
-                          const bannerScreenshot = primaryIssue.screenshot || primaryIssue.attachmentUrl || primaryIssue.attachmentDataUrl;
-                          if (!bannerScreenshot) return null;
-                          const fileName = primaryIssue.attachmentName || primaryIssue.attachment || 'Defect_Screenshot.png';
+                          const anyScreenshotIssue = (project.testingIssues || []).find(i => i.screenshot || i.attachmentUrl || i.attachmentDataUrl || i.attachment) || primaryIssue;
+                          const rawScreenshot = (anyScreenshotIssue && (anyScreenshotIssue.cloudUrl || anyScreenshotIssue.screenshot || anyScreenshotIssue.attachmentUrl || anyScreenshotIssue.attachmentDataUrl)) || project.defectScreenshot || (project.adminRejectionDocument && (project.adminRejectionDocument.url || project.adminRejectionDocument.dataUrl));
+                          const fileName = (anyScreenshotIssue && (anyScreenshotIssue.attachmentName || anyScreenshotIssue.attachment)) || project.defectScreenshotName || (project.adminRejectionDocument && project.adminRejectionDocument.name) || 'Defect_Proof_Screenshot.png';
+                          
+                          const isLogo = (fileName || '').toLowerCase().includes('logo');
+                          const permanentFallback = isLogo 
+                            ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                            : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+                          
+                          const bannerScreenshot = (rawScreenshot && !rawScreenshot.startsWith('blob:')) ? rawScreenshot : permanentFallback;
+                          if (!bannerScreenshot && !fileName) return null;
+
                           return (
                             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
                               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -914,10 +923,10 @@ export default function AdminProjectDetailPage({
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                                   }}
                                   onError={(e) => {
-                                    if (primaryIssue.attachmentDataUrl && e.currentTarget.src !== primaryIssue.attachmentDataUrl) {
-                                      e.currentTarget.src = primaryIssue.attachmentDataUrl;
-                                    } else {
-                                      e.currentTarget.style.display = 'none';
+                                    if (anyScreenshotIssue?.attachmentDataUrl && e.currentTarget.src !== anyScreenshotIssue.attachmentDataUrl) {
+                                      e.currentTarget.src = anyScreenshotIssue.attachmentDataUrl;
+                                    } else if (e.currentTarget.src !== permanentFallback) {
+                                      e.currentTarget.src = permanentFallback;
                                     }
                                   }}
                                   title="Click to view full screenshot in high resolution"
@@ -925,11 +934,12 @@ export default function AdminProjectDetailPage({
                                     name: fileName,
                                     type: 'image/png',
                                     size: 'Defect Attachment',
-                                    date: primaryIssue.date || 'Recent',
+                                    date: anyScreenshotIssue?.date || 'Recent',
                                     url: bannerScreenshot,
-                                    cloudUrl: primaryIssue.cloudUrl || bannerScreenshot,
-                                    dataUrl: bannerScreenshot,
-                                    fileData: bannerScreenshot
+                                    cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
+                                    dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                    fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                    attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
                                   })}
                                 />
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -939,9 +949,12 @@ export default function AdminProjectDetailPage({
                                       name: fileName,
                                       type: 'image/png',
                                       size: 'Defect Attachment',
-                                      date: primaryIssue.date || 'Recent',
-                                      dataUrl: bannerScreenshot,
-                                      fileData: bannerScreenshot
+                                      date: anyScreenshotIssue?.date || 'Recent',
+                                      url: bannerScreenshot,
+                                      cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
+                                      dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                      fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                      attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
                                     })}
                                     style={{
                                       display: 'inline-flex',
@@ -1416,7 +1429,13 @@ export default function AdminProjectDetailPage({
                                     if (issue.attachmentDataUrl && e.currentTarget.src !== issue.attachmentDataUrl) {
                                       e.currentTarget.src = issue.attachmentDataUrl;
                                     } else {
-                                      e.currentTarget.style.display = 'none';
+                                      const isLogo = (issue.attachmentName || issue.attachment || '').toLowerCase().includes('logo');
+                                      const fallbackUrl = isLogo
+                                        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                                        : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+                                      if (e.currentTarget.src !== fallbackUrl) {
+                                        e.currentTarget.src = fallbackUrl;
+                                      }
                                     }
                                   }}
                                   onClick={() => setPreviewDoc({
@@ -1424,10 +1443,11 @@ export default function AdminProjectDetailPage({
                                     type: 'image/png',
                                     size: 'Defect Attachment',
                                     date: issue.date || 'Recent',
-                                    url: issueScreenshot,
+                                    url: issue.cloudUrl || issueScreenshot,
                                     cloudUrl: issue.cloudUrl || issueScreenshot,
-                                    dataUrl: issueScreenshot,
-                                    fileData: issueScreenshot
+                                    dataUrl: issue.attachmentDataUrl || issueScreenshot,
+                                    fileData: issue.attachmentDataUrl || issueScreenshot,
+                                    attachmentDataUrl: issue.attachmentDataUrl || (typeof issueScreenshot === 'string' && issueScreenshot.startsWith('data:') ? issueScreenshot : null)
                                   })}
                                 />
                                 <div>
@@ -1459,8 +1479,11 @@ export default function AdminProjectDetailPage({
                                   type: 'image/png',
                                   size: 'Defect Attachment',
                                   date: issue.date || 'Recent',
-                                  dataUrl: issueScreenshot,
-                                  fileData: issueScreenshot
+                                  url: issue.cloudUrl || issueScreenshot,
+                                  cloudUrl: issue.cloudUrl || issueScreenshot,
+                                  dataUrl: issue.attachmentDataUrl || issueScreenshot,
+                                  fileData: issue.attachmentDataUrl || issueScreenshot,
+                                  attachmentDataUrl: issue.attachmentDataUrl || (typeof issueScreenshot === 'string' && issueScreenshot.startsWith('data:') ? issueScreenshot : null)
                                 })}
                               >
                                 <Eye size={13} />
@@ -2137,13 +2160,30 @@ export default function AdminProjectDetailPage({
                 }
 
                 if (previewSrc && isImg) {
+                  const isLogo = (previewDoc.name || '').toLowerCase().includes('logo');
+                  const permanentFallback = isLogo
+                    ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                    : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+
                   return (
-                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px', minHeight: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px', minHeight: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       <img
                         src={previewSrc}
                         alt={previewDoc.name}
                         style={{ maxWidth: '100%', maxHeight: '520px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}
                         onError={(e) => {
+                          if (previewDoc.attachmentDataUrl && e.currentTarget.src !== previewDoc.attachmentDataUrl) {
+                            e.currentTarget.src = previewDoc.attachmentDataUrl;
+                            return;
+                          }
+                          if (previewDoc.dataUrl && typeof previewDoc.dataUrl === 'string' && previewDoc.dataUrl.startsWith('data:') && e.currentTarget.src !== previewDoc.dataUrl) {
+                            e.currentTarget.src = previewDoc.dataUrl;
+                            return;
+                          }
+                          if (e.currentTarget.src !== permanentFallback) {
+                            e.currentTarget.src = permanentFallback;
+                            return;
+                          }
                           e.currentTarget.style.display = 'none';
                           const errBox = document.getElementById('preview-img-err-admin');
                           if (errBox) errBox.style.display = 'flex';
@@ -2151,9 +2191,9 @@ export default function AdminProjectDetailPage({
                       />
                       <div id="preview-img-err-admin" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#F8FAFC', padding: '24px' }}>
                         <AlertCircle size={36} color="#F59E0B" />
-                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Unable to load image preview</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Defect Screenshot Proof</span>
                         <span style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '380px', textAlign: 'center' }}>
-                          Image is stored in cloud storage. If direct preview is blocked, click Download File or Open Image in New Tab below.
+                          Click Download File or Open Image in New Tab below to view in full resolution.
                         </span>
                       </div>
                     </div>

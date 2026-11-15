@@ -6,6 +6,7 @@ import {
   Clock, 
   AlertCircle, 
   CheckCircle, 
+  CheckCircle2,
   AlertOctagon,
   CheckSquare2,
   FolderKanban
@@ -107,7 +108,17 @@ export default function TesterTestingQueuePage({
                 {filteredProjects.map((proj) => {
                   const isUnderTesting = proj.testingStatus === 'In Testing';
                   const isRevisionReq = proj.status === 'Revision Required' || proj.testingStatus === 'Changes Requested';
-                  const isApproved = proj.testingStatus === 'Tester Approved';
+                  const isApproved = Boolean(
+                    proj.testingStatus === 'Tester Approved' ||
+                    proj.testingStatus === 'Approved' ||
+                    proj.status === 'Finalized' ||
+                    proj.status === 'Completed' ||
+                    proj.status === 'Approved' ||
+                    proj.qaFinalized === true ||
+                    proj.testerFinalized === true ||
+                    proj.adminApproved === true ||
+                    (proj.testingProgress === 100 && proj.testingStatus !== 'In Testing' && proj.testingStatus !== 'Changes Requested')
+                  );
 
                   return (
                     <tr key={proj.id}>
@@ -170,15 +181,38 @@ export default function TesterTestingQueuePage({
                       </td>
 
                       <td style={{ textAlign: 'right' }}>
-                        <button 
-                          type="button"
-                          className="btn btn-navy-action"
-                          style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                          onClick={() => onOpenProject(proj.id)}
-                        >
-                          <Play size={12} />
-                          <span>{isUnderTesting ? 'Continue QA' : isRevisionReq ? 'Review Revision' : 'Start Testing'}</span>
-                        </button>
+                        {isApproved ? (
+                          <span 
+                            style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '6px', 
+                              padding: '6px 14px', 
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              background: '#DCFCE7',
+                              color: '#166534',
+                              border: '1px solid #BBF7D0',
+                              borderRadius: '6px',
+                              cursor: 'default',
+                              userSelect: 'none',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <CheckCircle2 size={13} color="#16A34A" />
+                            <span>Project Submitted</span>
+                          </span>
+                        ) : (
+                          <button 
+                            type="button"
+                            className="btn btn-navy-action"
+                            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                            onClick={() => onOpenProject(proj.id)}
+                          >
+                            <Play size={12} />
+                            <span>{isUnderTesting ? 'Continue QA' : isRevisionReq ? 'Review Revision' : 'Start Testing'}</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

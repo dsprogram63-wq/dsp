@@ -355,7 +355,27 @@ export async function saveLivePlatformData(updates = {}) {
   if (!updates || typeof updates !== 'object') return false;
 
   // 1. Update memory cache immediately
-  const currentState = memoryCloudState || {};
+  const getCachedState = () => {
+    if (memoryCloudState && memoryCloudState.adminProjects) return memoryCloudState;
+    if (typeof window === 'undefined') return memoryCloudState || {};
+    try {
+      const savedProjs = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
+      const savedDevs = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+      const savedTesters = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+      const parsedProjs = savedProjs ? JSON.parse(savedProjs) : [];
+      return {
+        ...(memoryCloudState || {}),
+        adminProjects: parsedProjs,
+        projects: parsedProjs,
+        developers: savedDevs ? JSON.parse(savedDevs) : (memoryCloudState?.developers || []),
+        testers: savedTesters ? JSON.parse(savedTesters) : (memoryCloudState?.testers || [])
+      };
+    } catch (e) {
+      return memoryCloudState || {};
+    }
+  };
+
+  const currentState = getCachedState();
 
   const currentDeletedIds = new Set([
     ...(Array.isArray(currentState.deletedMemberIds) ? currentState.deletedMemberIds : []),

@@ -72,15 +72,26 @@ export default function TesterApprovedProjectsPage({
                     </td>
 
                     <td style={{ textAlign: 'right' }}>
-                      <button 
-                        type="button"
-                        className="btn btn-navy-action"
-                        style={{ padding: '6px 14px', fontSize: '0.78rem', background: '#DCFCE7', color: '#166534', borderColor: '#86EFAC' }}
-                        onClick={() => onOpenProject(proj.id)}
+                      <span 
+                        style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          padding: '6px 14px', 
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: '#DCFCE7',
+                          color: '#166534',
+                          border: '1px solid #BBF7D0',
+                          borderRadius: '6px',
+                          cursor: 'default',
+                          userSelect: 'none',
+                          whiteSpace: 'nowrap'
+                        }}
                       >
-                        <Eye size={13} />
-                        <span>View Workspace</span>
-                      </button>
+                        <CheckCircle2 size={13} color="#16A34A" />
+                        <span>Project Submitted</span>
+                      </span>
                     </td>
                   </tr>
                 ))}

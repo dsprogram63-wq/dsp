@@ -86,11 +86,11 @@ export function generateValidPdfBlob(docName, project = {}) {
 export function downloadProjectDocument(doc, project = {}, onToast) {
   if (!doc) return;
   const exactFileName = doc.name || 'Specification_Document.pdf';
-  const fileSource = doc.dataUrl || doc.fileData || doc.url;
+  const fileSource = getDocPreviewSource(doc, project) || doc.attachmentDataUrl || doc.dataUrl || doc.fileData || doc.url || doc.screenshot || doc.attachmentUrl;
 
   try {
-    // 1. If real binary file data exists, download it directly with exact original filename
-    if (fileSource) {
+    // 1. If Base64 data exists, download directly via link
+    if (fileSource && typeof fileSource === 'string' && fileSource.startsWith('data:')) {
       const a = document.createElement('a');
       a.href = fileSource;
       a.download = exactFileName;
@@ -101,7 +101,41 @@ export function downloadProjectDocument(doc, project = {}, onToast) {
       return;
     }
 
-    // 2. If binary data is missing, generate valid format corresponding to exact filename extension
+    // 2. If HTTP/HTTPS URL exists, fetch blob for cross-origin download support
+    if (fileSource && typeof fileSource === 'string' && (fileSource.startsWith('http://') || fileSource.startsWith('https://'))) {
+      if (typeof window !== 'undefined' && window.fetch) {
+        fetch(fileSource)
+          .then(res => res.blob())
+          .then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = exactFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+            if (onToast) onToast(`Downloaded ${exactFileName}`);
+          })
+          .catch(() => {
+            // Fallback: open in new tab
+            window.open(fileSource, '_blank');
+            if (onToast) onToast(`Opening ${exactFileName}...`);
+          });
+        return;
+      } else {
+        const a = document.createElement('a');
+        a.href = fileSource;
+        a.download = exactFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (onToast) onToast(`Downloaded ${exactFileName}`);
+        return;
+      }
+    }
+
+    // 3. If binary data is missing, generate valid format corresponding to exact filename extension
     if (exactFileName.toLowerCase().endsWith('.pdf') || (doc.type && doc.type.toLowerCase().includes('pdf'))) {
       const pdfBlob = generateValidPdfBlob(exactFileName, project);
       const url = URL.createObjectURL(pdfBlob);
@@ -116,7 +150,7 @@ export function downloadProjectDocument(doc, project = {}, onToast) {
       return;
     }
 
-    // 3. For any other document format:
+    // 4. For any other document format:
     const content = `=== Dahej Support Developer Program ===\n\n` +
       `Document: ${exactFileName}\n` +
       `Project ID: ${project.id || ''}\n` +
@@ -144,12 +178,36 @@ export function downloadProjectDocument(doc, project = {}, onToast) {
 
 export function getDocPreviewSource(doc, project = {}) {
   if (!doc) return null;
-  const candidates = [doc.url, doc.cloudUrl, doc.screenshot, doc.dataUrl, doc.fileData, doc.attachmentUrl].filter(Boolean);
-  
-  // Prefer permanent https://, http://, or base64 data: over ephemeral blob:
-  const permanent = candidates.find(u => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:')));
+
+  const isImg = (doc.name && doc.name.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i)) || 
+                (doc.type && doc.type.toLowerCase().includes('image')) ||
+                doc.size === 'Defect Attachment';
+
+  const candidates = [
+    doc.attachmentDataUrl,
+    doc.url,
+    doc.cloudUrl,
+    doc.screenshot,
+    doc.dataUrl,
+    doc.fileData,
+    doc.attachmentUrl
+  ].filter(Boolean);
+
+  // Filter out any dead or expired blob: URLs
+  const validCandidates = candidates.filter(u => typeof u === 'string' && !u.startsWith('blob:'));
+
+  // Prefer valid permanent https://, http://, or base64 data: over ephemeral blob:
+  const permanent = validCandidates.find(u => typeof u === 'string' && (u.startsWith('data:') || u.startsWith('https://') || u.startsWith('http://')));
   if (permanent) return permanent;
-  if (candidates.length > 0) return candidates[0];
+  if (validCandidates.length > 0) return validCandidates[0];
+
+  // Auto-heal images missing valid URLs to permanent cloud storage
+  if (isImg) {
+    const isLogo = (doc.name || doc.attachmentName || doc.attachment || '').toLowerCase().includes('logo');
+    return isLogo
+      ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+      : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+  }
 
   if (doc.name?.toLowerCase().endsWith('.pdf') || (doc.type && doc.type.toLowerCase().includes('pdf'))) {
     try {

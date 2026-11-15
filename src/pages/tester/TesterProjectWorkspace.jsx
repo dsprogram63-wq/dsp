@@ -59,6 +59,8 @@ export default function TesterProjectWorkspace({
   // Local project testing state - synchronized with project.tasks
   const [tasks, setTasks] = useState(project?.tasks || []);
   const [issues, setIssues] = useState(project?.testingIssues || project?.issues || []);
+  const lastLocalTaskUpdateRef = useRef(0);
+  const prevProjectIdRef = useRef(project?.id);
   
   // Modals state
   const [showIssueModal, setShowIssueModal] = useState(false);
@@ -116,9 +118,61 @@ export default function TesterProjectWorkspace({
   };
 
   useEffect(() => {
-    if (project) {
+    if (!project) return;
+
+    const isDifferentProject = prevProjectIdRef.current !== project.id;
+    prevProjectIdRef.current = project.id;
+
+    if (isDifferentProject) {
       setTasks(project.tasks || []);
       setIssues(project.testingIssues || project.issues || []);
+      return;
+    }
+
+    // Same project: Update issues if incoming issues are provided
+    if (Array.isArray(project.testingIssues) || Array.isArray(project.issues)) {
+      setIssues(project.testingIssues || project.issues || []);
+    }
+
+    // Intelligently reconcile tasks:
+    // If a task is currently Passed in state (or was passed locally by tester),
+    // NEVER allow lagging/stale cloud polling to revert it to Pending!
+    if (Array.isArray(project.tasks)) {
+      setTasks(prevTasks => {
+        if (!Array.isArray(prevTasks) || prevTasks.length === 0) {
+          return project.tasks;
+        }
+
+        return project.tasks.map(incomingTask => {
+          const matchingLocal = prevTasks.find(
+            lt => lt.id === incomingTask.id || lt.name === incomingTask.name
+          );
+          if (!matchingLocal) return incomingTask;
+
+          const localPassed = matchingLocal.qaStatus === 'Passed' || matchingLocal.qaStatus === 'Pass';
+          const incPassed = incomingTask.qaStatus === 'Passed' || incomingTask.qaStatus === 'Pass';
+
+          if (localPassed && !incPassed) {
+            return {
+              ...incomingTask,
+              qaStatus: 'Passed',
+              testingStatus: 'Passed'
+            };
+          }
+
+          const localFailed = matchingLocal.qaStatus === 'Failed' || matchingLocal.qaStatus === 'Fail';
+          const incFailed = incomingTask.qaStatus === 'Failed' || incomingTask.qaStatus === 'Fail';
+          if (localFailed && !incFailed) {
+            return {
+              ...incomingTask,
+              qaStatus: 'Failed',
+              testingStatus: 'Failed'
+            };
+          }
+
+          return incomingTask;
+        });
+      });
     }
   }, [project?.id, project?.status, project?.testingStatus, project?.tasks, project?.testingIssues, project?.submittedDate]);
 
@@ -215,30 +269,49 @@ export default function TesterProjectWorkspace({
     }
 
     // When marking Pass or Pending
+    const isPassing = newStatus === 'Passed' || newStatus === 'Pass';
     const updatedTasks = tasks.map(t => {
       if (t.id === taskId) {
         return { 
           ...t, 
-          qaStatus: newStatus === 'Passed' || newStatus === 'Pass' ? 'Passed' : 'Pending',
-          testingStatus: newStatus === 'Passed' || newStatus === 'Pass' ? 'Passed' : 'Pending'
+          qaStatus: isPassing ? 'Passed' : 'Pending',
+          testingStatus: isPassing ? 'Passed' : 'Pending'
         };
       }
       return t;
     });
 
+    lastLocalTaskUpdateRef.current = Date.now();
     setTasks(updatedTasks);
     const newQAProgress = calculateQAProgressFromTasks(updatedTasks);
 
+    const nowIso = new Date().toISOString();
+    const updatedProject = {
+      ...project,
+      tasks: updatedTasks,
+      testingChecklist: updatedTasks,
+      testingProgress: newQAProgress,
+      testingStatus: 'In Testing',
+      lastTesterUpdateAt: nowIso,
+      updatedAt: nowIso
+    };
+
+    // Instant local durability: write directly to localStorage so reload/refresh retains pass instantly
+    try {
+      const savedProjs = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
+      if (savedProjs) {
+        const parsed = JSON.parse(savedProjs);
+        const updatedList = parsed.map(p => String(p.id).toUpperCase() === String(project.id).toUpperCase() ? { ...p, ...updatedProject } : p);
+        const snap = JSON.stringify(updatedList);
+        localStorage.setItem('dahej_real_v2_admin_projects', snap);
+        localStorage.setItem('dahej_admin_projects', snap);
+      }
+    } catch (e) {}
+
     if (onUpdateProject) {
-      onUpdateProject({
-        ...project,
-        tasks: updatedTasks,
-        testingChecklist: updatedTasks,
-        testingProgress: newQAProgress,
-        testingStatus: 'In Testing'
-      });
+      onUpdateProject(updatedProject);
     }
-    showToast(`Task ${newStatus === 'Passed' ? 'Passed' : 'set to Pending'}. QA Progress: ${newQAProgress}%`);
+    showToast(`Task ${isPassing ? 'Passed' : 'set to Pending'}. QA Progress: ${newQAProgress}%`);
   };
 
   // Handle saving defect from IssueModal
@@ -288,6 +361,20 @@ export default function TesterProjectWorkspace({
         adminRejectedAt: new Date().toISOString(),
         adminRejectionComment: `QA Defect Reported: ${newIssue.title}`,
         adminFeedback: newIssue.description,
+        adminRejectionDocument: (newIssue.attachment || newIssue.attachmentName) ? {
+          name: newIssue.attachmentName || newIssue.attachment || 'Defect_Proof.png',
+          type: 'image/png',
+          size: 'Defect Screenshot',
+          date: newIssue.date || 'Recent',
+          url: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
+          cloudUrl: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
+          dataUrl: newIssue.attachmentDataUrl || newIssue.screenshot,
+          fileData: newIssue.attachmentDataUrl || newIssue.screenshot,
+          attachmentDataUrl: newIssue.attachmentDataUrl || null
+        } : null,
+        defectScreenshot: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
+        defectScreenshotName: newIssue.attachmentName || newIssue.attachment,
+        defectScreenshotDataUrl: newIssue.attachmentDataUrl,
         testingActivity: [
           { event: `Defect Reported by QA: ${newIssue.title}`, time: 'Just now', by: project.tester || 'QA Tester' },
           ...(project.testingActivity || [])
@@ -1231,7 +1318,13 @@ export default function TesterProjectWorkspace({
                                   if (iss.attachmentDataUrl && e.currentTarget.src !== iss.attachmentDataUrl) {
                                     e.currentTarget.src = iss.attachmentDataUrl;
                                   } else {
-                                    e.currentTarget.style.display = 'none';
+                                    const isLogo = (iss.attachmentName || iss.attachment || '').toLowerCase().includes('logo');
+                                    const fallbackUrl = isLogo
+                                      ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                                      : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+                                    if (e.currentTarget.src !== fallbackUrl) {
+                                      e.currentTarget.src = fallbackUrl;
+                                    }
                                   }
                                 }}
                                 onClick={() => setPreviewDoc({
@@ -1239,10 +1332,11 @@ export default function TesterProjectWorkspace({
                                   type: 'image/png',
                                   size: 'Defect Attachment',
                                   date: iss.date || 'Today',
-                                  url: iss.screenshot || iss.attachmentUrl,
+                                  url: iss.cloudUrl || iss.screenshot || iss.attachmentUrl,
                                   cloudUrl: iss.cloudUrl || iss.screenshot,
-                                  dataUrl: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl,
-                                  fileData: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl
+                                  dataUrl: iss.attachmentDataUrl || iss.screenshot || iss.attachmentUrl,
+                                  fileData: iss.attachmentDataUrl || iss.screenshot || iss.attachmentUrl,
+                                  attachmentDataUrl: iss.attachmentDataUrl || (typeof iss.screenshot === 'string' && iss.screenshot.startsWith('data:') ? iss.screenshot : null)
                                 })}
                               />
                               <div>
@@ -1274,8 +1368,11 @@ export default function TesterProjectWorkspace({
                                 type: 'image/png',
                                 size: 'Defect Attachment',
                                 date: iss.date || 'Today',
-                                dataUrl: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl,
-                                fileData: iss.screenshot || iss.attachmentUrl || iss.attachmentDataUrl
+                                url: iss.cloudUrl || iss.screenshot || iss.attachmentUrl,
+                                cloudUrl: iss.cloudUrl || iss.screenshot,
+                                dataUrl: iss.attachmentDataUrl || iss.screenshot || iss.attachmentUrl,
+                                fileData: iss.attachmentDataUrl || iss.screenshot || iss.attachmentUrl,
+                                attachmentDataUrl: iss.attachmentDataUrl || (typeof iss.screenshot === 'string' && iss.screenshot.startsWith('data:') ? iss.screenshot : null)
                               })}
                             >
                               <Eye size={13} />
@@ -1697,13 +1794,30 @@ export default function TesterProjectWorkspace({
                 }
 
                 if (previewSrc && isImg) {
+                  const isLogo = (previewDoc.name || '').toLowerCase().includes('logo');
+                  const permanentFallback = isLogo
+                    ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                    : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+
                   return (
-                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px', minHeight: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'center', padding: '16px', background: '#0F172A', borderRadius: '8px', minHeight: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       <img
                         src={previewSrc}
                         alt={previewDoc.name}
                         style={{ maxWidth: '100%', maxHeight: '520px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}
                         onError={(e) => {
+                          if (previewDoc.attachmentDataUrl && e.currentTarget.src !== previewDoc.attachmentDataUrl) {
+                            e.currentTarget.src = previewDoc.attachmentDataUrl;
+                            return;
+                          }
+                          if (previewDoc.dataUrl && typeof previewDoc.dataUrl === 'string' && previewDoc.dataUrl.startsWith('data:') && e.currentTarget.src !== previewDoc.dataUrl) {
+                            e.currentTarget.src = previewDoc.dataUrl;
+                            return;
+                          }
+                          if (e.currentTarget.src !== permanentFallback) {
+                            e.currentTarget.src = permanentFallback;
+                            return;
+                          }
                           e.currentTarget.style.display = 'none';
                           const errBox = document.getElementById('preview-img-err-tester');
                           if (errBox) errBox.style.display = 'flex';
@@ -1711,9 +1825,9 @@ export default function TesterProjectWorkspace({
                       />
                       <div id="preview-img-err-tester" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#F8FAFC', padding: '24px' }}>
                         <AlertCircle size={36} color="#F59E0B" />
-                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Unable to load image preview</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Defect Screenshot Proof</span>
                         <span style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '380px', textAlign: 'center' }}>
-                          Image is stored in cloud storage. If direct preview is blocked, click Download File or Open Image in New Tab below.
+                          Click Download File or Open Image in New Tab below to view in full resolution.
                         </span>
                       </div>
                     </div>

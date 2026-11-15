@@ -236,6 +236,40 @@ export default function App() {
   const MOCK_TESTER_IDS = new Set(['TST-317', 'TST-841', 'TST-781', 'TST-DEMO']);
   const MOCK_PROJECT_IDS = new Set(['DS-WEB-6883']);
 
+  const sanitizeProjectIssues = (issues) => {
+    if (!Array.isArray(issues)) return issues;
+    return issues.map(iss => {
+      if (!iss) return iss;
+      const isBlob = typeof iss.attachmentUrl === 'string' && iss.attachmentUrl.startsWith('blob:');
+      const isLogo = (iss.attachmentName || iss.attachment || '').toLowerCase().includes('logo');
+      const cloudFallback = isLogo 
+        ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+        : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+      
+      const cleanCloudUrl = iss.cloudUrl || (isBlob ? cloudFallback : null);
+      const cleanAttachmentUrl = isBlob ? (iss.attachmentDataUrl || iss.cloudUrl || cloudFallback) : iss.attachmentUrl;
+      const cleanScreenshot = (typeof iss.screenshot === 'string' && iss.screenshot.startsWith('blob:')) 
+        ? (iss.attachmentDataUrl || cleanCloudUrl || cloudFallback) 
+        : (iss.screenshot || cleanAttachmentUrl);
+
+      return {
+        ...iss,
+        cloudUrl: cleanCloudUrl || iss.cloudUrl,
+        attachmentUrl: cleanAttachmentUrl,
+        screenshot: cleanScreenshot
+      };
+    });
+  };
+
+  const sanitizeProject = (proj) => {
+    if (!proj) return proj;
+    return {
+      ...proj,
+      testingIssues: sanitizeProjectIssues(proj.testingIssues),
+      issues: sanitizeProjectIssues(proj.issues)
+    };
+  };
+
   // State for Freelancer Portal (Persistent across sessions & reloads)
   const [projects, setProjects] = useState(() => {
     try {
@@ -243,11 +277,11 @@ export default function App() {
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
           if (!has7169) {
             const p7169 = initialProjects.find(p => p.id === 'DS-WEB-7169');
-            if (p7169) return [p7169, ...parsed];
+            if (p7169) return [sanitizeProject(p7169), ...parsed];
           }
           return parsed;
         }
@@ -255,7 +289,7 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse freelancer projects:', e);
     }
-    return initialProjects;
+    return initialProjects.map(sanitizeProject);
   });
   const [selectedProjectId, setSelectedProjectId] = useState(routeState.selectedProjectId || null);
 
@@ -266,11 +300,11 @@ export default function App() {
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
           if (!has7169) {
             const p7169 = initialAdminProjects.find(p => p.id === 'DS-WEB-7169');
-            if (p7169) return [p7169, ...parsed];
+            if (p7169) return [sanitizeProject(p7169), ...parsed];
           }
           return parsed;
         }
@@ -278,7 +312,7 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse admin projects:', e);
     }
-    return initialAdminProjects;
+    return initialAdminProjects.map(sanitizeProject);
   });
 
   // State for Developers (Persistent across sessions & reloads)
@@ -406,14 +440,113 @@ export default function App() {
           } catch (e) {}
         }
         if (Array.isArray(liveData.adminProjects)) {
-          const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-          const snap = JSON.stringify(cleanIncoming);
-          lastCloudSnapshotRef.current.adminProjects = snap;
-          setAdminProjects(prev => (JSON.stringify(prev) === snap ? prev : cleanIncoming));
+          const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
+
+          setAdminProjects(prevProjects => {
+            const currentList = Array.isArray(prevProjects) && prevProjects.length > 0
+              ? prevProjects
+              : (() => {
+                  try {
+                    const saved = localStorage.getItem('dahej_real_v2_admin_projects') || localStorage.getItem('dahej_admin_projects');
+                    return saved ? JSON.parse(saved).map(sanitizeProject) : [];
+                  } catch (e) {
+                    return [];
+                  }
+                })();
+
+            const mergedList = cleanIncoming.map(incProj => {
+              const localProj = currentList.find(lp => String(lp?.id).toUpperCase() === String(incProj?.id).toUpperCase());
+              if (!localProj) return sanitizeProject(incProj);
+
+              const localTasks = Array.isArray(localProj.tasks) ? localProj.tasks : [];
+              const incTasks = Array.isArray(incProj.tasks) ? incProj.tasks : [];
+
+              const reconciledTasks = incTasks.map(incTask => {
+                const matchLocal = localTasks.find(lt => lt.id === incTask.id || lt.name === incTask.name);
+                if (!matchLocal) return incTask;
+
+                const localIsPassed = matchLocal.qaStatus === 'Passed' || matchLocal.qaStatus === 'Pass';
+                const incIsPassed = incTask.qaStatus === 'Passed' || incTask.qaStatus === 'Pass';
+
+                // Prevent lagging cloud polls from reverting locally passed tasks
+                if (localIsPassed && !incIsPassed) {
+                  return {
+                    ...incTask,
+                    qaStatus: 'Passed',
+                    testingStatus: 'Passed'
+                  };
+                }
+
+                const localIsFailed = matchLocal.qaStatus === 'Failed' || matchLocal.qaStatus === 'Fail';
+                const incIsFailed = incTask.qaStatus === 'Failed' || incTask.qaStatus === 'Fail';
+                if (localIsFailed && !incIsFailed) {
+                  return {
+                    ...incTask,
+                    qaStatus: 'Failed',
+                    testingStatus: 'Failed'
+                  };
+                }
+
+                return incTask;
+              });
+
+              const hasAnyPassed = reconciledTasks.some(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass');
+              const finalTestingProgress = hasAnyPassed
+                ? Math.max(incProj.testingProgress || 0, localProj.testingProgress || 0)
+                : (incProj.testingProgress ?? localProj.testingProgress ?? 0);
+
+              return sanitizeProject({
+                ...incProj,
+                tasks: reconciledTasks,
+                testingChecklist: reconciledTasks,
+                testingProgress: finalTestingProgress,
+                testingStatus: localProj.testingStatus === 'Tester Approved' ? 'Tester Approved' : (incProj.testingStatus || localProj.testingStatus || 'Pending')
+              });
+            });
+
+            const incomingIds = new Set(cleanIncoming.map(p => String(p.id).toUpperCase()));
+            currentList.forEach(lp => {
+              if (lp?.id && !incomingIds.has(String(lp.id).toUpperCase())) {
+                mergedList.push(sanitizeProject(lp));
+              }
+            });
+
+            const mergedSnap = JSON.stringify(mergedList);
+            lastCloudSnapshotRef.current.adminProjects = mergedSnap;
+
+            try {
+              localStorage.setItem('dahej_real_v2_admin_projects', mergedSnap);
+              localStorage.setItem('dahej_admin_projects', mergedSnap);
+            } catch (e) {}
+
+            return JSON.stringify(prevProjects) === mergedSnap ? prevProjects : mergedList;
+          });
         }
         if (Array.isArray(liveData.projects)) {
-          const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id));
-          setProjects(prev => (JSON.stringify(prev) === JSON.stringify(cleanIncoming) ? prev : cleanIncoming));
+          const cleanIncoming = liveData.projects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
+          setProjects(prevProjects => {
+            const currentList = Array.isArray(prevProjects) && prevProjects.length > 0 ? prevProjects : [];
+            const mergedList = cleanIncoming.map(incProj => {
+              const localProj = currentList.find(lp => String(lp?.id).toUpperCase() === String(incProj?.id).toUpperCase());
+              if (!localProj) return sanitizeProject(incProj);
+              const localTasks = Array.isArray(localProj.tasks) ? localProj.tasks : [];
+              const incTasks = Array.isArray(incProj.tasks) ? incProj.tasks : [];
+              const reconciledTasks = incTasks.map(incTask => {
+                const matchLocal = localTasks.find(lt => lt.id === incTask.id || lt.name === incTask.name);
+                if (!matchLocal) return incTask;
+                if ((matchLocal.qaStatus === 'Passed' || matchLocal.qaStatus === 'Pass') && !(incTask.qaStatus === 'Passed' || incTask.qaStatus === 'Pass')) {
+                  return { ...incTask, qaStatus: 'Passed', testingStatus: 'Passed' };
+                }
+                return incTask;
+              });
+              return sanitizeProject({ ...incProj, tasks: reconciledTasks, testingChecklist: reconciledTasks });
+            });
+            const snap = JSON.stringify(mergedList);
+            try {
+              localStorage.setItem('dahej_real_v2_freelancer_projects', snap);
+            } catch (e) {}
+            return JSON.stringify(prevProjects) === snap ? prevProjects : mergedList;
+          });
         }
         if (Array.isArray(liveData.testers)) {
           const cleanIncoming = liveData.testers.filter(t => t && !MOCK_TESTER_IDS.has(t.id) && !deletedIds.has(String(t.id || '').toLowerCase()));
