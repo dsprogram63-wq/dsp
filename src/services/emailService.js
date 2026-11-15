@@ -3601,3 +3601,416 @@ export async function sendProjectSubmissionNotifications({
     admin: adminRes.status === 'fulfilled' ? adminRes.value : { success: false, error: adminRes.reason?.message }
   };
 }
+
+/**
+ * Resolves Developer Email with multi-layer fallback across Project, Developers Registry, and LocalStorage.
+ */
+export function resolveDeveloperEmail(project, developers = []) {
+  if (project?.developerEmail && project.developerEmail.trim().toLowerCase() !== 'unassigned') {
+    return project.developerEmail.trim().toLowerCase();
+  }
+
+  // 1. Check developers array passed in
+  if (Array.isArray(developers) && developers.length > 0) {
+    const devMatch = developers.find(
+      (d) =>
+        d &&
+        ((project?.developerId &&
+          (d.id || d.developerId || d.freelancerId) &&
+          String(d.id || d.developerId || d.freelancerId).toLowerCase() === String(project.developerId).toLowerCase()) ||
+          (project?.developer &&
+            (d.name || d.fullName) &&
+            String(d.name || d.fullName).toLowerCase() === String(project.developer).toLowerCase()))
+    );
+    if (devMatch?.email || devMatch?.emailAddress) {
+      return (devMatch.email || devMatch.emailAddress).trim().toLowerCase();
+    }
+  }
+
+  // 2. Check localStorage developers and admin projects
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const rawDevs = localStorage.getItem('dahej_real_v2_developers') || localStorage.getItem('dahej_developers');
+      if (rawDevs) {
+        const devList = JSON.parse(rawDevs);
+        if (Array.isArray(devList)) {
+          const devMatch = devList.find(
+            (d) =>
+              d &&
+              ((project?.developerId &&
+                (d.id || d.developerId || d.freelancerId) &&
+                String(d.id || d.developerId || d.freelancerId).toLowerCase() === String(project.developerId).toLowerCase()) ||
+                (project?.developer &&
+                  (d.name || d.fullName) &&
+                  String(d.name || d.fullName).toLowerCase() === String(project.developer).toLowerCase()))
+          );
+          if (devMatch?.email || devMatch?.emailAddress) {
+            return (devMatch.email || devMatch.emailAddress).trim().toLowerCase();
+          }
+        }
+      }
+
+      const rawProjs =
+        localStorage.getItem('dahej_real_v2_admin_projects') ||
+        localStorage.getItem('dahej_admin_projects') ||
+        localStorage.getItem('dahej_projects');
+      if (rawProjs) {
+        const projList = JSON.parse(rawProjs);
+        if (Array.isArray(projList)) {
+          const p = projList.find(
+            (item) => item?.id && project?.id && String(item.id).toLowerCase() === String(project.id).toLowerCase()
+          );
+          if (p?.developerEmail && p.developerEmail.trim().toLowerCase() !== 'unassigned') {
+            return p.developerEmail.trim().toLowerCase();
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  return '';
+}
+
+/**
+ * Builds responsive, high-priority HTML email notifying the assigned Developer that QA Tester logged a defect.
+ * Dispatched strictly to Developer from project@dsprogram.space (Admin is excluded).
+ */
+export function buildTesterDefectEmailHtml({
+  project = {},
+  issue = {},
+  developerName = 'Developer',
+  testerName = 'QA Specialist'
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = developerName || project?.developer || 'Developer';
+  const qaName = testerName || issue?.reporter || project?.tester || 'QA Specialist';
+
+  const issueTitle = issue?.title || 'Defect Identified';
+  const issueId = issue?.id || 'DEFECT';
+  const taskName = issue?.task || issue?.relatedTask || issue?.taskName || 'Project Milestone Deliverable';
+  const category = issue?.category || 'Functionality';
+  const description = issue?.description || 'Defect reported by QA specialist during checklist verification.';
+  const expectedResult = issue?.expected || issue?.expectedResult || 'Deliverable must strictly adhere to specifications with zero visual and functional regressions.';
+  const actualResult = issue?.actual || issue?.actualResult || description;
+  const dateStr = issue?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Severity styling
+  const sev = (issue?.severity || 'High').toLowerCase();
+  let sevBg = '#FFEDD5';
+  let sevBorder = '#FB923C';
+  let sevColor = '#9A3412';
+  let sevLabel = '🟠 HIGH SEVERITY';
+
+  if (sev === 'critical') {
+    sevBg = '#FEE2E2';
+    sevBorder = '#F87171';
+    sevColor = '#991B1B';
+    sevLabel = '🔴 CRITICAL SEVERITY';
+  } else if (sev === 'medium') {
+    sevBg = '#FEF3C7';
+    sevBorder = '#FCD34D';
+    sevColor = '#92400E';
+    sevLabel = '🟡 MEDIUM SEVERITY';
+  } else if (sev === 'low') {
+    sevBg = '#EFF6FF';
+    sevBorder = '#93C5FD';
+    sevColor = '#1E40AF';
+    sevLabel = '🔵 LOW SEVERITY';
+  }
+
+  // Screenshot / attachment proof
+  const proofSrc = (
+    issue?.cloudUrl ||
+    issue?.attachmentUrl ||
+    issue?.screenshot ||
+    issue?.attachmentDataUrl ||
+    ''
+  ).trim();
+  const proofName = issue?.attachmentName || issue?.attachment || (proofSrc ? 'defect_screenshot_proof.png' : '');
+  const isCloudProof = proofSrc.startsWith('http://') || proofSrc.startsWith('https://');
+  const isDataProof = proofSrc.startsWith('data:image/');
+  const hasProof = Boolean(proofSrc && (isCloudProof || isDataProof));
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Defect Alert: ${issueTitle} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #B91C1C 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #FCA5A5; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                QA Operations &bull; Defect & Remediation Alert
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+
+              <!-- Defect Alert Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: ${sevBg}; border: 1px solid ${sevBorder}; color: ${sevColor}; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                ${sevLabel} &bull; QA DEFECT LOGGED
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${issueTitle}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${devName}</strong>,<br>
+                QA Specialist <strong>${qaName}</strong> has logged a quality defect on project <strong>${projectName} [${projectId}]</strong>. Please review the defect details below, make the required corrections in your code, and resubmit for verification.
+              </p>
+
+              <!-- Defect Breakdown Snapshot Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0F3E6D; margin-bottom: 10px;">
+                      Defect &amp; Project Summary
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 160px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Defect ID:</td>
+                        <td style="padding: 6px 0; color: #DC2626; font-weight: 800;">${issueId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Target Task / Feature:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${taskName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Severity:</td>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: ${sevBg}; color: ${sevColor}; font-weight: 800; font-size: 11px;">
+                            ${sevLabel}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Category:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${category}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Reported By:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${qaName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Date Logged:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${dateStr}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Detailed Bug Description Callout -->
+              <div style="background-color: #FFF5F5; border-left: 4px solid #DC2626; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #991B1B; margin-bottom: 6px;">
+                  Detailed Bug Description
+                </div>
+                <div style="font-size: 14px; line-height: 1.6; color: #7F1D1D; white-space: pre-line;">
+                  ${description}
+                </div>
+              </div>
+
+              <!-- Expected vs Observed Defect Comparison -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 22px;">
+                <tr>
+                  <td>
+                    <!-- Expected Result -->
+                    <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #166534; margin-bottom: 4px;">
+                        ✓ Expected Result (Specification)
+                      </div>
+                      <div style="font-size: 13px; line-height: 1.5; color: #14532D; white-space: pre-line;">
+                        ${expectedResult}
+                      </div>
+                    </div>
+
+                    <!-- Actual Observed Defect -->
+                    <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 8px; padding: 12px 16px;">
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #991B1B; margin-bottom: 4px;">
+                        ⚠️ Observed Defect / Actual Result
+                      </div>
+                      <div style="font-size: 13px; line-height: 1.5; color: #7F1D1D; white-space: pre-line;">
+                        ${actualResult}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Visual Defect Screenshot Proof Section -->
+              ${hasProof ? `
+              <div style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; padding: 16px 20px; margin-bottom: 22px;">
+                <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0F3E6D; margin-bottom: 4px;">
+                  Visual Defect Proof &bull; Attached Screenshot
+                </div>
+                ${proofName ? `<div style="font-size: 12px; color: #64748B; margin-bottom: 10px;">File: <strong>${proofName}</strong></div>` : ''}
+
+                <div style="text-align: center; margin-top: 10px;">
+                  ${isCloudProof ? `
+                  <a href="${proofSrc}" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="${proofSrc}" alt="QA Screenshot Defect Proof" style="max-width: 100%; max-height: 380px; border-radius: 8px; border: 1px solid #CBD5E1; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: block; margin: 0 auto;" />
+                  </a>
+                  <div style="margin-top: 12px;">
+                    <a href="${proofSrc}" target="_blank" style="display: inline-block; padding: 8px 18px; background-color: #0F3E6D; color: #FFFFFF; font-size: 12px; font-weight: 700; text-decoration: none; border-radius: 6px;">
+                      🔎 View Full Resolution Screenshot Proof &rarr;
+                    </a>
+                  </div>
+                  ` : `
+                  <img src="${proofSrc}" alt="QA Screenshot Defect Proof" style="max-width: 100%; max-height: 380px; border-radius: 8px; border: 1px solid #CBD5E1; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: block; margin: 0 auto;" />
+                  `}
+                </div>
+              </div>` : ''}
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 12px 0 8px 0;">
+                    <a href="https://www.dsprogram.space/freelancer-login" style="display: inline-block; padding: 14px 34px; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(15, 62, 109, 0.25);">
+                      🚀 Open Freelancer Workspace & Fix Defect &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; QA Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Direct QA Remediation Dispatch &bull; Dispatched from <strong style="color: #0F3E6D;">project@dsprogram.space</strong> directly to assigned developer.<br>
+                <em style="color: #94A3B8; font-size: 11px;">(Confidential Developer Notification &bull; Admin is not copied on individual defect logs)</em><br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends QA Defect Notification Email directly to the project's Developer from project@dsprogram.space.
+ * Guaranteed: Admin is strictly NOT notified or copied on this defect dispatch.
+ */
+export async function sendTesterDefectReportEmail({
+  project,
+  issue,
+  testerName = null,
+  developers = []
+}) {
+  if (!project || !issue) {
+    return { success: false, error: 'Project and issue details are required.' };
+  }
+
+  const cleanEmail = resolveDeveloperEmail(project, developers);
+  const cleanName = (project?.developer || 'Developer').trim();
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn(`[Project Mailer] Skipping QA defect report email: no developer email resolved for project ${project?.id || 'PROJ'}.`);
+    return { success: false, error: 'Developer email missing on project', recipient: null };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const resolvedTester = (testerName || issue.reporter || project?.tester || 'QA Specialist').trim();
+  const severity = issue?.severity || 'High';
+  const issueTitle = issue?.title || 'Defect Identified';
+
+  const htmlContent = buildTesterDefectEmailHtml({
+    project,
+    issue,
+    developerName: cleanName,
+    testerName: resolvedTester
+  });
+
+  const subject = `[QA Defect Alert] ${projectName} (${projectId}) — ${severity} Priority: ${issueTitle}`;
+
+  const proofSrc = (
+    issue?.cloudUrl ||
+    issue?.attachmentUrl ||
+    issue?.screenshot ||
+    issue?.attachmentDataUrl ||
+    ''
+  ).trim();
+  const proofName = issue?.attachmentName || issue?.attachment || (proofSrc ? 'defect_screenshot_proof.png' : '');
+  const isCloudProof = proofSrc.startsWith('http://') || proofSrc.startsWith('https://');
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `QA Specialist ${resolvedTester} has identified a defect in project "${projectName}" (${projectId}).\n\n` +
+    `----------------------------------------\n` +
+    `DEFECT DETAILS\n` +
+    `----------------------------------------\n` +
+    `Project: ${projectName} [${projectId}]\n` +
+    `Defect Title: ${issueTitle}\n` +
+    `Defect ID: ${issue?.id || 'N/A'}\n` +
+    `Target Task: ${issue?.task || issue?.relatedTask || 'Project Feature'}\n` +
+    `Severity: ${severity}\n` +
+    `Category: ${issue?.category || 'Functionality'}\n` +
+    `Reported By: ${resolvedTester}\n` +
+    `Date Logged: ${issue?.date || new Date().toLocaleDateString('en-GB')}\n\n` +
+    `DETAILED BUG DESCRIPTION:\n` +
+    `${issue?.description || 'Defect reported by QA specialist.'}\n\n` +
+    (issue?.expected || issue?.expectedResult ? `EXPECTED RESULT:\n${issue?.expected || issue?.expectedResult}\n\n` : '') +
+    (issue?.actual || issue?.actualResult ? `OBSERVED DEFECT / ACTUAL RESULT:\n${issue?.actual || issue?.actualResult}\n\n` : '') +
+    (proofSrc ? `PROOF / SCREENSHOT:\n${isCloudProof ? proofSrc : (proofName || 'Image proof attached in email')}\n\n` : '') +
+    `----------------------------------------\n` +
+    `ACTION REQUIRED:\n` +
+    `Please log in to your Freelancer Workspace to rectify this defect and update the deliverable:\n` +
+    `https://www.dsprogram.space/freelancer-login\n\n` +
+    `Regards,\n` +
+    `Dahej Support QA Operations (project@dsprogram.space)\n` +
+    `Note: This is a direct remediation alert sent exclusively to the assigned developer. Admin is not copied.`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    console.log(`[Project Mailer] QA defect report email successfully dispatched to developer ${cleanEmail} for project ${projectId}.`);
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] QA defect report email failed for developer (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}

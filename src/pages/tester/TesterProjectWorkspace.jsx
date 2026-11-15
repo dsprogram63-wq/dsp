@@ -33,6 +33,7 @@ import IssueModal from '../../components/tester/IssueModal';
 import RequestChangesModal from '../../components/tester/RequestChangesModal';
 import ApproveTestingModal from '../../components/tester/ApproveTestingModal';
 import CredentialModal from '../../components/portal/CredentialModal';
+import { sendTesterDefectReportEmail } from '../../services/emailService';
 import { 
   getTesterAmount, 
   getTesterPaid, 
@@ -294,6 +295,25 @@ export default function TesterProjectWorkspace({
       });
     }
 
+    // Dispatch Defect Notification Email directly to assigned Developer from project@dsprogram.space (Admin is NOT notified)
+    try {
+      sendTesterDefectReportEmail({
+        project,
+        issue: newIssue,
+        testerName: project.tester || 'QA Tester'
+      }).then(res => {
+        if (res?.success) {
+          console.log(`[QA Defect Dispatch] Defect email successfully sent to developer (${res.recipient}) for project ${project?.id}`);
+        } else {
+          console.warn(`[QA Defect Dispatch] Could not send defect email:`, res?.error);
+        }
+      }).catch(err => {
+        console.error('[QA Defect Dispatch] Error sending defect email to developer:', err);
+      });
+    } catch (e) {
+      console.error('[QA Defect Dispatch] Exception sending defect email:', e);
+    }
+
     showToast(`Defect reported and task marked as Failed. Developer notified for rework.`);
   };
 
@@ -330,7 +350,10 @@ export default function TesterProjectWorkspace({
       date: timeStr,
       reporter: project.tester || 'QA Tester',
       expected: 'All features and responsive requirements must function cleanly according to specification.',
-      actual: changeData.requiredChanges
+      expectedResult: 'All features and responsive requirements must function cleanly according to specification.',
+      actual: changeData.requiredChanges,
+      actualResult: changeData.requiredChanges,
+      attachmentName: changeData.documentName || null
     };
 
     const updatedIssues = [newIssue, ...issues];
@@ -362,6 +385,26 @@ export default function TesterProjectWorkspace({
     if (onUpdateProject) {
       onUpdateProject(updated);
     }
+
+    // Dispatch Defect Notification Email directly to assigned Developer from project@dsprogram.space (Admin is NOT notified)
+    try {
+      sendTesterDefectReportEmail({
+        project,
+        issue: newIssue,
+        testerName: project.tester || 'QA Tester'
+      }).then(res => {
+        if (res?.success) {
+          console.log(`[QA Defect Dispatch] Change request defect email sent to developer (${res.recipient}) for project ${project?.id}`);
+        } else {
+          console.warn(`[QA Defect Dispatch] Could not send change request email:`, res?.error);
+        }
+      }).catch(err => {
+        console.error('[QA Defect Dispatch] Error sending defect email to developer:', err);
+      });
+    } catch (e) {
+      console.error('[QA Defect Dispatch] Exception sending defect email:', e);
+    }
+
     setShowRequestChangesModal(false);
     showToast('Changes requested. Project returned to Developer for rework.');
   };
