@@ -4714,3 +4714,567 @@ export async function sendTesterApprovalNotifications({
     admin: adminRes.status === 'fulfilled' ? adminRes.value : { success: false, error: adminRes.reason?.message }
   };
 }
+
+/**
+ * Builds high-converting, professional HTML email for Developer Payment Released
+ * Guarantees clear notice: "Aapka payment release kiya gaya hai, vo aapko 24 hours me mil jayega."
+ */
+export function buildDeveloperPaymentReleasedEmailHtml({
+  project = {},
+  developerName = 'Developer',
+  amount = null,
+  transactionId = '—',
+  paymentMode = 'UPI Transfer',
+  paymentDate = null
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = developerName || project?.developer || 'Developer';
+  const dateStr = paymentDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Format amount
+  let formattedAmount = '₹0';
+  if (amount !== null && amount !== undefined) {
+    if (typeof amount === 'number') {
+      formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+    } else {
+      const cleanStr = String(amount).trim();
+      formattedAmount = cleanStr.startsWith('₹') ? cleanStr : `₹${cleanStr}`;
+    }
+  } else {
+    formattedAmount = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : '₹0');
+  }
+
+  const cleanTxn = (transactionId && transactionId !== '—' && transactionId.trim() !== '') ? transactionId.trim() : 'Processing / Bank Batch';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Released: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #059669 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #A7F3D0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                Financial Operations &bull; Payout Disbursement Clearance
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+
+              <!-- Status Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                💸 PAYMENT RELEASED &bull; CREDITING WITHIN 24 HOURS
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                Payment Released for ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${devName}</strong>,<br>
+                Aapka milestone payment successfully release kar diya gaya hai. Admin ne payout approval grant kar diya hai aur yeh amount <strong>agle 24 hours ke andar</strong> aapke registered account / UPI me credit ho jayega.
+              </p>
+
+              <!-- 24 Hours Delivery Guarantee Box -->
+              <div style="background-color: #F0FDF4; border: 1px solid #86EFAC; border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; display: flex; align-items: center;">
+                <div style="font-size: 24px; margin-right: 14px;">⏱️</div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Crediting Timeframe: Within 24 Hours
+                  </div>
+                  <div style="font-size: 13px; color: #15803D; margin-top: 3px; line-height: 1.4;">
+                    Your funds of <strong>${formattedAmount}</strong> have been disbursed from our settlement gateway and will reflect in your bank account / UPI within 24 hours.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payment Details Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748B; margin-bottom: 12px;">
+                      Disbursement Breakdown
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 44%;">Amount Released:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800; font-size: 17px;">${formattedAmount}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Transaction / UTR ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700; font-family: monospace;">${cleanTxn}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Payment Mode:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${paymentMode}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Disbursement Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${dateStr}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project Reference:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${projectName} (<span style="font-family: monospace;">${projectId}</span>)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${devName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #1E40AF; margin-bottom: 4px;">
+                  ℹ️ Settlement Advisory
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #1E3A8A;">
+                  Bank batches and UPI clearing typically credit instantly or take up to 24 hours depending on the beneficiary bank. If the amount does not reflect in your account after 24 hours, please contact our project finance team at <strong>project@dsprogram.space</strong> with your transaction reference.
+                </div>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 10px 0 6px 0;">
+                    <a href="https://www.dsprogram.space/freelancer/earnings" style="display: inline-block; padding: 14px 34px; background-color: #059669; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+                      💳 View Earnings in Freelancer Portal &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Financial Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Official Project Channel &bull; Dispatched from <strong style="color: #0F3E6D;">project@dsprogram.space</strong><br>
+                This payout release notification is sent exclusively to the assigned developer of this project.<br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Builds high-converting, professional HTML email for QA Tester Payment Released
+ * Guarantees clear notice: "Aapka payment release kiya gaya hai, vo aapko 24 hours me mil jayega."
+ */
+export function buildTesterPaymentReleasedEmailHtml({
+  project = {},
+  testerName = 'QA Specialist',
+  amount = null,
+  transactionId = '—',
+  paymentMode = 'UPI Transfer',
+  paymentDate = null
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const qaName = testerName || project?.tester || 'QA Specialist';
+  const dateStr = paymentDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Format amount
+  let formattedAmount = '₹0';
+  if (amount !== null && amount !== undefined) {
+    if (typeof amount === 'number') {
+      formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+    } else {
+      const cleanStr = String(amount).trim();
+      formattedAmount = cleanStr.startsWith('₹') ? cleanStr : `₹${cleanStr}`;
+    }
+  } else {
+    formattedAmount = project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : '₹0');
+  }
+
+  const cleanTxn = (transactionId && transactionId !== '—' && transactionId.trim() !== '') ? transactionId.trim() : 'Processing / Bank Batch';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Payment Released: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #0D9488 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #99F6E4; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                Financial Operations &bull; QA Testing Payout Clearance
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+
+              <!-- Status Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                💸 QA PAYMENT RELEASED &bull; CREDITING WITHIN 24 HOURS
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                QA Testing Fee Released: ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${qaName}</strong>,<br>
+                Aapka QA testing payment successfully release kar diya gaya hai. Admin ne testing fee approval grant kar diya hai aur yeh amount <strong>agle 24 hours ke andar</strong> aapke registered account / UPI me credit ho jayega.
+              </p>
+
+              <!-- 24 Hours Delivery Guarantee Box -->
+              <div style="background-color: #F0FDFA; border: 1px solid #5EEAD4; border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; display: flex; align-items: center;">
+                <div style="font-size: 24px; margin-right: 14px;">⏱️</div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 800; color: #115E59; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Crediting Timeframe: Within 24 Hours
+                  </div>
+                  <div style="font-size: 13px; color: #0F766E; margin-top: 3px; line-height: 1.4;">
+                    Your QA fee of <strong>${formattedAmount}</strong> has been disbursed from our settlement gateway and will reflect in your bank account / UPI within 24 hours.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payment Details Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748B; margin-bottom: 12px;">
+                      QA Disbursement Breakdown
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 44%;">Amount Released:</td>
+                        <td style="padding: 6px 0; color: #0D9488; font-weight: 800; font-size: 17px;">${formattedAmount}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Transaction / UTR ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700; font-family: monospace;">${cleanTxn}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Payment Mode:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${paymentMode}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Disbursement Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${dateStr}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project Reference:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${projectName} (<span style="font-family: monospace;">${projectId}</span>)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Specialist:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${qaName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #1E40AF; margin-bottom: 4px;">
+                  ℹ️ Settlement Advisory
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #1E3A8A;">
+                  Bank batches and UPI clearing typically credit instantly or take up to 24 hours depending on the beneficiary bank. If the amount does not reflect in your account after 24 hours, please contact our project finance team at <strong>project@dsprogram.space</strong> with your transaction reference.
+                </div>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 10px 0 6px 0;">
+                    <a href="https://www.dsprogram.space/tester/earnings" style="display: inline-block; padding: 14px 34px; background-color: #0D9488; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);">
+                      💳 View QA Earnings in Tester Portal &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Financial Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Official Project Channel &bull; Dispatched from <strong style="color: #0F3E6D;">project@dsprogram.space</strong><br>
+                This QA payout release notification is sent exclusively to the assigned tester of this project.<br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Dispatches Payment Released notification strictly to the assigned Developer of that particular project.
+ * Dispatched from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export async function sendDeveloperPaymentReleasedEmail({
+  project,
+  amount = null,
+  transactionId = '—',
+  paymentMode = 'UPI Transfer',
+  paymentDate = null,
+  developers = []
+}) {
+  const cleanEmail = resolveDeveloperEmail(project, developers);
+  const cleanName = (project?.developer || 'Developer').trim();
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn(`[Project Mailer] Developer payment release email skipped: No valid developer email found for project ${project?.id}`);
+    return { success: false, error: 'Developer email not resolved' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+
+  // Format amount
+  let formattedAmount = '₹0';
+  if (amount !== null && amount !== undefined) {
+    if (typeof amount === 'number') {
+      formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+    } else {
+      const cleanStr = String(amount).trim();
+      formattedAmount = cleanStr.startsWith('₹') ? cleanStr : `₹${cleanStr}`;
+    }
+  } else {
+    formattedAmount = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : '₹0');
+  }
+
+  const htmlContent = buildDeveloperPaymentReleasedEmailHtml({
+    project,
+    developerName: cleanName,
+    amount: formattedAmount,
+    transactionId,
+    paymentMode,
+    paymentDate
+  });
+
+  const subject = `[Payment Released] ${projectName} (${projectId}) — ${formattedAmount} will be credited within 24 Hours`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Aapka milestone payment for project "${projectName}" (${projectId}) successfully release kar diya gaya hai.\n` +
+    `Amount Released: ${formattedAmount}\n` +
+    `Transaction / UTR ID: ${transactionId}\n` +
+    `Payment Mode: ${paymentMode}\n\n` +
+    `Yeh amount agle 24 hours ke andar aapke registered account / UPI me credit ho jayega.\n\n` +
+    `View your earnings statement:\n` +
+    `https://www.dsprogram.space/freelancer/earnings\n\n` +
+    `Regards,\nDahej Support Financial Operations (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    console.log(`[Project Mailer] Payment released email successfully sent to developer ${cleanEmail} for project ${projectId}.`);
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Payment released email failed for developer (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches QA Payment Released notification strictly to the assigned Tester of that particular project.
+ * Dispatched from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export async function sendTesterPaymentReleasedEmail({
+  project,
+  amount = null,
+  transactionId = '—',
+  paymentMode = 'UPI Transfer',
+  paymentDate = null,
+  testers = []
+}) {
+  const cleanEmail = resolveTesterEmail(project, testers);
+  const cleanName = (project?.tester || 'QA Specialist').trim();
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn(`[Project Mailer] Tester payment release email skipped: No valid tester email found for project ${project?.id}`);
+    return { success: false, error: 'Tester email not resolved' };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+
+  // Format amount
+  let formattedAmount = '₹0';
+  if (amount !== null && amount !== undefined) {
+    if (typeof amount === 'number') {
+      formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+    } else {
+      const cleanStr = String(amount).trim();
+      formattedAmount = cleanStr.startsWith('₹') ? cleanStr : `₹${cleanStr}`;
+    }
+  } else {
+    formattedAmount = project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : '₹0');
+  }
+
+  const htmlContent = buildTesterPaymentReleasedEmailHtml({
+    project,
+    testerName: cleanName,
+    amount: formattedAmount,
+    transactionId,
+    paymentMode,
+    paymentDate
+  });
+
+  const subject = `[QA Payment Released] ${projectName} (${projectId}) — ${formattedAmount} will be credited within 24 Hours`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Aapka QA testing fee for project "${projectName}" (${projectId}) successfully release kar diya gaya hai.\n` +
+    `Amount Released: ${formattedAmount}\n` +
+    `Transaction / UTR ID: ${transactionId}\n` +
+    `Payment Mode: ${paymentMode}\n\n` +
+    `Yeh amount agle 24 hours ke andar aapke registered account / UPI me credit ho jayega.\n\n` +
+    `View your QA earnings statement:\n` +
+    `https://www.dsprogram.space/tester/earnings\n\n` +
+    `Regards,\nDahej Support Financial Operations (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    console.log(`[Project Mailer] QA payment released email successfully sent to tester ${cleanEmail} for project ${projectId}.`);
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] QA payment released email failed for tester (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches Payment Released notifications to Developer and/or QA Tester depending on which payment was released.
+ * STRICT RECIPIENT GUARANTEE:
+ * - Developer gets ONLY developer payout notice.
+ * - QA Tester gets ONLY tester payout notice.
+ * - If only developer was paid, tester receives NOTHING.
+ * - If only tester was paid, developer receives NOTHING.
+ */
+export async function sendPaymentReleaseNotifications({
+  project,
+  devReleased = false,
+  devAmount = null,
+  devTxnId = '—',
+  devPaymentMode = 'UPI Transfer',
+  devPaymentDate = null,
+  testerReleased = false,
+  testerAmount = null,
+  testerTxnId = '—',
+  testerPaymentMode = 'UPI Transfer',
+  testerPaymentDate = null,
+  developers = [],
+  testers = []
+}) {
+  if (!project) return { developer: null, tester: null };
+
+  const dispatches = [];
+
+  if (devReleased) {
+    dispatches.push(
+      sendDeveloperPaymentReleasedEmail({
+        project,
+        amount: devAmount,
+        transactionId: devTxnId,
+        paymentMode: devPaymentMode,
+        paymentDate: devPaymentDate,
+        developers
+      }).then(res => ({ type: 'developer', ...res }))
+    );
+  }
+
+  if (testerReleased) {
+    dispatches.push(
+      sendTesterPaymentReleasedEmail({
+        project,
+        amount: testerAmount,
+        transactionId: testerTxnId,
+        paymentMode: testerPaymentMode,
+        paymentDate: testerPaymentDate,
+        testers
+      }).then(res => ({ type: 'tester', ...res }))
+    );
+  }
+
+  const results = await Promise.allSettled(dispatches);
+  const output = { developer: null, tester: null };
+
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      if (r.value?.type === 'developer') output.developer = r.value;
+      if (r.value?.type === 'tester') output.tester = r.value;
+    }
+  });
+
+  return output;
+}

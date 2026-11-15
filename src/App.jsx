@@ -75,7 +75,9 @@ import {
   removeMemberPassword, 
   sendProjectAssignmentNotifications,
   sendProjectSubmissionNotifications,
-  sendTesterApprovalNotifications 
+  sendTesterApprovalNotifications,
+  sendDeveloperPaymentReleasedEmail,
+  sendTesterPaymentReleasedEmail 
 } from './services/emailService';
 import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
@@ -806,6 +808,53 @@ export default function App() {
       }).catch((err) => {
         console.error('[Project Mailer] Reassignment notification error:', err);
         return { error: err?.message || 'Email dispatch error' };
+      });
+    }
+
+    // Automatic Payment Release email dispatch to Developer and/or QA Tester from project@dsprogram.space
+    const prevDevPaid = Number(prevProj?.developerPaymentPaidNum ?? (prevProj?.developerPaymentStatus === 'Paid' ? (prevProj?.developerPaymentNum ?? 0) : 0));
+    const nextDevPaid = Number(mergedProj?.developerPaymentPaidNum ?? (mergedProj?.developerPaymentStatus === 'Paid' ? (mergedProj?.developerPaymentNum ?? 0) : 0));
+    const devPaidIncreased = (nextDevPaid > prevDevPaid) || (mergedProj?.developerPaymentStatus === 'Paid' && prevProj?.developerPaymentStatus !== 'Paid' && nextDevPaid > 0);
+    const recentlySentDevPay = Boolean(
+      mergedProj?.lastDeveloperPaymentEmailSentAt &&
+      Date.now() - new Date(mergedProj.lastDeveloperPaymentEmailSentAt).getTime() < 15000
+    );
+
+    if (devPaidIncreased && !recentlySentDevPay) {
+      mergedProj.lastDeveloperPaymentEmailSentAt = new Date().toISOString();
+      const disbursedAmount = nextDevPaid > prevDevPaid ? (nextDevPaid - prevDevPaid) : nextDevPaid;
+      sendDeveloperPaymentReleasedEmail({
+        project: mergedProj,
+        amount: disbursedAmount,
+        transactionId: mergedProj.developerTransactionId || mergedProj.devTxnId || mergedProj.payoutTransactionId,
+        paymentMode: mergedProj.developerPaymentMode || 'UPI Transfer',
+        paymentDate: mergedProj.developerPaymentDate,
+        developers
+      }).catch((err) => {
+        console.error('[Project Mailer] Auto developer payment notification error:', err);
+      });
+    }
+
+    const prevTesterPaid = Number(prevProj?.testerPaymentPaidNum ?? (prevProj?.testerPaymentStatus === 'Paid' ? (prevProj?.testerPaymentNum ?? 0) : 0));
+    const nextTesterPaid = Number(mergedProj?.testerPaymentPaidNum ?? (mergedProj?.testerPaymentStatus === 'Paid' ? (mergedProj?.testerPaymentNum ?? 0) : 0));
+    const testerPaidIncreased = (nextTesterPaid > prevTesterPaid) || (mergedProj?.testerPaymentStatus === 'Paid' && prevProj?.testerPaymentStatus !== 'Paid' && nextTesterPaid > 0);
+    const recentlySentTesterPay = Boolean(
+      mergedProj?.lastTesterPaymentEmailSentAt &&
+      Date.now() - new Date(mergedProj.lastTesterPaymentEmailSentAt).getTime() < 15000
+    );
+
+    if (testerPaidIncreased && !recentlySentTesterPay) {
+      mergedProj.lastTesterPaymentEmailSentAt = new Date().toISOString();
+      const disbursedAmount = nextTesterPaid > prevTesterPaid ? (nextTesterPaid - prevTesterPaid) : nextTesterPaid;
+      sendTesterPaymentReleasedEmail({
+        project: mergedProj,
+        amount: disbursedAmount,
+        transactionId: mergedProj.testerTransactionId || mergedProj.testerTxnId,
+        paymentMode: mergedProj.testerPaymentMode || 'UPI Transfer',
+        paymentDate: mergedProj.testerPaymentDate,
+        testers
+      }).catch((err) => {
+        console.error('[Project Mailer] Auto tester payment notification error:', err);
       });
     }
 
@@ -2215,6 +2264,8 @@ export default function App() {
         {routeState.subView === 'earnings' && (
           <AdminEarningsPage
             projects={adminProjects}
+            developers={developers}
+            testers={testers}
             onOpenProject={handleOpenAdminProject}
             onUpdateProject={handleUpdateAdminProject}
             onNavigate={navigateTo}

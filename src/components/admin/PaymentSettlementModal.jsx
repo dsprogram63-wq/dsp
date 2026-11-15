@@ -16,6 +16,10 @@ import {
   Calendar
 } from 'lucide-react';
 import './PaymentSettlementModal.css';
+import { 
+  sendDeveloperPaymentReleasedEmail, 
+  sendTesterPaymentReleasedEmail 
+} from '../../services/emailService';
 
 // Sanitize transaction IDs so placeholders like '-' or '—' are treated as empty
 export const sanitizeTxnId = (val) => {
@@ -57,7 +61,9 @@ export default function PaymentSettlementModal({
   isOpen, 
   project, 
   onClose, 
-  onUpdatePayment 
+  onUpdatePayment,
+  developers = [],
+  testers = []
 }) {
   if (!isOpen || !project) return null;
 
@@ -311,8 +317,50 @@ export default function PaymentSettlementModal({
       testerPaymentDate: testerPaymentDate
     };
 
+    const nowIso = new Date().toISOString();
+    const isDevPaymentReleased = (currDevPaidNum > initialDevPaidNum) || (newDevPaymentStatus === 'Paid' && project.developerPaymentStatus !== 'Paid' && currDevPaidNum > 0);
+    const devDisbursed = currDevPaidNum > initialDevPaidNum ? (currDevPaidNum - initialDevPaidNum) : currDevPaidNum;
+
+    const isTesterPaymentReleased = (currTesterPaidNum > initialTesterPaidNum) || (newTesterPaymentStatus === 'Paid' && project.testerPaymentStatus !== 'Paid' && currTesterPaidNum > 0);
+    const testerDisbursed = currTesterPaidNum > initialTesterPaidNum ? (currTesterPaidNum - initialTesterPaidNum) : currTesterPaidNum;
+
+    if (isDevPaymentReleased) {
+      updatedProject.lastDeveloperPaymentEmailSentAt = nowIso;
+    }
+    if (isTesterPaymentReleased) {
+      updatedProject.lastTesterPaymentEmailSentAt = nowIso;
+    }
+
     onUpdatePayment(updatedProject);
     onClose();
+
+    // Asynchronously dispatch payment released email to Developer (exclusively to this project's developer)
+    if (isDevPaymentReleased) {
+      sendDeveloperPaymentReleasedEmail({
+        project: updatedProject,
+        amount: devDisbursed,
+        transactionId: finalDevTxn,
+        paymentMode: devPaymentMode,
+        paymentDate: devPaymentDate,
+        developers
+      }).catch((err) => {
+        console.error('[Project Mailer] Modal developer payment email error:', err);
+      });
+    }
+
+    // Asynchronously dispatch QA payment released email to QA Tester (exclusively to this project's tester)
+    if (isTesterPaymentReleased) {
+      sendTesterPaymentReleasedEmail({
+        project: updatedProject,
+        amount: testerDisbursed,
+        transactionId: finalTesterTxn,
+        paymentMode: testerPaymentMode,
+        paymentDate: testerPaymentDate,
+        testers
+      }).catch((err) => {
+        console.error('[Project Mailer] Modal tester payment email error:', err);
+      });
+    }
   };
 
   return (

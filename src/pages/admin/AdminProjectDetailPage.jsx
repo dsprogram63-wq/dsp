@@ -39,6 +39,7 @@ import AssignmentModal from '../../components/admin/AssignmentModal';
 import AssignTesterModal from '../../components/admin/AssignTesterModal';
 import RevisionModal from '../../components/admin/RevisionModal';
 import CredentialModal from '../../components/portal/CredentialModal';
+import PaymentSettlementModal from '../../components/admin/PaymentSettlementModal';
 import { initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
@@ -65,6 +66,7 @@ export default function AdminProjectDetailPage({
   const [isAssignTesterModalOpen, setIsAssignTesterModalOpen] = useState(false);
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [isCredModalOpen, setIsCredModalOpen] = useState(false);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
@@ -678,15 +680,26 @@ export default function AdminProjectDetailPage({
           )}
 
           {isAdminApproved && (
-            <button
-              type="button"
-              className="btn btn-orange-primary"
-              onClick={() => onNavigate && onNavigate('admin/earnings')}
-              style={{ background: '#0A3D75' }}
-            >
-              <IndianRupee size={15} />
-              <span>View Financial Settlements</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn btn-orange-primary"
+                onClick={() => setIsPayModalOpen(true)}
+                style={{ background: '#16A34A', border: 'none', fontWeight: 700 }}
+              >
+                <IndianRupee size={15} />
+                <span>Settle & Release Payout</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-navy-action"
+                onClick={() => onNavigate && onNavigate('admin/earnings')}
+                style={{ background: '#0A3D75', color: '#FFFFFF' }}
+              >
+                <IndianRupee size={15} />
+                <span>View Financial Settlements</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -2245,6 +2258,18 @@ export default function AdminProjectDetailPage({
         onClose={() => setIsCredModalOpen(false)}
         onAddCredential={handleAddCredential}
         onSave={handleAddCredential}
+      />
+
+      <PaymentSettlementModal
+        isOpen={isPayModalOpen}
+        project={project}
+        onClose={() => setIsPayModalOpen(false)}
+        onUpdatePayment={(upd) => {
+          onUpdateProject(upd);
+          showToast(`✓ Payment settlement updated for "${upd.name}"`);
+        }}
+        developers={developers}
+        testers={testers}
       />
     </div>
   );

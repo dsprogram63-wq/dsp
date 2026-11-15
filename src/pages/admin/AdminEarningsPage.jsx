@@ -24,6 +24,8 @@ import '../../components/admin/PaymentSettlementModal.css';
 
 export default function AdminEarningsPage({ 
   projects = initialAdminProjects, 
+  developers = initialDevelopers,
+  testers = initialTesters,
   onOpenProject, 
   onUpdateProject,
   onNavigate 
@@ -643,6 +645,8 @@ export default function AdminEarningsPage({
         project={selectedProjectForPay}
         onClose={handleClosePayModal}
         onUpdatePayment={handleSavePaymentUpdate}
+        developers={developers}
+        testers={testers}
       />
     </div>
   );
