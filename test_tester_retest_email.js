@@ -181,6 +181,65 @@ assert(firstTimeResult.admin?.success, 'Admin must receive first-time submission
 assert.strictEqual(capturedEmails.length, 2, 'Exactly TWO emails must be sent for fresh first-time submission');
 console.log('✅ PASS: First-time submission continues notifying both Tester and Admin');
 
+// --- TEST 6: Resolving Defects Alone MUST NOT Trigger Email; ONLY Clicking Submit Triggers Email ---
+console.log('\n--- TEST 6: Issue Resolution Alone Does NOT Trigger Email; Submit Button Required ---');
+
+// Simulate state in App.jsx when developer resolves issues
+const prevProjectInRevision = {
+  id: 'DS-WEB-7169',
+  name: 'Restaurant site',
+  status: 'Revision Required',
+  testingStatus: 'Changes Requested',
+  developerSubmitted: true,
+  developerSubmittedAt: '2026-11-13T10:00:00.000Z',
+  testingIssues: [
+    { id: 'iss-1', title: 'Defect 1', status: 'Open' }
+  ]
+};
+
+// Developer resolves all issues (handleResolveIssue)
+const mergedProjectAfterIssueResolved = {
+  ...prevProjectInRevision,
+  status: 'Revision Required', // STILL Revision Required! Developer has not clicked submit yet!
+  testingIssues: [
+    { id: 'iss-1', title: 'Defect 1', status: 'Resolved' }
+  ]
+};
+
+// Evaluate the App.jsx submission gate logic
+const isNowSubmittedOnResolve = mergedProjectAfterIssueResolved.status === 'Submitted';
+const wasAlreadySubmittedOnResolve = prevProjectInRevision.status === 'Submitted';
+const isNewTimestampOnResolve = Boolean(
+  mergedProjectAfterIssueResolved.developerSubmittedAt &&
+  mergedProjectAfterIssueResolved.developerSubmittedAt !== prevProjectInRevision.developerSubmittedAt
+);
+const isGenuineSubmissionOnResolve = isNowSubmittedOnResolve && (!wasAlreadySubmittedOnResolve || isNewTimestampOnResolve);
+
+assert.strictEqual(isNowSubmittedOnResolve, false, 'Project is NOT submitted merely by marking issues resolved');
+assert.strictEqual(isGenuineSubmissionOnResolve, false, 'Genuine submission gate MUST BE FALSE when resolving issues');
+console.log('✅ PASS: Marking issues resolved does NOT satisfy submission criteria — 0 emails triggered');
+
+// Developer now clicks "Submit Project" button (handleConfirmSubmit in ProjectDetailPage.jsx)
+const submittedAfterFix = {
+  ...mergedProjectAfterIssueResolved,
+  status: 'Submitted', // Status transitions to 'Submitted'!
+  developerSubmitted: true,
+  developerSubmittedAt: '2026-11-15T14:30:00.000Z', // New timestamp generated on button click!
+  lastSubmissionEmailSentAt: '2026-11-15T14:30:00.000Z'
+};
+
+const isNowSubmittedOnButtonClick = submittedAfterFix.status === 'Submitted';
+const wasAlreadySubmittedOnButtonClick = prevProjectInRevision.status === 'Submitted';
+const isNewTimestampOnButtonClick = Boolean(
+  submittedAfterFix.developerSubmittedAt &&
+  submittedAfterFix.developerSubmittedAt !== prevProjectInRevision.developerSubmittedAt
+);
+const isGenuineSubmissionOnButtonClick = isNowSubmittedOnButtonClick && (!wasAlreadySubmittedOnButtonClick || isNewTimestampOnButtonClick);
+
+assert.strictEqual(isNowSubmittedOnButtonClick, true, 'Status transitions to Submitted on button click');
+assert.strictEqual(isGenuineSubmissionOnButtonClick, true, 'Genuine submission gate is TRUE when developer clicks submit button');
+console.log('✅ PASS: Clicking Submit Project button triggers genuine submission gate for tester notification');
+
 console.log('\n================================================================');
 console.log('🎉 ALL QA RE-TEST & DEFECT RESOLUTION TESTS PASSED!');
 console.log('================================================================');

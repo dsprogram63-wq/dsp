@@ -637,31 +637,30 @@ export default function App() {
     saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
 
     // Dispatch submission notification emails to QA Tester & Admin from project@dsprogram.space
-    const wasSubmitted = Boolean(
-      prevProj?.developerSubmitted === true ||
-      prevProj?.freelancerSubmitted === true ||
-      prevProj?.developerSubmission === 'Submitted' ||
-      prevProj?.status === 'Submitted'
+    // STRICT RULE: Email MUST ONLY be sent when the developer genuinely submits the project (status transitions to 'Submitted').
+    // Never send email when developer is merely resolving defects, checking tasks, or updating notes while in Revision Required / Changes Requested!
+    const isNowSubmitted = mergedProj?.status === 'Submitted';
+    const wasAlreadySubmitted = prevProj?.status === 'Submitted';
+    const isNewTimestamp = Boolean(
+      mergedProj?.developerSubmittedAt &&
+      mergedProj?.developerSubmittedAt !== prevProj?.developerSubmittedAt
     );
-    const isNowSubmitted = Boolean(
-      mergedProj?.developerSubmitted === true ||
-      mergedProj?.freelancerSubmitted === true ||
-      mergedProj?.developerSubmission === 'Submitted' ||
-      mergedProj?.status === 'Submitted'
-    );
+
     const isReworkResubmission = Boolean(
       prevProj?.status === 'Revision Required' ||
       prevProj?.status === 'Changes Requested' ||
       prevProj?.testingStatus === 'Changes Requested' ||
-      prevProj?.adminRejected === true
+      prevProj?.adminRejected === true ||
+      (Array.isArray(prevProj?.testingIssues) && prevProj.testingIssues.length > 0)
     );
-    const isNewSubmission = isNowSubmitted && (!wasSubmitted || isReworkResubmission);
+
+    const isGenuineSubmission = isNowSubmitted && (!wasAlreadySubmitted || isNewTimestamp);
     const recentlySent = Boolean(
       mergedProj?.lastSubmissionEmailSentAt &&
       Date.now() - new Date(mergedProj.lastSubmissionEmailSentAt).getTime() < 15000
     );
 
-    if (isNewSubmission && !recentlySent) {
+    if (isGenuineSubmission && !recentlySent) {
       mergedProj.lastSubmissionEmailSentAt = new Date().toISOString();
       sendProjectSubmissionNotifications({
         project: mergedProj,
