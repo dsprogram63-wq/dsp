@@ -495,12 +495,86 @@ export default function App() {
                 ? Math.max(incProj.testingProgress || 0, localProj.testingProgress || 0)
                 : (incProj.testingProgress ?? localProj.testingProgress ?? 0);
 
+              // Reconcile 3-Track Payment Flow to prevent lagging cloud polls from reverting locally settled payments
+              const localClientPaid = localProj.collectedClientAmountNum ?? localProj.clientPaidAmount ?? (localProj.clientPaymentStatus === 'Full Payment Received' ? (localProj.totalClientPriceNum || 0) : 0);
+              const incClientPaid = incProj.collectedClientAmountNum ?? incProj.clientPaidAmount ?? (incProj.clientPaymentStatus === 'Full Payment Received' ? (incProj.totalClientPriceNum || 0) : 0);
+              const useLocalClient = (localProj.clientPaymentStatus === 'Full Payment Received' && incProj.clientPaymentStatus !== 'Full Payment Received') || (localClientPaid > incClientPaid);
+
+              const localDevPaid = localProj.developerPaymentPaidNum ?? localProj.developerPaidAmount ?? (localProj.developerPaymentStatus === 'Paid' ? (localProj.developerPaymentNum || 0) : 0);
+              const incDevPaid = incProj.developerPaymentPaidNum ?? incProj.developerPaidAmount ?? (incProj.developerPaymentStatus === 'Paid' ? (incProj.developerPaymentNum || 0) : 0);
+              const useLocalDev = (localProj.developerPaymentStatus === 'Paid' && incProj.developerPaymentStatus !== 'Paid') || (localDevPaid > incDevPaid);
+
+              const localTesterPaid = localProj.testerPaymentPaidNum ?? localProj.testerPaidAmount ?? (localProj.testerPaymentStatus === 'Paid' ? (localProj.testerPaymentNum || 0) : 0);
+              const incTesterPaid = incProj.testerPaymentPaidNum ?? incProj.testerPaidAmount ?? (incProj.testerPaymentStatus === 'Paid' ? (incProj.testerPaymentNum || 0) : 0);
+              const useLocalTester = (localProj.testerPaymentStatus === 'Paid' && incProj.testerPaymentStatus !== 'Paid') || (localTesterPaid > incTesterPaid);
+
+              const isCompletedLocally = localProj.status === 'Completed' || (useLocalClient && useLocalDev && useLocalTester);
+
               return sanitizeProject({
                 ...incProj,
                 tasks: reconciledTasks,
                 testingChecklist: reconciledTasks,
                 testingProgress: finalTestingProgress,
-                testingStatus: localProj.testingStatus === 'Tester Approved' ? 'Tester Approved' : (incProj.testingStatus || localProj.testingStatus || 'Pending')
+                testingStatus: localProj.testingStatus === 'Tester Approved' ? 'Tester Approved' : (incProj.testingStatus || localProj.testingStatus || 'Pending'),
+                status: isCompletedLocally ? 'Completed' : (incProj.status || localProj.status),
+                adminApproved: localProj.adminApproved || incProj.adminApproved,
+
+                // Client payment reconciliation
+                ...(useLocalClient ? {
+                  clientPaymentStatus: localProj.clientPaymentStatus,
+                  collectedClientAmount: localProj.collectedClientAmount,
+                  collectedClientAmountNum: localProj.collectedClientAmountNum,
+                  clientPaidAmount: localProj.clientPaidAmount,
+                  remainingClientAmount: localProj.remainingClientAmount,
+                  remainingClientAmountNum: localProj.remainingClientAmountNum,
+                  clientRemainingAmount: localProj.clientRemainingAmount,
+                  paidAmount: localProj.paidAmount,
+                  paidAmountNum: localProj.paidAmountNum,
+                  remainingAmount: localProj.remainingAmount,
+                  remainingAmountNum: localProj.remainingAmountNum,
+                  clientTransactionId: localProj.clientTransactionId,
+                  clientTxnId: localProj.clientTxnId,
+                  clientPaymentMode: localProj.clientPaymentMode,
+                  clientPaymentDate: localProj.clientPaymentDate,
+                  startingPaymentReceived: localProj.startingPaymentReceived
+                } : {}),
+
+                // Developer payment reconciliation
+                ...(useLocalDev ? {
+                  developerPaymentStatus: localProj.developerPaymentStatus,
+                  payoutStatus: localProj.payoutStatus,
+                  developerPayment: localProj.developerPayment,
+                  developerPaymentNum: localProj.developerPaymentNum,
+                  developerPaymentPaid: localProj.developerPaymentPaid,
+                  developerPaymentPaidNum: localProj.developerPaymentPaidNum,
+                  developerPaidAmount: localProj.developerPaidAmount,
+                  developerPaymentRemaining: localProj.developerPaymentRemaining,
+                  developerPaymentRemainingNum: localProj.developerPaymentRemainingNum,
+                  developerRemainingAmount: localProj.developerRemainingAmount,
+                  developerTransactionId: localProj.developerTransactionId,
+                  devTxnId: localProj.devTxnId,
+                  developerPaymentTxnId: localProj.developerPaymentTxnId,
+                  developerPaymentMode: localProj.developerPaymentMode,
+                  developerPaymentDate: localProj.developerPaymentDate
+                } : {}),
+
+                // Tester payment reconciliation
+                ...(useLocalTester ? {
+                  testerPaymentStatus: localProj.testerPaymentStatus,
+                  testerPayment: localProj.testerPayment,
+                  testerPaymentNum: localProj.testerPaymentNum,
+                  testerPaymentPaid: localProj.testerPaymentPaid,
+                  testerPaymentPaidNum: localProj.testerPaymentPaidNum,
+                  testerPaidAmount: localProj.testerPaidAmount,
+                  testerPaymentRemaining: localProj.testerPaymentRemaining,
+                  testerPaymentRemainingNum: localProj.testerPaymentRemainingNum,
+                  testerRemainingAmount: localProj.testerRemainingAmount,
+                  testerTransactionId: localProj.testerTransactionId,
+                  testerPaymentTxnId: localProj.testerPaymentTxnId,
+                  testerTxnId: localProj.testerTxnId,
+                  testerPaymentMode: localProj.testerPaymentMode,
+                  testerPaymentDate: localProj.testerPaymentDate
+                } : {})
               });
             });
 
@@ -539,7 +613,20 @@ export default function App() {
                 }
                 return incTask;
               });
-              return sanitizeProject({ ...incProj, tasks: reconciledTasks, testingChecklist: reconciledTasks });
+              const useLocalDevPaid = localProj.developerPaymentStatus === 'Paid' || (localProj.developerPaymentPaidNum || 0) > (incProj.developerPaymentPaidNum || 0);
+              return sanitizeProject({ 
+                ...incProj, 
+                tasks: reconciledTasks, 
+                testingChecklist: reconciledTasks,
+                ...(useLocalDevPaid ? {
+                  developerPaymentStatus: localProj.developerPaymentStatus,
+                  payoutStatus: localProj.payoutStatus,
+                  developerPaymentPaid: localProj.developerPaymentPaid,
+                  developerPaymentPaidNum: localProj.developerPaymentPaidNum,
+                  developerPaymentRemaining: localProj.developerPaymentRemaining,
+                  developerPaymentRemainingNum: localProj.developerPaymentRemainingNum
+                } : {})
+              });
             });
             const snap = JSON.stringify(mergedList);
             try {

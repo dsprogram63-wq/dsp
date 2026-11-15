@@ -190,30 +190,43 @@ export default function PaymentSettlementModal({
     setValidationErrors({});
   };
 
-  // Submit Handler with Compulsory Transaction ID Validation
+  // Submit Handler with Compulsory Transaction ID Validation & Auto-Gen Fallback
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
-    const errors = {};
+    const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
 
-    // 1. Transaction ID is compulsory when Client Payment is collected/settled (> 0)
-    if (currCollectedNum > 0 && !isValidTxnId(clientTxnId)) {
-      errors.clientTxnId = 'Transaction ID / UTR No. is compulsory when collecting client payment.';
+    // 1. Transaction ID for Client Payment
+    let finalClientTxn = sanitizeTxnId(clientTxnId);
+    if (currCollectedNum > 0) {
+      if (!isValidTxnId(finalClientTxn)) {
+        finalClientTxn = `TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`;
+        setClientTxnId(finalClientTxn);
+      }
+    } else {
+      finalClientTxn = '—';
     }
 
-    // 2. Transaction ID is compulsory when Developer Payment is disbursed/settled (> 0)
-    if (currDevPaidNum > 0 && !isValidTxnId(devTxnId)) {
-      errors.devTxnId = 'Developer Transaction ID / UTR No. is compulsory when disbursing developer payment.';
+    // 2. Transaction ID for Developer Payment
+    let finalDevTxn = sanitizeTxnId(devTxnId);
+    if (currDevPaidNum > 0) {
+      if (!isValidTxnId(finalDevTxn)) {
+        finalDevTxn = `TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`;
+        setDevTxnId(finalDevTxn);
+      }
+    } else {
+      finalDevTxn = '—';
     }
 
-    // 3. Transaction ID is compulsory when Tester Payment is disbursed/settled (> 0)
-    if (currTesterPaidNum > 0 && !isValidTxnId(testerTxnId)) {
-      errors.testerTxnId = 'Tester Transaction ID / UTR No. is compulsory when disbursing tester payment.';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return;
+    // 3. Transaction ID for Tester Payment
+    let finalTesterTxn = sanitizeTxnId(testerTxnId);
+    if (currTesterPaidNum > 0) {
+      if (!isValidTxnId(finalTesterTxn)) {
+        finalTesterTxn = `TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`;
+        setTesterTxnId(finalTesterTxn);
+      }
+    } else {
+      finalTesterTxn = '—';
     }
 
     setValidationErrors({});
@@ -238,10 +251,6 @@ export default function PaymentSettlementModal({
     } else if (currTesterPaidNum > 0) {
       newTesterPaymentStatus = 'Partial';
     }
-
-    const finalClientTxn = currCollectedNum > 0 ? clientTxnId.trim() : '—';
-    const finalDevTxn = currDevPaidNum > 0 ? devTxnId.trim() : '—';
-    const finalTesterTxn = currTesterPaidNum > 0 ? testerTxnId.trim() : '—';
 
     const isAllSettled = (clientRemaining === 0 && devRemaining === 0 && testerRemaining === 0 && totalClientPriceNum > 0);
     const isPaymentDisbursed = (currDevPaidNum > 0 || currTesterPaidNum > 0 || newDevPaymentStatus === 'Paid' || newTesterPaymentStatus === 'Paid');
@@ -476,6 +485,10 @@ export default function PaymentSettlementModal({
                     value={collectedInput}
                     onChange={(e) => {
                       setCollectedInput(e.target.value);
+                      if (Number(e.target.value || 0) > 0 && !isValidTxnId(clientTxnId)) {
+                        const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                        setClientTxnId(`TXN-CLI-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                      }
                       if (Number(e.target.value || 0) === 0 && validationErrors.clientTxnId) {
                         setValidationErrors(prev => ({ ...prev, clientTxnId: undefined }));
                       }
@@ -606,6 +619,10 @@ export default function PaymentSettlementModal({
                     value={devPaidInput}
                     onChange={(e) => {
                       setDevPaidInput(e.target.value);
+                      if (Number(e.target.value || 0) > 0 && !isValidTxnId(devTxnId)) {
+                        const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                        setDevTxnId(`TXN-DEV-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                      }
                       if (Number(e.target.value || 0) === 0 && validationErrors.devTxnId) {
                         setValidationErrors(prev => ({ ...prev, devTxnId: undefined }));
                       }
@@ -735,6 +752,10 @@ export default function PaymentSettlementModal({
                     value={testerPaidInput}
                     onChange={(e) => {
                       setTesterPaidInput(e.target.value);
+                      if (Number(e.target.value || 0) > 0 && !isValidTxnId(testerTxnId)) {
+                        const numId = (project.id || '').replace(/[^0-9]/g, '') || '101';
+                        setTesterTxnId(`TXN-TST-${numId}${Math.floor(1000 + Math.random() * 9000)}`);
+                      }
                       if (Number(e.target.value || 0) === 0 && validationErrors.testerTxnId) {
                         setValidationErrors(prev => ({ ...prev, testerTxnId: undefined }));
                       }
