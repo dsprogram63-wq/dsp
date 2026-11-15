@@ -646,7 +646,13 @@ export default function App() {
       mergedProj?.developerSubmission === 'Submitted' ||
       mergedProj?.status === 'Submitted'
     );
-    const isNewSubmission = isNowSubmitted && (!wasSubmitted || prevProj?.status === 'Revision Required');
+    const isReworkResubmission = Boolean(
+      prevProj?.status === 'Revision Required' ||
+      prevProj?.status === 'Changes Requested' ||
+      prevProj?.testingStatus === 'Changes Requested' ||
+      prevProj?.adminRejected === true
+    );
+    const isNewSubmission = isNowSubmitted && (!wasSubmitted || isReworkResubmission);
     const recentlySent = Boolean(
       mergedProj?.lastSubmissionEmailSentAt &&
       Date.now() - new Date(mergedProj.lastSubmissionEmailSentAt).getTime() < 15000
@@ -656,7 +662,7 @@ export default function App() {
       mergedProj.lastSubmissionEmailSentAt = new Date().toISOString();
       sendProjectSubmissionNotifications({
         project: mergedProj,
-        isResubmission: prevProj?.status === 'Revision Required',
+        isResubmission: isReworkResubmission,
         developers,
         testers
       }).catch((err) => {

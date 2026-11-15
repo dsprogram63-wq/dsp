@@ -405,9 +405,11 @@ export default function ProjectDetailPage({
 
   // Strict submission rule:
   // 1. If already submitted (and no rework requested), submission is NEVER allowed (button locked/disabled).
-  // 2. If rework requested, ALL tasks must be 100% completed, unresolved issues resolved, and both links provided.
-  // 3. If active project, all tasks must be 100% completed and both links provided.
-  const isSubmissionAllowed = !isAlreadySubmitted && devProg === 100 && allTasksDone && hasLiveLink && hasDriveLink && (!hasReworkRequested || unresolvedIssuesCount === 0);
+  // 2. All open QA defects MUST be resolved by developer first (unresolvedIssuesCount === 0).
+  // 3. All milestone tasks must be 100% completed (devProg === 100 && allTasksDone).
+  // 4. Both Live Project Link and Google Drive ZIP Link must be provided.
+  const hasUnresolvedDefects = unresolvedIssuesCount > 0;
+  const isSubmissionAllowed = !isAlreadySubmitted && devProg === 100 && allTasksDone && hasLiveLink && hasDriveLink && !hasUnresolvedDefects;
 
   // Link inputs are locked while project is formally submitted/under review
   const isLinksLocked = isAlreadySubmitted;
@@ -416,6 +418,11 @@ export default function ProjectDetailPage({
   const handleProjectSubmit = (submissionData) => {
     if (isAlreadySubmitted) {
       showToast('🔒 Project is already submitted and locked for QA review.');
+      return;
+    }
+
+    if (unresolvedIssuesCount > 0) {
+      showToast(`⚠️ Cannot Submit: You must resolve all ${unresolvedIssuesCount} open QA defect(s) before submitting.`);
       return;
     }
 
@@ -444,20 +451,20 @@ export default function ProjectDetailPage({
       return { ...t, status: 'Completed', progress: 100 };
     });
 
-    // Mark all issues as resolved
-    const resolvedIssues = (project.testingIssues || []).map(i => ({
+    // Keep all verified resolved issues
+    const currentIssues = (project.testingIssues || project.issues || []).map(i => ({
       ...i,
       status: 'Resolved',
-      resolvedAt: submissionDate,
-      resolvedBy: project.developer || 'Developer'
+      resolvedAt: i.resolvedAt || submissionDate,
+      resolvedBy: i.resolvedBy || project.developer || 'Developer'
     }));
 
     const nowIso = new Date().toISOString();
     const submittedProject = {
       ...project,
       tasks: updatedTasks,
-      testingIssues: resolvedIssues,
-      issues: resolvedIssues,
+      testingIssues: currentIssues,
+      issues: currentIssues,
       freelancerSubmitted: true,
       freelancerSubmittedAt: nowIso,
       developerSubmitted: true,
@@ -483,7 +490,7 @@ export default function ProjectDetailPage({
       lastSubmissionEmailSentAt: nowIso,
       testingActivity: [
         {
-          event: hasReworkRequested ? `Project resubmitted by Developer for QA review (Defects resolved)` : `Project submitted by Developer for QA review`,
+          event: hasReworkRequested ? `Project resubmitted by Developer for QA review (All defects resolved)` : `Project submitted by Developer for QA review`,
           time: submissionDate,
           by: project.developer || 'Developer'
         },
@@ -493,21 +500,32 @@ export default function ProjectDetailPage({
 
     onUpdateProject(submittedProject);
     setIsSubmissionModalOpen(false);
-    showToast(hasReworkRequested ? '🎉 Project resubmitted! Dispatching notices to QA Tester & Admin from project@dsprogram.space...' : '🎉 Project submitted! Dispatching notices to QA Tester & Admin from project@dsprogram.space...');
+    showToast(
+      hasReworkRequested 
+        ? '🎉 Defects resolved! Re-test request dispatched to QA Tester from project@dsprogram.space' 
+        : '🎉 Project submitted! Dispatching notices to QA Tester & Admin from project@dsprogram.space...'
+    );
 
-    // Asynchronously dispatch project completion & submission emails to QA Tester and Admin via project@dsprogram.space
+    // Asynchronously dispatch project completion & submission emails
+    // If hasReworkRequested = true, sendProjectSubmissionNotifications strictly notifies ONLY the assigned QA tester!
     sendProjectSubmissionNotifications({
       project: submittedProject,
       isResubmission: hasReworkRequested,
       testers,
       developers
     }).then(res => {
-      const testerOk = res?.tester?.success;
-      const adminOk = res?.admin?.success;
-      if (testerOk && adminOk) {
-        showToast('✓ Submission emails sent to QA Tester & Admin from project@dsprogram.space', 5500);
-      } else if (testerOk || adminOk) {
-        showToast(`✓ Submission email sent to ${testerOk ? 'QA Tester' : 'Admin'} from project@dsprogram.space`, 5500);
+      if (hasReworkRequested) {
+        if (res?.tester?.success) {
+          showToast('✓ QA Re-Test request sent directly to Tester from project@dsprogram.space', 5500);
+        }
+      } else {
+        const testerOk = res?.tester?.success;
+        const adminOk = res?.admin?.success;
+        if (testerOk && adminOk) {
+          showToast('✓ Submission emails sent to QA Tester & Admin from project@dsprogram.space', 5500);
+        } else if (testerOk || adminOk) {
+          showToast(`✓ Submission email sent to ${testerOk ? 'QA Tester' : 'Admin'} from project@dsprogram.space`, 5500);
+        }
       }
     }).catch(err => {
       console.error('[Project Mailer] Failed to dispatch submission emails:', err);
@@ -1157,6 +1175,7 @@ export default function ProjectDetailPage({
       {project.testingIssues && project.testingIssues.length > 0 && (
         <div 
           className="portal-card" 
+          id="project-qa-defects-section"
           style={{ 
             borderLeft: unresolvedIssuesCount === 0 ? '4px solid #10B981' : '4px solid #DC2626', 
             marginBottom: '24px',
@@ -1699,8 +1718,8 @@ export default function ProjectDetailPage({
         {/* Large Submission CTA Button */}
         <div className="submission-footer-action">
           <div className="submission-info-note">
-            <Info size={16} color={isAlreadySubmitted ? '#0284C7' : (!hasLiveLink || !hasDriveLink) && devProg === 100 ? '#D97706' : hasReworkRequested && devProg < 100 ? '#DC2626' : '#0A3D75'} />
-            <span style={{ color: isAlreadySubmitted ? '#0369A1' : (!hasLiveLink || !hasDriveLink) && devProg === 100 ? '#B45309' : hasReworkRequested && devProg < 100 ? '#991B1B' : undefined, fontWeight: 600 }}>
+            <Info size={16} color={isAlreadySubmitted ? '#0284C7' : unresolvedIssuesCount > 0 ? '#DC2626' : (!hasLiveLink || !hasDriveLink) && devProg === 100 ? '#D97706' : hasReworkRequested && devProg < 100 ? '#DC2626' : '#0A3D75'} />
+            <span style={{ color: isAlreadySubmitted ? '#0369A1' : unresolvedIssuesCount > 0 ? '#991B1B' : (!hasLiveLink || !hasDriveLink) && devProg === 100 ? '#B45309' : hasReworkRequested && devProg < 100 ? '#991B1B' : undefined, fontWeight: 600 }}>
               {isAlreadySubmitted ? (
                 currentStatus === 'Submitted' 
                   ? '🔒 Submission locked. Project has been submitted and is queued for QA review. You cannot resubmit unless the tester files an issue.' 
@@ -1711,9 +1730,11 @@ export default function ProjectDetailPage({
                       : currentStatus === 'Approved' || currentStatus === 'Completed'
                         ? '🔒 Project is approved & verified. No further submissions required.'
                         : '🔒 Submission locked. Project is under review.'
+              ) : unresolvedIssuesCount > 0 ? (
+                `⚠️ QA Defects Pending: You must resolve all ${unresolvedIssuesCount} open defect(s) before submitting for review.`
               ) : hasReworkRequested ? (
                 devProg < 100 || !allTasksDone
-                  ? `⚠️ QA Rework Required: You must resolve all reported issues and mark all milestone tasks completed (100%) before resubmitting. Currently at ${devProg}%.`
+                  ? `⚠️ QA Rework Required: You must complete all milestone tasks (100%) before resubmitting. Currently at ${devProg}%.`
                   : (!hasLiveLink || !hasDriveLink)
                     ? '⚠️ Mandatory: Live Project Link and Google Drive ZIP Link must both be provided before resubmitting.'
                     : '✓ All QA defects resolved and tasks completed. Click "Resubmit for QA Review" to proceed.'
@@ -1733,6 +1754,12 @@ export default function ProjectDetailPage({
             onClick={() => {
               if (isAlreadySubmitted) {
                 showToast('🔒 Project is already submitted and under review. You cannot resubmit unless changes are requested.');
+                return;
+              }
+              if (unresolvedIssuesCount > 0) {
+                const issuesSection = document.getElementById('project-qa-defects-section');
+                if (issuesSection) issuesSection.scrollIntoView({ behavior: 'smooth' });
+                showToast(`⚠️ You must resolve all ${unresolvedIssuesCount} open QA defect(s) before submitting.`);
                 return;
               }
               if (!isSubmissionAllowed) {
@@ -1786,6 +1813,8 @@ export default function ProjectDetailPage({
                         : currentStatus === 'Completed'
                           ? 'Project Completed & Settled'
                           : 'Submission Locked (Under Review)'
+              ) : unresolvedIssuesCount > 0 ? (
+                `Resolve ${unresolvedIssuesCount} Defect${unresolvedIssuesCount > 1 ? 's' : ''} to ${hasReworkRequested ? 'Resubmit' : 'Submit'}`
               ) : hasReworkRequested ? (
                 devProg < 100 || !allTasksDone
                   ? `Complete All Tasks to Resubmit (${devProg}%)`

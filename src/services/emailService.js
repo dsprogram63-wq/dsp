@@ -3061,6 +3061,9 @@ export function buildDeveloperSubmittedTesterEmailHtml({
   const completedTasks = tasks.filter(t => t.status === 'Completed').length || totalTasks;
   const credsCount = Array.isArray(project?.credentials) ? project.credentials.length : 0;
 
+  const allIssues = Array.isArray(project?.testingIssues) ? project.testingIssues : (Array.isArray(project?.issues) ? project.issues : []);
+  const resolvedIssues = allIssues.filter(i => i.status === 'Resolved');
+
   const tasksHtml = tasks.length > 0
     ? tasks.map((t, idx) => `
       <tr>
@@ -3075,9 +3078,50 @@ export function buildDeveloperSubmittedTesterEmailHtml({
     `).join('')
     : '';
 
+  const resolvedIssuesHtml = isResubmission && resolvedIssues.length > 0
+    ? `
+      <div style="font-size: 13px; font-weight: 800; color: #065F46; margin-bottom: 8px;">
+        Resolved QA Defects &amp; Bug Fixes (${resolvedIssues.length})
+      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #BBF7D0; border-radius: 8px; overflow: hidden; margin-bottom: 22px; background: #FFFFFF;">
+        <tr style="background-color: #ECFDF5;">
+          <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #065F46; text-transform: uppercase; width: 32px;">#</th>
+          <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #065F46; text-transform: uppercase;">Defect Details &amp; Milestone</th>
+          <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #065F46; text-transform: uppercase;">Status</th>
+        </tr>
+        ${resolvedIssues.map((iss, idx) => `
+          <tr>
+            <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700;">${idx + 1}</td>
+            <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+              ${iss.title || 'Reported Defect'}
+              <div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">Task: ${iss.task || iss.relatedTask || 'Deliverable'}</div>
+              ${iss.actual || iss.actualResult ? `<div style="font-size: 11px; color: #7F1D1D; font-weight: 500; margin-top: 2px;">Original Issue: ${iss.actual || iss.actualResult}</div>` : ''}
+            </td>
+            <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #16A34A; font-size: 12px; font-weight: 800; white-space: nowrap;">✓ Resolved</td>
+          </tr>
+        `).join('')}
+      </table>
+    `
+    : '';
+
   const badgeText = isResubmission
-    ? '🔄 DEVELOPER RESUBMISSION &bull; QA REWORK READY'
+    ? '🔄 ALL DEFECTS RESOLVED &bull; READY FOR QA RE-TEST'
     : '🎉 DEVELOPER COMPLETED 100% &bull; READY FOR QA';
+
+  const introText = isResubmission
+    ? `Hello <strong>${testerName || 'QA Specialist'}</strong>,<br>
+       Developer <strong>${devName}${devId}</strong> has completed the required rework and resolved all reported QA defects for project <strong>${projectName} [${projectId}]</strong>.<br>
+       All deliverables and bug fixes are now ready for your re-testing. Please review the updated implementation, verify all bug fixes, and re-test the checklist in your QA Tester Workspace.`
+    : `Hello <strong>${testerName || 'QA Specialist'}</strong>,<br>
+       Developer <strong>${devName}${devId}</strong> has successfully completed 100% of the milestone deliverables and submitted <strong>${projectName} [${projectId}]</strong> for your formal quality inspection and verification checklist audit.`;
+
+  const calloutText = isResubmission
+    ? `<strong>Action Required (Re-Test):</strong> Please log in to your QA Tester Workspace to inspect the re-worked deliverables, verify the bug fixes, and re-test all checklist tasks. You may approve the project once all items pass verification.`
+    : `<strong>Action Required:</strong> Please log in to your QA Tester Workspace to test the live deployment, verify responsiveness, inspect source code, and complete your verification checklist. You may pass checklist items or log defects if revisions are needed.`;
+
+  const ctaButtonText = isResubmission
+    ? 'Open QA Workspace &amp; Re-test Deliverables &rarr;'
+    : 'Open QA Workspace &amp; Start Testing &rarr;';
 
   return `
 <!DOCTYPE html>
@@ -3117,8 +3161,7 @@ export function buildDeveloperSubmittedTesterEmailHtml({
               </h2>
 
               <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
-                Hello <strong>${testerName || 'QA Specialist'}</strong>,<br>
-                Developer <strong>${devName}${devId}</strong> has successfully completed 100% of the milestone deliverables and submitted <strong>${projectName} [${projectId}]</strong> for your formal quality inspection and verification checklist audit.
+                ${introText}
               </p>
 
               <!-- Submission Snapshot Card -->
@@ -3180,6 +3223,9 @@ export function buildDeveloperSubmittedTesterEmailHtml({
                 </tr>
               </table>
 
+              <!-- Resolved QA Defects Breakdown (if Resubmission) -->
+              ${resolvedIssuesHtml}
+
               <!-- Milestone Tasks Breakdown -->
               ${tasksHtml ? `
               <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-bottom: 8px;">
@@ -3197,7 +3243,7 @@ export function buildDeveloperSubmittedTesterEmailHtml({
               <!-- Instruction Callout -->
               <div style="background-color: #F0FDF4; border-left: 4px solid #10B981; padding: 14px 16px; border-radius: 6px; margin-bottom: 24px;">
                 <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #166534;">
-                  <strong>Action Required:</strong> Please log in to your QA Tester Workspace to test the live deployment, verify responsiveness, inspect source code, and complete your verification checklist. You may pass checklist items or log defects if revisions are needed.
+                  ${calloutText}
                 </p>
               </div>
 
@@ -3206,7 +3252,7 @@ export function buildDeveloperSubmittedTesterEmailHtml({
                 <tr>
                   <td align="center" style="padding-bottom: 12px;">
                     <a href="https://www.dsprogram.space/freelancer-login?role=tester" style="display: inline-block; padding: 14px 34px; background-color: #059669; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
-                      Open QA Workspace &amp; Start Testing &rarr;
+                      ${ctaButtonText}
                     </a>
                   </td>
                 </tr>
@@ -3218,10 +3264,11 @@ export function buildDeveloperSubmittedTesterEmailHtml({
           <tr>
             <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
               <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
-                Dahej Support &bull; Project Operations Desk
+                Dahej Support &bull; QA Operations Desk
               </p>
               <p style="margin: 0;">
                 Project Operations Mailer &bull; Sent from <strong style="color: #065F46;">project@dsprogram.space</strong><br>
+                ${isResubmission ? '<em style="color: #94A3B8; font-size: 11px;">(Confidential QA Re-Verification Dispatch &bull; Admin is not copied on defect rework notifications)</em><br>' : ''}
                 &copy; ${year} Dahej Support. All rights reserved.
               </p>
             </td>
@@ -3438,14 +3485,84 @@ export function buildDeveloperSubmittedAdminEmailHtml({
 }
 
 /**
+ * Resolves Tester Email with multi-layer fallback across Project, Testers Registry, and LocalStorage.
+ */
+export function resolveTesterEmail(project, testers = []) {
+  if (project?.testerEmail && project.testerEmail.trim().toLowerCase() !== 'unassigned') {
+    return project.testerEmail.trim().toLowerCase();
+  }
+
+  // 1. Check testers array passed in
+  if (Array.isArray(testers) && testers.length > 0) {
+    const testerMatch = testers.find(
+      (t) =>
+        t &&
+        ((project?.testerId &&
+          (t.id || t.testerId) &&
+          String(t.id || t.testerId).toLowerCase() === String(project.testerId).toLowerCase()) ||
+          (project?.tester &&
+            (t.name || t.fullName) &&
+            String(t.name || t.fullName).toLowerCase() === String(project.tester).toLowerCase()))
+    );
+    if (testerMatch?.email || testerMatch?.emailAddress) {
+      return (testerMatch.email || testerMatch.emailAddress).trim().toLowerCase();
+    }
+  }
+
+  // 2. Check localStorage testers and admin projects
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const rawTesters = localStorage.getItem('dahej_real_v2_testers') || localStorage.getItem('dahej_testers');
+      if (rawTesters) {
+        const testerList = JSON.parse(rawTesters);
+        if (Array.isArray(testerList)) {
+          const testerMatch = testerList.find(
+            (t) =>
+              t &&
+              ((project?.testerId &&
+                (t.id || t.testerId) &&
+                String(t.id || t.testerId).toLowerCase() === String(project.testerId).toLowerCase()) ||
+                (project?.tester &&
+                  (t.name || t.fullName) &&
+                  String(t.name || t.fullName).toLowerCase() === String(project.tester).toLowerCase()))
+          );
+          if (testerMatch?.email || testerMatch?.emailAddress) {
+            return (testerMatch.email || testerMatch.emailAddress).trim().toLowerCase();
+          }
+        }
+      }
+
+      const rawProjs =
+        localStorage.getItem('dahej_real_v2_admin_projects') ||
+        localStorage.getItem('dahej_admin_projects') ||
+        localStorage.getItem('dahej_projects');
+      if (rawProjs) {
+        const projList = JSON.parse(rawProjs);
+        if (Array.isArray(projList)) {
+          const p = projList.find(
+            (item) => item?.id && project?.id && String(item.id).toLowerCase() === String(project.id).toLowerCase()
+          );
+          if (p?.testerEmail && p.testerEmail.trim().toLowerCase() !== 'unassigned') {
+            return p.testerEmail.trim().toLowerCase();
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  return '';
+}
+
+/**
  * Sends Developer Project Submission notification to assigned QA Tester from project@dsprogram.space.
+ * If isResubmission = true, dispatches QA Re-test request highlighting resolved defects.
  */
 export async function sendDeveloperSubmissionTesterEmail({
   project,
   tester = null,
   isResubmission = false
 }) {
-  const cleanEmail = (project?.testerEmail || tester?.email || tester?.emailAddress || '').trim().toLowerCase();
+  const cleanEmail = resolveTesterEmail(project, tester ? [tester] : []);
   const cleanName = (project?.tester || tester?.name || tester?.fullName || 'QA Tester').trim();
 
   if (!cleanEmail || cleanEmail === 'unassigned') {
@@ -3466,19 +3583,39 @@ export async function sendDeveloperSubmissionTesterEmail({
   });
 
   const subject = isResubmission
-    ? `[Project Resubmitted for QA] ${projectName} (${projectId}) — Rework Completed by ${devName}`
+    ? `[QA Re-Test Request] ${projectName} (${projectId}) — Developer Resolved All Defects, Ready for Re-verification`
     : `[Project Completed & Ready for QA] ${projectName} (${projectId}) — Submitted by ${devName}`;
 
-  const textContent =
-    `Hello ${cleanName},\n\n` +
-    `Developer ${devName} has completed 100% of the project tasks and submitted "${projectName}" (${projectId}) for QA verification.\n\n` +
-    `Submission Date: ${submissionDate}\n` +
-    `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
-    `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n` +
-    `QA Deadline: ${project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled'}\n` +
-    `QA Payout: ${project?.testerPayment || project?.testerPayout || 'As agreed'}\n\n` +
-    `Please log in to your QA Tester Workspace at https://www.dsprogram.space/freelancer-login?role=tester to inspect deliverables and begin checklist audit.\n\n` +
-    `Regards,\nDahej Support Project Operations (project@dsprogram.space)`;
+  const allIssues = Array.isArray(project?.testingIssues) ? project.testingIssues : (Array.isArray(project?.issues) ? project.issues : []);
+  const resolvedIssuesList = allIssues.filter(i => i.status === 'Resolved');
+  const resolvedCount = resolvedIssuesList.length;
+
+  const textContent = isResubmission
+    ? `Hello ${cleanName},\n\n` +
+      `Developer ${devName} has resolved all reported defects (${resolvedCount > 0 ? `${resolvedCount} defect(s) fixed` : 'all defects resolved'}) and completed the necessary rework for "${projectName}" (${projectId}).\n\n` +
+      `The deliverables are now ready for your re-testing. Please re-verify the project deliverables and checklist items in your QA Tester Workspace.\n\n` +
+      `Submission Date: ${submissionDate}\n` +
+      `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
+      `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n` +
+      `QA Deadline: ${project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled'}\n` +
+      `QA Payout: ${project?.testerPayment || project?.testerPayout || 'As agreed'}\n\n` +
+      (resolvedCount > 0
+        ? `RESOLVED DEFECTS OVERVIEW (${resolvedCount}):\n` +
+          resolvedIssuesList.map((iss, i) => `  ${i + 1}. [Resolved] ${iss.title} (${iss.task || 'Deliverable'})`).join('\n') + '\n\n'
+        : '') +
+      `Please log in to your QA Tester Workspace to inspect deliverables and begin re-testing:\n` +
+      `https://www.dsprogram.space/freelancer-login?role=tester\n\n` +
+      `Regards,\nDahej Support QA Operations (project@dsprogram.space)\n` +
+      `Note: This defect re-test notice is sent exclusively to the assigned QA tester. Admin is not copied.`
+    : `Hello ${cleanName},\n\n` +
+      `Developer ${devName} has completed 100% of the project tasks and submitted "${projectName}" (${projectId}) for QA verification.\n\n` +
+      `Submission Date: ${submissionDate}\n` +
+      `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
+      `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n` +
+      `QA Deadline: ${project?.testingSubmissionDate || project?.deadlineDate || project?.deadline || 'As scheduled'}\n` +
+      `QA Payout: ${project?.testerPayment || project?.testerPayout || 'As agreed'}\n\n` +
+      `Please log in to your QA Tester Workspace at https://www.dsprogram.space/freelancer-login?role=tester to inspect deliverables and begin checklist audit.\n\n` +
+      `Regards,\nDahej Support Project Operations (project@dsprogram.space)`;
 
   try {
     const res = await sendTransactionalEmail({
@@ -3552,8 +3689,11 @@ export async function sendDeveloperSubmissionAdminEmail({
 }
 
 /**
- * Dispatches Developer Submission notification emails to BOTH assigned QA Tester and Admin.
+ * Dispatches Developer Submission notification emails.
  * Sent from project@dsprogram.space via dedicated Brevo Project channel.
+ * STRICT RULE:
+ * - If isResubmission = true (rework / defects resolved): dispatches strictly to assigned QA Tester ONLY (Admin is excluded).
+ * - If isResubmission = false (first-time project submission): dispatches to both QA Tester and Admin.
  */
 export async function sendProjectSubmissionNotifications({
   project,
@@ -3577,22 +3717,36 @@ export async function sendProjectSubmissionNotifications({
       )
     : null;
 
-  const resolvedTesterEmail = (project.testerEmail || testerMatch?.email || testerMatch?.emailAddress || '').trim();
+  const resolvedTesterEmail = resolveTesterEmail(project, testers);
   const projectWithTesterEmail = {
     ...project,
     testerEmail: resolvedTesterEmail || project.testerEmail
   };
 
+  // IF DEFECT RESUBMISSION: Strictly notify ONLY the assigned QA tester of this project! (Admin is NOT notified)
+  if (isResubmission) {
+    const testerRes = await sendDeveloperSubmissionTesterEmail({
+      project: projectWithTesterEmail,
+      tester: testerMatch,
+      isResubmission: true
+    });
+    return {
+      tester: testerRes,
+      admin: { skipped: true, reason: 'Admin excluded on defect rework re-test notification' }
+    };
+  }
+
+  // IF FIRST-TIME SUBMISSION: Notify both QA Tester and Admin
   const [testerRes, adminRes] = await Promise.allSettled([
     sendDeveloperSubmissionTesterEmail({
       project: projectWithTesterEmail,
       tester: testerMatch,
-      isResubmission
+      isResubmission: false
     }),
     sendDeveloperSubmissionAdminEmail({
       project: projectWithTesterEmail,
       adminEmail,
-      isResubmission
+      isResubmission: false
     })
   ]);
 
