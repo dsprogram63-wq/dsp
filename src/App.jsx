@@ -74,7 +74,8 @@ import {
   saveMemberPassword, 
   removeMemberPassword, 
   sendProjectAssignmentNotifications,
-  sendProjectSubmissionNotifications 
+  sendProjectSubmissionNotifications,
+  sendTesterApprovalNotifications 
 } from './services/emailService';
 import { fetchLivePlatformData, saveLivePlatformData } from './services/liveDataService';
 
@@ -699,6 +700,35 @@ export default function App() {
     } catch (e) {}
 
     saveLivePlatformData({ updateProject: mergedProj }).catch(() => {});
+
+    // Dispatch tester approval emails to Developer and Admin from project@dsprogram.space
+    const wasFinalized = Boolean(
+      prevProj?.status === 'Finalized' ||
+      prevProj?.testingStatus === 'Tester Approved' ||
+      prevProj?.qaFinalized === true ||
+      prevProj?.testerFinalized === true
+    );
+    const isNowFinalized = Boolean(
+      mergedProj?.status === 'Finalized' ||
+      mergedProj?.testingStatus === 'Tester Approved' ||
+      mergedProj?.qaFinalized === true ||
+      mergedProj?.testerFinalized === true
+    );
+    const recentlySent = Boolean(
+      mergedProj?.lastTesterApprovalEmailSentAt &&
+      Date.now() - new Date(mergedProj.lastTesterApprovalEmailSentAt).getTime() < 15000
+    );
+
+    if (isNowFinalized && !wasFinalized && !recentlySent) {
+      mergedProj.lastTesterApprovalEmailSentAt = new Date().toISOString();
+      sendTesterApprovalNotifications({
+        project: mergedProj,
+        testerName: mergedProj.tester || 'QA Tester',
+        developers
+      }).catch((err) => {
+        console.error('[Project Mailer] Auto tester approval notification error:', err);
+      });
+    }
   };
 
   // Admin update (syncs master projects list and updates developer & tester assignments)

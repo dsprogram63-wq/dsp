@@ -33,7 +33,7 @@ import IssueModal from '../../components/tester/IssueModal';
 import RequestChangesModal from '../../components/tester/RequestChangesModal';
 import ApproveTestingModal from '../../components/tester/ApproveTestingModal';
 import CredentialModal from '../../components/portal/CredentialModal';
-import { sendTesterDefectReportEmail } from '../../services/emailService';
+import { sendTesterDefectReportEmail, sendTesterApprovalNotifications } from '../../services/emailService';
 import { 
   getTesterAmount, 
   getTesterPaid, 
@@ -416,6 +416,7 @@ export default function TesterProjectWorkspace({
       return;
     }
 
+    const nowIso = new Date().toISOString();
     const updated = {
       ...project,
       status: 'Finalized',
@@ -423,7 +424,7 @@ export default function TesterProjectWorkspace({
       testingProgress: 100,
       qaFinalized: true,
       testerFinalized: true,
-      testerFinalizedAt: new Date().toISOString(),
+      testerFinalizedAt: nowIso,
       adminApproved: false,
       adminRejected: false,
       adminRejectedAt: null,
@@ -432,8 +433,9 @@ export default function TesterProjectWorkspace({
       adminFeedback: null,
       revisionReason: null,
       revisionTask: null,
+      lastTesterApprovalEmailSentAt: nowIso,
       testingActivity: [
-        { event: `QA Testing Finalized by ${project.tester || 'QA Tester'} — Sent to Admin for Final Review`, time: 'Just now', by: project.tester || 'QA Tester' },
+        { event: `QA Testing Finalized & Approved by ${project.tester || 'QA Tester'} — Sent to Admin for Final Review`, time: 'Just now', by: project.tester || 'QA Tester' },
         ...(project.testingActivity || [])
       ]
     };
@@ -442,7 +444,29 @@ export default function TesterProjectWorkspace({
       onUpdateProject(updated);
     }
     setShowApproveModal(false);
-    showToast('🎉 Project testing finalized! Dispatched to Admin for final approval.');
+    showToast('🎉 Project testing approved & finalized! Dispatched notices to Developer & Admin from project@dsprogram.space.');
+
+    // Asynchronously dispatch QA approval emails to Developer and Admin from project@dsprogram.space
+    try {
+      sendTesterApprovalNotifications({
+        project: updated,
+        testerName: project.tester || 'QA Tester'
+      }).then(res => {
+        const devOk = res?.developer?.success;
+        const admOk = res?.admin?.success;
+        if (devOk && admOk) {
+          console.log('[QA Finalize Mailer] Approval emails sent to Developer & Admin.');
+        } else if (devOk) {
+          console.log('[QA Finalize Mailer] Approval email sent to Developer.');
+        } else if (admOk) {
+          console.log('[QA Finalize Mailer] Approval email sent to Admin.');
+        }
+      }).catch(err => {
+        console.error('[QA Finalize Mailer] Error sending approval emails:', err);
+      });
+    } catch (e) {
+      console.error('[QA Finalize Mailer] Exception sending approval emails:', e);
+    }
   };
 
   return (

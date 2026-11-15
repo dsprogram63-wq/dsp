@@ -4168,3 +4168,549 @@ export async function sendTesterDefectReportEmail({
     return { success: false, error: err.message, recipient: cleanEmail };
   }
 }
+
+/**
+ * Builds responsive HTML email notifying Developer that QA Specialist approved all deliverables and finalized QA testing.
+ * Dispatched strictly to the assigned Developer from project@dsprogram.space.
+ */
+export function buildTesterApprovedDeveloperEmailHtml({
+  project = {},
+  developerName = 'Developer',
+  testerName = 'QA Specialist'
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = developerName || project?.developer || 'Developer';
+  const qaName = testerName || project?.tester || 'QA Specialist';
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const devPayout = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length > 0 ? project.tasks : [];
+  const totalTasks = tasks.length || 5;
+  const completedTasks = tasks.filter(t => t.status === 'Completed' || t.qaStatus === 'Passed').length || totalTasks;
+
+  const tasksHtml = tasks.length > 0
+    ? tasks.map((t, idx) => `
+      <tr>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || 'Milestone Task'}
+          ${t.desc ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc}</div>` : ''}
+        </td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #16A34A; font-size: 12px; font-weight: 800; white-space: nowrap;">✓ Passed &amp; Verified</td>
+      </tr>
+    `).join('')
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Approved: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #059669 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #A7F3D0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                Project Operations &bull; Quality Assurance Clearance
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+
+              <!-- Verified Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                🎉 100% QA VERIFIED &bull; TESTER APPROVED
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                QA Testing Completed: ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${devName}</strong>,<br>
+                Great news! QA Specialist <strong>${qaName}</strong> has completed the quality assurance inspection and officially approved all deliverables for project <strong>${projectName} [${projectId}]</strong>.<br>
+                All milestone deliverables, tasks, and bug fixes have successfully passed 100% verification with zero remaining defects. The project has been officially certified and dispatched to Master Admin for final client sign-off and payout release.
+              </p>
+
+              <!-- Snapshot Breakdown Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #065F46; margin-bottom: 10px;">
+                      QA Inspection Summary
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 170px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Verified by QA:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${qaName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer Progress:</td>
+                        <td style="padding: 6px 0; color: #059669; font-weight: 800;">100% Completed (${completedTasks} / ${totalTasks} Tasks)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Verification Status:</td>
+                        <td style="padding: 6px 0; color: #16A34A; font-weight: 800;">100% Passed (Approved by QA)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Agreed Developer Payout:</td>
+                        <td style="padding: 6px 0; color: #0F3E6D; font-weight: 800;">${devPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Approval Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${dateStr}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Milestone Deliverables Overview -->
+              ${tasksHtml ? `
+              <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-bottom: 8px;">
+                Verified Milestone Deliverables (${tasks.length})
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 22px;">
+                <tr style="background-color: #F1F5F9;">
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">#</th>
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Deliverable</th>
+                  <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Verification</th>
+                </tr>
+                ${tasksHtml}
+              </table>` : ''}
+
+              <!-- Next Steps Callout -->
+              <div style="background-color: #F0FDF4; border-left: 4px solid #16A34A; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #166534; margin-bottom: 4px;">
+                  ✓ Next Steps
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #14532D;">
+                  Master Admin has been notified that both Developer and QA Specialist have completed this project. Your agreed payout of <strong>${devPayout}</strong> is queued for settlement upon Admin sign-off.
+                </div>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 10px 0 6px 0;">
+                    <a href="https://www.dsprogram.space/freelancer-login" style="display: inline-block; padding: 14px 34px; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(15, 62, 109, 0.25);">
+                      🚀 Open Freelancer Workspace &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Official QA Sign-Off Dispatch &bull; Sent from <strong style="color: #0F3E6D;">project@dsprogram.space</strong> to assigned developer.<br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Builds responsive HTML email notifying Admin that both Developer and QA Specialist completed 100% of the project.
+ * Dispatched to Master Admin from project@dsprogram.space.
+ */
+export function buildTesterApprovedAdminEmailHtml({
+  project = {},
+  adminName = 'Master Admin',
+  developerName = 'Developer',
+  testerName = 'QA Specialist'
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = developerName || project?.developer || 'Developer';
+  const devEmail = project?.developerEmail ? ` (${project.developerEmail})` : '';
+  const qaName = testerName || project?.tester || 'QA Specialist';
+  const qaEmail = project?.testerEmail ? ` (${project.testerEmail})` : '';
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const liveUrl = (project?.liveLink || project?.liveProjectLink || '').trim();
+  const driveUrl = (project?.driveLink || project?.driveProjectLink || '').trim();
+  const devPayout = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+  const qaPayout = project?.testerPayment || project?.testerPayout || (project?.testerAssignedAmount ? `₹${Number(project.testerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length > 0 ? project.tasks : [];
+  const totalTasks = tasks.length || 5;
+  const completedTasks = tasks.filter(t => t.status === 'Completed' || t.qaStatus === 'Passed').length || totalTasks;
+
+  const tasksHtml = tasks.length > 0
+    ? tasks.map((t, idx) => `
+      <tr>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 12px; font-weight: 700; width: 32px;">${t.number || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}</td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; color: #0F172A; font-size: 13px; font-weight: 600;">
+          ${t.name || 'Milestone Task'}
+          ${t.desc ? `<div style="font-size: 11px; color: #64748B; font-weight: 400; margin-top: 2px;">${t.desc}</div>` : ''}
+        </td>
+        <td style="padding: 9px 10px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #059669; font-size: 12px; font-weight: 800; white-space: nowrap;">✓ 100% Done &amp; Verified</td>
+      </tr>
+    `).join('')
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ready for Final Admin Approval: ${projectName} [${projectId}]</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 50%, #B45309 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #FDE68A; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                Operations &bull; Final Project Delivery &amp; Sign-Off
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 34px 36px 28px 36px;">
+
+              <!-- Status Badge -->
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 16px;">
+                🌟 100% COMPLETED &bull; READY FOR ADMIN APPROVAL
+              </div>
+
+              <h2 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #0F172A;">
+                ${projectName}
+              </h2>
+
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                Hello <strong>${adminName || 'Admin Team'}</strong>,<br>
+                Both assigned Developer <strong>${devName}</strong> and QA Specialist <strong>${qaName}</strong> have successfully completed and verified 100% of the deliverables for project <strong>${projectName} [${projectId}]</strong>.<br>
+                All milestone tasks and verification checklist items have passed QA testing with zero remaining defects. The project is officially ready for your final Admin review, client presentation, and payout clearance.
+              </p>
+
+              <!-- Snapshot Breakdown Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 22px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0F3E6D; margin-bottom: 10px;">
+                      Final Project Delivery Breakdown
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B; width: 175px;">Project Name:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Project ID:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${projectId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned Developer:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${devName}${devEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Assigned QA Specialist:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${qaName}${qaEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer Progress:</td>
+                        <td style="padding: 6px 0; color: #16A34A; font-weight: 800;">100% Done (${completedTasks} / ${totalTasks} Tasks)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Testing Status:</td>
+                        <td style="padding: 6px 0; color: #16A34A; font-weight: 800;">100% Passed (Approved by QA)</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Developer Payout:</td>
+                        <td style="padding: 6px 0; color: #0F3E6D; font-weight: 800;">${devPayout}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Specialist Payout:</td>
+                        <td style="padding: 6px 0; color: #047857; font-weight: 800;">${qaPayout}</td>
+                      </tr>
+                      ${liveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Live Application URL:</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${liveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${liveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      ${driveUrl ? `
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">Source Archive (Drive ZIP):</td>
+                        <td style="padding: 6px 0;">
+                          <a href="${driveUrl}" target="_blank" style="color: #0284C7; font-weight: 700; word-break: break-all;">${driveUrl}</a>
+                        </td>
+                      </tr>` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; color: #64748B;">QA Finalized Date:</td>
+                        <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${dateStr}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Milestone Tasks Breakdown -->
+              ${tasksHtml ? `
+              <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-bottom: 8px;">
+                Completed Milestone Deliverables (${tasks.length})
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 22px;">
+                <tr style="background-color: #F1F5F9;">
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">#</th>
+                  <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Deliverable</th>
+                  <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Status</th>
+                </tr>
+                ${tasksHtml}
+              </table>` : ''}
+
+              <!-- Action Required Callout -->
+              <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;">
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #92400E; margin-bottom: 4px;">
+                  ⭐ Action Required
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #78350F;">
+                  Please log in to the Admin Panel to review the finalized project deliverables, release payouts to Developer and QA Specialist, and grant final client approval.
+                </div>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 10px 0 6px 0;">
+                    <a href="https://www.dsprogram.space/admin-login" style="display: inline-block; padding: 14px 34px; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(15, 62, 109, 0.25);">
+                      🚀 Open Admin Workspace &amp; Finalize Approval &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 22px 36px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0; font-weight: 700; color: #0F172A;">
+                Dahej Support &bull; Operations &bull; project@dsprogram.space
+              </p>
+              <p style="margin: 0;">
+                Official Project Channel &bull; Dispatched from <strong style="color: #0F3E6D;">project@dsprogram.space</strong><br>
+                &copy; ${year} Dahej Support. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends notification to the assigned Developer that QA Specialist approved all deliverables and finalized testing.
+ * Exclusively sent to this project's developer from project@dsprogram.space.
+ */
+export async function sendTesterApprovedDeveloperEmail({
+  project,
+  testerName = null,
+  developers = []
+}) {
+  const cleanEmail = resolveDeveloperEmail(project, developers);
+  const cleanName = (project?.developer || 'Developer').trim();
+
+  if (!cleanEmail || cleanEmail === 'unassigned') {
+    console.warn(`[Project Mailer] Skipping developer QA approved email: no developer email resolved for project ${project?.id || 'PROJ'}.`);
+    return { success: false, error: 'Developer email missing on project', recipient: null };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const resolvedTester = (testerName || project?.tester || 'QA Specialist').trim();
+  const devPayout = project?.developerPayment || project?.freelancerPayout || (project?.developerAssignedAmount ? `₹${Number(project.developerAssignedAmount).toLocaleString('en-IN')}` : 'As agreed');
+
+  const htmlContent = buildTesterApprovedDeveloperEmailHtml({
+    project,
+    developerName: cleanName,
+    testerName: resolvedTester
+  });
+
+  const subject = `[Project QA Approved & Completed] ${projectName} (${projectId}) — 100% Verified by QA Specialist ${resolvedTester}`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Great news! QA Specialist ${resolvedTester} has completed the quality assurance inspection and officially approved all deliverables for project "${projectName}" (${projectId}).\n\n` +
+    `All milestone deliverables, tasks, and bug fixes have passed 100% verification with zero remaining defects.\n` +
+    `The project has been certified and dispatched to Master Admin for final client sign-off and payout release.\n\n` +
+    `Agreed Developer Payout: ${devPayout}\n\n` +
+    `Review project details in your Freelancer Workspace:\n` +
+    `https://www.dsprogram.space/freelancer-login\n\n` +
+    `Regards,\nDahej Support Project Operations (project@dsprogram.space)\n` +
+    `Note: This is an official QA completion notification sent exclusively to you.`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    console.log(`[Project Mailer] Tester approved email successfully sent to developer ${cleanEmail} for project ${projectId}.`);
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] Tester approved email failed for developer (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Sends notification to Master Admin that both Developer and QA Specialist completed 100% of the project.
+ * Dispatched to Master Admin from project@dsprogram.space.
+ */
+export async function sendTesterApprovedAdminEmail({
+  project,
+  adminEmail = null,
+  testerName = null,
+  developers = []
+}) {
+  const cleanEmail = (adminEmail || getAdminNotificationEmail()).trim().toLowerCase();
+  const cleanName = 'Master Admin';
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = (project?.developer || 'Developer').trim();
+  const resolvedTester = (testerName || project?.tester || 'QA Specialist').trim();
+  const devPayout = project?.developerPayment || project?.freelancerPayout || 'As agreed';
+  const qaPayout = project?.testerPayment || project?.testerPayout || 'As agreed';
+
+  const htmlContent = buildTesterApprovedAdminEmailHtml({
+    project,
+    adminName: cleanName,
+    developerName: devName,
+    testerName: resolvedTester
+  });
+
+  const subject = `[Project Ready for Admin Approval] ${projectName} (${projectId}) — Completed by ${devName} & Approved by QA ${resolvedTester}`;
+
+  const textContent =
+    `Hello ${cleanName},\n\n` +
+    `Both assigned Developer ${devName} and QA Specialist ${resolvedTester} have successfully completed and verified 100% of the deliverables for project "${projectName}" (${projectId}).\n\n` +
+    `All milestone tasks and verification checklist items have passed QA testing with zero remaining defects.\n` +
+    `The project is now ready for your final Admin review, client sign-off, and payout release.\n\n` +
+    `Developer Payout: ${devPayout}\n` +
+    `QA Specialist Payout: ${qaPayout}\n` +
+    `Live URL: ${project?.liveLink || project?.liveProjectLink || 'N/A'}\n` +
+    `Drive ZIP: ${project?.driveLink || project?.driveProjectLink || 'N/A'}\n\n` +
+    `Please log in to the Admin Panel to review and finalize approval:\n` +
+    `https://www.dsprogram.space/admin-login\n\n` +
+    `Regards,\nDahej Support Project Operations (project@dsprogram.space)`;
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: { email: cleanEmail, name: cleanName },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile: SENDER_PROFILES.PROJECT,
+      channel: 'project'
+    });
+    console.log(`[Project Mailer] QA finalized email successfully sent to Admin ${cleanEmail} for project ${projectId}.`);
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Project Mailer] QA finalized email failed for Admin (${cleanEmail}):`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches Project Approval / Finalization notification emails to BOTH Developer and Admin.
+ * STRICT RECIPIENT GUARANTEE:
+ * - Developer email goes STRICTLY to that particular project's assigned developer (no other developers receive it).
+ * - Admin email goes STRICTLY to Master Admin.
+ * Sent from project@dsprogram.space via dedicated Brevo Project channel.
+ */
+export async function sendTesterApprovalNotifications({
+  project,
+  testerName = null,
+  developers = [],
+  adminEmail = null
+}) {
+  if (!project) return { developer: null, admin: null };
+
+  const resolvedDevEmail = resolveDeveloperEmail(project, developers);
+  const projectWithDevEmail = {
+    ...project,
+    developerEmail: resolvedDevEmail || project.developerEmail
+  };
+
+  const [devRes, adminRes] = await Promise.allSettled([
+    sendTesterApprovedDeveloperEmail({
+      project: projectWithDevEmail,
+      testerName,
+      developers
+    }),
+    sendTesterApprovedAdminEmail({
+      project: projectWithDevEmail,
+      adminEmail,
+      testerName,
+      developers
+    })
+  ]);
+
+  return {
+    developer: devRes.status === 'fulfilled' ? devRes.value : { success: false, error: devRes.reason?.message },
+    admin: adminRes.status === 'fulfilled' ? adminRes.value : { success: false, error: adminRes.reason?.message }
+  };
+}
