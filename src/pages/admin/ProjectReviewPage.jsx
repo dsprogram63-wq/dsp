@@ -29,12 +29,14 @@ import RevisionModal from '../../components/admin/RevisionModal';
 import ApproveModal from '../../components/admin/ApproveModal';
 import EmptyState from '../../components/portal/EmptyState';
 import { getRevisionSource } from '../../utils/projectStatusUtils';
-import { sendProjectRevisionNoticeEmail } from '../../services/emailService';
+import { sendAdminRevisionNotifications } from '../../services/emailService';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
 import './ProjectReviewPage.css';
 
 export default function ProjectReviewPage({ 
   project, 
+  developers = [],
+  testers = [],
   onBack, 
   onUpdateProject, 
   onNavigate 
@@ -130,7 +132,7 @@ export default function ProjectReviewPage({
 
   const handleSendRevision = (revData) => {
     const timeStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    onUpdateProject({
+    const updatedProject = {
       ...project,
       adminRejected: true,
       adminRejectedAt: new Date().toISOString(),
@@ -159,20 +161,27 @@ export default function ProjectReviewPage({
           by: 'Admin'
         }
       ]
-    });
-    // Dispatch real email notice to Developer
-    if (project.developerEmail) {
-      sendProjectRevisionNoticeEmail({
-        project,
-        revisionData: revData
+    };
+
+    onUpdateProject(updatedProject);
+
+    // Dispatch real email notice to BOTH Developer and QA Tester from project@dsprogram.space
+    try {
+      sendAdminRevisionNotifications({
+        project: updatedProject,
+        revisionData: revData,
+        developers,
+        testers
       }).then(res => {
-        if (res?.success) {
-          showToast(`✓ Changes requested & notice email sent to ${project.developerEmail} (Check Spam folder)`);
-        }
-      }).catch(err => console.error('Project revision email error:', err));
+        const devOk = res?.developer?.success;
+        const testOk = res?.tester?.success;
+        console.log(`[Admin Revision Dispatch] Notified Developer: ${devOk}, Tester: ${testOk}`);
+      }).catch(err => console.error('[Admin Revision Dispatch] Error:', err));
+    } catch (e) {
+      console.error('[Admin Revision Dispatch] Exception:', e);
     }
 
-    showToast('Changes requested. Developer & QA Tester have been notified.');
+    showToast('✓ Changes requested & notices sent to Developer & QA Tester via email.');
     setTimeout(() => onNavigate('admin/submitted-projects'), 1200);
   };
 

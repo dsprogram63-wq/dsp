@@ -1740,26 +1740,27 @@ export function buildProjectRevisionEmailHtml({
 }
 
 /**
- * High-Level Helper: Send Project Revision Notice Email via Brevo
+ * High-Level Helper: Send Project Revision Notice Email via Brevo to Developer
  */
 export async function sendProjectRevisionNoticeEmail({
   project,
   revisionData = {},
-  senderProfile = SENDER_PROFILES.DEFAULT
+  developers = [],
+  senderProfile = SENDER_PROFILES.PROJECT
 }) {
-  const cleanEmail = (project?.developerEmail || '').trim().toLowerCase();
+  const cleanEmail = resolveDeveloperEmail(project, developers) || (project?.developerEmail || '').trim().toLowerCase();
   const cleanName = (project?.developer || 'Developer').trim();
 
   if (!cleanEmail) {
     console.warn('[Dahej Support Mailer] No developer email found for revision notice dispatch.');
-    return { success: false, error: 'Developer email is missing on project.' };
+    return { success: false, error: 'Developer email is missing on project.', recipient: null };
   }
 
   const projectName = project?.name || 'Assigned Project';
   const projectId = project?.id || 'PROJ';
-  const revisionReason = revisionData.adminRejectionComment || revisionData.revisionReason || 'Changes requested by review committee';
-  const revisionTask = revisionData.revisionTask || '';
-  const revisionDocument = revisionData.adminRejectionDocument || null;
+  const revisionReason = revisionData.adminRejectionComment || revisionData.revisionReason || project?.adminRejectionComment || project?.revisionReason || 'Changes requested by Master Admin';
+  const revisionTask = revisionData.revisionTask || project?.revisionTask || '';
+  const revisionDocument = revisionData.adminRejectionDocument || project?.adminRejectionDocument || null;
   const freelancerPayout = project?.freelancerPayout || '';
 
   const htmlContent = buildProjectRevisionEmailHtml({
@@ -1772,17 +1773,18 @@ export async function sendProjectRevisionNoticeEmail({
     freelancerPayout
   });
 
-  const subject = `Action Required: Revision Requested on Project [${projectId}] - ${projectName}`;
+  const subject = `Action Required: Revision Requested by Admin on [${projectId}] - ${projectName}`;
 
   const textContent = `Hello ${cleanName},\n\n` +
-    `Revisions have been requested for your project submission: ${projectName} (${projectId}).\n\n` +
-    `Feedback: ${revisionReason}\n` +
-    (revisionTask ? `Tasks: ${revisionTask}\n\n` : '\n') +
-    `Please log in to your Freelancer Workspace (https://www.dsprogram.space/freelancer-login) to complete the updates and resubmit.\n\n` +
+    `Revisions have been requested by Master Admin for your project submission: ${projectName} (${projectId}).\n\n` +
+    `What Needs to be Corrected: ${revisionReason}\n` +
+    (revisionTask ? `Target Task: ${revisionTask}\n` : '') +
+    (revisionDocument ? `Guideline Document: ${typeof revisionDocument === 'object' ? revisionDocument.name : revisionDocument}\n` : '') +
+    `\nPlease log in to your Freelancer Workspace (https://www.dsprogram.space/freelancer-login) to complete the updates and resubmit.\n\n` +
     `Best regards,\n` +
     `Dahej Support Operations`;
 
-  console.log(`[Dahej Support Mailer] Sending project revision notice to ${cleanEmail} for project ${projectId}...`);
+  console.log(`[Dahej Support Mailer] Sending project revision notice to Developer ${cleanEmail} for project ${projectId}...`);
 
   try {
     const res = await sendTransactionalEmail({
@@ -1795,11 +1797,232 @@ export async function sendProjectRevisionNoticeEmail({
       textContent,
       senderProfile
     });
-    return { success: true, messageId: res.messageId };
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
   } catch (err) {
-    console.error(`[Dahej Support Mailer] Failed to send project revision email to ${cleanEmail}:`, err);
-    return { success: false, error: err.message };
+    console.error(`[Dahej Support Mailer] Failed to send project revision email to developer ${cleanEmail}:`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
   }
+}
+
+/**
+ * Builds role-safe HTML email for QA Tester when Admin requests project revision from Developer
+ */
+export function buildAdminRevisionTesterEmailHtml({
+  project = {},
+  revisionData = {},
+  testerName = 'QA Specialist'
+}) {
+  const year = new Date().getFullYear();
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const devName = project?.developer || 'Assigned Developer';
+  const tName = testerName || project?.tester || 'QA Specialist';
+  const revisionReason = revisionData.adminRejectionComment || revisionData.revisionReason || project?.adminRejectionComment || project?.revisionReason || 'Changes requested by Master Admin';
+  const revisionTask = revisionData.revisionTask || project?.revisionTask || '';
+  const revisionDocument = revisionData.adminRejectionDocument || project?.adminRejectionDocument || null;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Requested Changes - ${projectName}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 36px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #E2E8F0;" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0A2540 0%, #0F3E6D 100%); padding: 30px 36px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                DAHEJ <span style="color: #F59E0B;">SUPPORT</span>
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                QA Testing & Quality Desk
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <div style="display: inline-block; padding: 6px 14px; border-radius: 20px; background-color: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; font-size: 12px; font-weight: 800; margin-bottom: 18px;">
+                📋 NOTICE &bull; ADMIN REQUESTED PROJECT REVISION
+              </div>
+              <h2 style="margin: 0 0 14px 0; font-size: 20px; font-weight: 800; color: #0F172A;">
+                Admin Returned Project for Developer Rework
+              </h2>
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                Hello <strong>${tName}</strong>,
+              </p>
+              <p style="margin: 0 0 18px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+                Master Admin has reviewed project <strong>${projectName} (${projectId})</strong> and requested required fixes from assigned Developer <strong>${devName}</strong>.
+              </p>
+
+              <!-- Feedback Box -->
+              <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: #991B1B; text-transform: uppercase;">
+                  What Admin Specified (Required Fixes):
+                </p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #7F1D1D; font-weight: 500;">
+                  ${revisionReason}
+                </p>
+                ${revisionTask && revisionTask !== 'General Project Revision' ? `
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #991B1B;">
+                  <strong>Targeted Task:</strong> ${revisionTask}
+                </p>
+                ` : ''}
+              </div>
+
+              <!-- Project Summary -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B; width: 140px;">Project:</td>
+                        <td style="padding: 5px 0; color: #0F172A; font-weight: 700;">${projectName} (${projectId})</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B;">Assigned Developer:</td>
+                        <td style="padding: 5px 0; color: #0A3D75; font-weight: 700;">${devName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B;">Assigned QA Tester:</td>
+                        <td style="padding: 5px 0; color: #0A3D75; font-weight: 700;">${tName}</td>
+                      </tr>
+                      ${revisionDocument ? `
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748B;">Admin Guideline Doc:</td>
+                        <td style="padding: 5px 0; color: #DC2626; font-weight: 600;">${typeof revisionDocument === 'object' ? revisionDocument.name : revisionDocument}</td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #78350F;">
+                  ℹ️ <strong>Next Steps for QA:</strong> Developer <strong>${devName}</strong> has been notified to complete the required fixes. Once Developer finishes and resubmits the project, you will be notified immediately to re-verify the changes.
+                </p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="https://www.dsprogram.space/tester-login" style="display: inline-block; background-color: #0F3E6D; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px;">
+                  Open QA Tester Workspace &rarr;
+                </a>
+              </div>
+
+              <p style="margin: 20px 0 0 0; font-size: 13px; line-height: 1.6; color: #64748B;">
+                Best regards,<br>
+                <strong style="color: #0F3E6D;">Dahej Support Project Operations</strong>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F1F5F9; border-top: 1px solid #E2E8F0; padding: 16px 36px; text-align: center;">
+              <p style="margin: 0; font-size: 11px; color: #94A3B8;">
+                &copy; ${year} Dahej Support Freelancer Network. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends Admin Project Revision notification to assigned QA Tester from project@dsprogram.space.
+ */
+export async function sendAdminRevisionTesterEmail({
+  project,
+  revisionData = {},
+  testers = [],
+  senderProfile = SENDER_PROFILES.PROJECT
+}) {
+  const cleanEmail = resolveTesterEmail(project, testers);
+  const cleanTesterName = (project?.tester || 'QA Specialist').trim();
+
+  if (!cleanEmail) {
+    console.warn('[Dahej Support Mailer] No tester email found for admin revision notice dispatch.');
+    return { success: false, error: 'Tester email missing on project', recipient: null };
+  }
+
+  const projectName = project?.name || 'Assigned Project';
+  const projectId = project?.id || 'PROJ';
+  const revisionReason = revisionData.adminRejectionComment || revisionData.revisionReason || project?.adminRejectionComment || project?.revisionReason || 'Changes requested by Master Admin';
+
+  const htmlContent = buildAdminRevisionTesterEmailHtml({
+    project,
+    revisionData,
+    testerName: cleanTesterName
+  });
+
+  const subject = `Notice: Admin Requested Changes on Project [${projectId}] - ${projectName}`;
+
+  const textContent = `Hello ${cleanTesterName},\n\n` +
+    `Master Admin has reviewed project ${projectName} (${projectId}) and requested corrections from Developer ${project?.developer || 'Developer'}.\n\n` +
+    `What Admin Specified: ${revisionReason}\n` +
+    (revisionData.revisionTask ? `Target Task: ${revisionData.revisionTask}\n` : '') +
+    `Developer has been returned to rework. Once resubmitted, you will be notified to re-verify.\n\n` +
+    `QA Workspace: https://www.dsprogram.space/tester-login\n\n` +
+    `Best regards,\n` +
+    `Dahej Support Operations`;
+
+  console.log(`[Dahej Support Mailer] Sending admin revision notice to QA Tester ${cleanEmail} for project ${projectId}...`);
+
+  try {
+    const res = await sendTransactionalEmail({
+      to: {
+        email: cleanEmail,
+        name: cleanTesterName
+      },
+      subject,
+      htmlContent,
+      textContent,
+      senderProfile
+    });
+    return { success: true, messageId: res.messageId, recipient: cleanEmail };
+  } catch (err) {
+    console.error(`[Dahej Support Mailer] Failed to send admin revision notice to tester ${cleanEmail}:`, err);
+    return { success: false, error: err.message, recipient: cleanEmail };
+  }
+}
+
+/**
+ * Dispatches Admin Revision notifications to BOTH Developer and QA Tester from project@dsprogram.space
+ */
+export async function sendAdminRevisionNotifications({
+  project,
+  revisionData = {},
+  developers = [],
+  testers = []
+}) {
+  if (!project) return { developer: null, tester: null };
+
+  const [devRes, testRes] = await Promise.allSettled([
+    sendProjectRevisionNoticeEmail({
+      project,
+      revisionData,
+      developers,
+      senderProfile: SENDER_PROFILES.PROJECT
+    }),
+    sendAdminRevisionTesterEmail({
+      project,
+      revisionData,
+      testers,
+      senderProfile: SENDER_PROFILES.PROJECT
+    })
+  ]);
+
+  return {
+    developer: devRes.status === 'fulfilled' ? devRes.value : { success: false, error: devRes.reason?.message },
+    tester: testRes.status === 'fulfilled' ? testRes.value : { success: false, error: testRes.reason?.message }
+  };
 }
 
 

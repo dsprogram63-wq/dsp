@@ -587,297 +587,337 @@ export default function ProjectDetailPage({
       )}
 
       {/* Rework / Revision Banner (When QA or Admin requested changes) */}
-      {hasReworkRequested && (
-        <div 
-          className="revision-alert-card" 
-          style={{ 
-            marginBottom: '20px',
-            backgroundColor: devProg === 100 && allTasksDone ? '#F0FDF4' : '#FFF5F5',
-            borderColor: devProg === 100 && allTasksDone ? '#86EFAC' : '#FECACA'
-          }}
-        >
-          <div className="revision-alert-icon">
-            {devProg === 100 && allTasksDone ? (
-              <CheckCircle size={28} color="#16A34A" />
-            ) : (
-              <ShieldAlert size={28} color="#DC2626" />
-            )}
-          </div>
-          <div className="revision-alert-content">
-            {(() => {
-              const revSource = getRevisionSource(project);
-              const isTester = revSource.isTester;
-              const openIssues = (project.testingIssues || []).filter(i => i.status !== 'Resolved');
-              const primaryIssue = openIssues[0] || (project.testingIssues || [])[0] || null;
-              const reqDate = project.revisionRequestedAt || project.adminRejectedAt;
+      {hasReworkRequested && (() => {
+        const revSource = getRevisionSource(project);
+        const isTester = revSource.isTester;
+        const openIssues = (project.testingIssues || []).filter(i => i.status !== 'Resolved');
+        const primaryIssue = openIssues[0] || (project.testingIssues || [])[0] || null;
+        const reqDate = project.revisionRequestedAt || project.adminRejectedAt;
+        const isAllQAResolved = isTester && devProg === 100 && allTasksDone && openIssues.length === 0;
 
-              if (devProg === 100 && allTasksDone) {
-                return (
-                  <>
-                    <div className="revision-alert-header">
-                      <span 
-                        className="revision-tag" 
-                        style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800 }}
-                      >
-                        ✓ All QA Defects Resolved (100% Completed)
-                      </span>
-                      <span className="revision-date">Ready to Resubmit</span>
-                    </div>
-                    <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px' }}>
-                      <strong>Status:</strong> All defect items have been addressed and all milestone tasks are marked completed. Click "Resubmit for QA Review" to proceed.
-                    </p>
-                  </>
-                );
-              }
-
-              return (
+        return (
+          <div 
+            className="revision-alert-card" 
+            style={{ 
+              marginBottom: '20px',
+              backgroundColor: isAllQAResolved ? '#F0FDF4' : '#FFF5F5',
+              borderColor: isAllQAResolved ? '#86EFAC' : '#FECACA',
+              borderLeft: isAllQAResolved ? '5px solid #16A34A' : '5px solid #DC2626'
+            }}
+          >
+            <div className="revision-alert-icon">
+              {isAllQAResolved ? (
+                <CheckCircle size={28} color="#16A34A" />
+              ) : (
+                <ShieldAlert size={28} color="#DC2626" />
+              )}
+            </div>
+            <div className="revision-alert-content">
+              {isAllQAResolved ? (
                 <>
                   <div className="revision-alert-header">
                     <span 
                       className="revision-tag" 
-                      style={{ background: '#FEE2E2', color: '#B91C1C', fontWeight: 800 }}
+                      style={{ background: '#DCFCE7', color: '#166534', fontWeight: 800 }}
                     >
-                      {isTester 
-                        ? `Action Required: Defect Reported by QA Tester (${project.tester || revSource.name || 'QA Specialist'})` 
-                        : `Action Required: Revision Requested by Admin (${project.adminName || revSource.name || 'Master Admin'})`}
+                      ✓ All QA Defects Resolved (100% Completed)
                     </span>
-                    <span className="revision-date">Posted {reqDate ? new Date(reqDate).toLocaleDateString('en-GB') : 'Recently'}</span>
+                    <span className="revision-date">Ready to Resubmit</span>
+                  </div>
+                  <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px' }}>
+                    <strong>Status:</strong> All defect items have been addressed and all milestone tasks are marked completed. Click "Resubmit for QA Review" to proceed.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="revision-alert-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h4 style={{ margin: 0, color: '#991B1B', fontSize: '1.02rem', fontWeight: 800 }}>
+                        {isTester 
+                          ? `Action Required: Defect Reported by QA Tester (${project.tester || revSource.name || 'QA Specialist'})` 
+                          : `🚨 Master Admin Requested Changes & Required Fixes`}
+                      </h4>
+                      <span style={{ fontSize: '0.7rem', background: '#DC2626', color: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800, textTransform: 'uppercase' }}>
+                        Action Required
+                      </span>
+                    </div>
+                    <span className="revision-date" style={{ color: '#991B1B', fontWeight: 700, fontSize: '0.78rem' }}>
+                      {reqDate ? `Requested on ${new Date(reqDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Action Pending'}
+                    </span>
                   </div>
 
-                  <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px', marginBottom: '8px' }}>
-                    <strong>
-                      {isTester 
-                        ? `QA Tester Issue (${project.tester || revSource.name || 'QA Specialist'}):` 
-                        : `Admin Instructions (${project.adminName || revSource.name || 'Master Admin'}):`}
-                    </strong>{' '}
-                    {isTester 
-                      ? (primaryIssue?.title || project.adminRejectionComment?.replace(/^QA Defect Reported:\s*/i, '') || 'Please resolve the reported defect items listed below and resubmit.') 
-                      : (project.adminRejectionComment || project.adminFeedback || project.revisionReason || 'Please resolve the requested revisions, mark the tasks completed, and resubmit.')}
-                  </p>
-
-                  {isTester && primaryIssue && (
-                    <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ 
-                            fontSize: '0.72rem', 
-                            fontWeight: 800, 
-                            color: '#FFFFFF', 
-                            background: primaryIssue.severity === 'Critical' ? '#DC2626' : (primaryIssue.severity === 'High' ? '#EA580C' : '#D97706'),
-                            padding: '2px 7px',
-                            borderRadius: '4px'
-                          }}>
-                            {primaryIssue.severity || 'High'} Severity
-                          </span>
-                          {primaryIssue.category && (
-                            <span style={{ fontSize: '0.72rem', color: '#0A3D75', background: '#EBF3FA', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                              {primaryIssue.category}
-                            </span>
-                          )}
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>
-                            Target Task: {primaryIssue.task || primaryIssue.taskName || project.revisionTask || 'Milestone Deliverable'}
-                          </span>
+                  {!isTester ? (
+                    <div style={{ marginTop: '10px' }}>
+                      {/* What needs to be corrected */}
+                      <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginTop: '8px' }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          What needs to be corrected:
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
-                          Reporter: {primaryIssue.reporter || project.tester || 'QA Tester'}
-                        </span>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#1E293B', lineHeight: 1.55, whiteSpace: 'pre-line' }}>
+                          {project.adminRejectionComment || project.adminFeedback || project.revisionReason || 'Admin has requested corrections from developer.'}
+                        </p>
                       </div>
 
-                      {primaryIssue.description && (
-                        <p style={{ margin: '0 0 8px 0', fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
-                          <strong>Description:</strong> {primaryIssue.description}
-                        </p>
+                      {/* Specific Milestone Task Targeted */}
+                      {project.revisionTask && project.revisionTask !== 'General Project Revision' && (
+                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#7F1D1D' }}>Targeted Milestone Task:</span>
+                          <span style={{ fontSize: '0.8rem', background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '2px 10px', borderRadius: '6px', fontWeight: 700 }}>
+                            🎯 {project.revisionTask}
+                          </span>
+                        </div>
                       )}
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem', background: '#F8FAFC', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
-                        <div>
-                          <strong style={{ color: '#047857', display: 'block', marginBottom: '2px' }}>Expected Result:</strong>
-                          <span style={{ color: '#475569' }}>{primaryIssue.expected || primaryIssue.expectedResult || 'Deliverable functions cleanly according to requirements.'}</span>
-                        </div>
-                        <div>
-                          <strong style={{ color: '#DC2626', display: 'block', marginBottom: '2px' }}>Actual Result:</strong>
-                          <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
-                        </div>
-                      </div>
-
-                      {/* Defect Screenshot / Proof Preview in Developer Revision Banner */}
-                      {(() => {
-                        const anyScreenshotIssue = (project.testingIssues || []).find(i => i.screenshot || i.attachmentUrl || i.attachmentDataUrl || i.attachment) || primaryIssue;
-                        const rawScreenshot = (anyScreenshotIssue && (anyScreenshotIssue.cloudUrl || anyScreenshotIssue.screenshot || anyScreenshotIssue.attachmentUrl || anyScreenshotIssue.attachmentDataUrl)) || project.defectScreenshot || (project.adminRejectionDocument && (project.adminRejectionDocument.url || project.adminRejectionDocument.dataUrl));
-                        const fileName = (anyScreenshotIssue && (anyScreenshotIssue.attachmentName || anyScreenshotIssue.attachment)) || project.defectScreenshotName || (project.adminRejectionDocument && project.adminRejectionDocument.name) || 'Defect_Proof_Screenshot.png';
-                        
-                        const isLogo = (fileName || '').toLowerCase().includes('logo');
-                        const permanentFallback = isLogo 
-                          ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
-                          : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
-                        
-                        const bannerScreenshot = (rawScreenshot && !rawScreenshot.startsWith('blob:')) ? rawScreenshot : permanentFallback;
-                        if (!bannerScreenshot && !fileName) return null;
-
-                        return (
-                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
-                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <ImageIcon size={14} color="#DC2626" />
-                              <span>Defect Proof Screenshot (Uploaded by QA Tester):</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                              <img 
-                                src={bannerScreenshot} 
-                                alt="Defect Screenshot" 
-                                style={{ 
-                                  maxHeight: '120px', 
-                                  maxWidth: '220px', 
-                                  objectFit: 'cover', 
-                                  borderRadius: '6px', 
-                                  border: '2px solid #CBD5E1', 
-                                  cursor: 'pointer',
-                                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-                                }}
-                                onError={(e) => {
-                                  if (anyScreenshotIssue?.attachmentDataUrl && e.currentTarget.src !== anyScreenshotIssue.attachmentDataUrl) {
-                                    e.currentTarget.src = anyScreenshotIssue.attachmentDataUrl;
-                                  } else if (e.currentTarget.src !== permanentFallback) {
-                                    e.currentTarget.src = permanentFallback;
-                                  }
-                                }}
-                                title="Click to view full screenshot in high resolution"
-                                onClick={() => setPreviewDoc({
-                                  name: fileName,
-                                  type: 'image/png',
-                                  size: 'Defect Attachment',
-                                  date: anyScreenshotIssue?.date || 'Recent',
-                                  url: bannerScreenshot,
-                                  cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
-                                  dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
-                                  fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
-                                  attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
-                                })}
-                              />
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewDoc({
-                                    name: fileName,
-                                    type: 'image/png',
-                                    size: 'Defect Attachment',
-                                    date: anyScreenshotIssue?.date || 'Recent',
-                                    url: bannerScreenshot,
-                                    cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
-                                    dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
-                                    fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
-                                    attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
-                                  })}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '6px 12px',
-                                    background: '#FFFFFF',
-                                    border: '1px solid #CBD5E1',
-                                    borderRadius: '6px',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    color: '#0A3D75',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                  }}
-                                >
-                                  <Eye size={14} />
-                                  <span>View Full Screenshot</span>
-                                </button>
-                                <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
-                                  {fileName} • Click thumbnail to inspect bug proof
-                                </span>
-                              </div>
+                      {/* Admin Revision Guideline Document */}
+                      {project.adminRejectionDocument && (
+                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFFFFF', border: '1px solid #FECACA', padding: '10px 14px', borderRadius: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FileText size={18} color="#DC2626" />
+                            <div>
+                              <strong style={{ fontSize: '0.86rem', color: '#991B1B', display: 'block' }}>
+                                {typeof project.adminRejectionDocument === 'string' ? project.adminRejectionDocument : (project.adminRejectionDocument.name || 'Revision_Guidelines.pdf')}
+                              </strong>
+                              <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                Admin Revision Guideline Document • {typeof project.adminRejectionDocument === 'object' ? (project.adminRejectionDocument.size || '0.1 MB') : '0.1 MB'}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })()}
-                    </div>
-                  )}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleViewDoc(typeof project.adminRejectionDocument === 'object' ? project.adminRejectionDocument : { name: project.adminRejectionDocument, type: 'image/png', size: '0.1 MB', date: 'Revision' })}
+                              className="btn btn-navy-action"
+                              style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Eye size={13} />
+                              <span>Preview Doc</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadDoc(typeof project.adminRejectionDocument === 'object' ? project.adminRejectionDocument : { name: project.adminRejectionDocument, type: 'image/png', size: '0.1 MB', date: 'Revision' })}
+                              className="btn btn-orange-primary"
+                              style={{ padding: '6px 14px', fontSize: '0.78rem', background: '#DC2626', borderColor: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Download size={13} />
+                              <span>Download File</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-                  {!isTester && project.revisionTask && project.revisionTask !== 'General Project Revision' && (
-                    <div style={{ fontSize: '0.82rem', color: '#991B1B', fontWeight: 700, marginTop: '4px', marginBottom: '8px' }}>
-                      Target Task: {project.revisionTask}
+                      <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#991B1B', background: '#FEE2E2', padding: '6px 12px', borderRadius: '6px' }}>
+                        ℹ️ <strong>Developer Note:</strong> Master Admin has requested fixes on this project. Please review the feedback and guideline document above, address the required changes in your code, update your links if necessary, and click <strong>"Resubmit for Review"</strong> below.
+                      </div>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      <p className="revision-feedback-text" style={{ fontSize: '0.9rem', color: '#1E293B', marginTop: '6px', marginBottom: '8px' }}>
+                        <strong>QA Tester Issue ({project.tester || revSource.name || 'QA Specialist'}):</strong>{' '}
+                        {primaryIssue?.title || project.adminRejectionComment?.replace(/^QA Defect Reported:\s*/i, '') || 'Please resolve the reported defect items listed below and resubmit.'}
+                      </p>
 
-                  {!isTester && project.adminRejectionDocument && (
-                    <div style={{ marginTop: '10px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', background: '#FFFFFF', padding: '8px 12px', borderRadius: '6px', border: '1px solid #FECACA', width: 'fit-content' }}>
-                      <FileText size={16} color="#DC2626" />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#991B1B' }}>
-                        {typeof project.adminRejectionDocument === 'string' ? project.adminRejectionDocument : (project.adminRejectionDocument.name || 'Revision_Guidelines.pdf')}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadDoc(typeof project.adminRejectionDocument === 'object' ? project.adminRejectionDocument : { name: project.adminRejectionDocument, type: 'PDF', size: '1.5 MB', date: 'Revision' })}
-                        style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 800, marginLeft: '8px' }}
-                      >
-                        <Download size={13} />
-                        <span>Download Doc</span>
-                      </button>
-                    </div>
-                  )}
+                      {primaryIssue && (
+                        <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ 
+                                fontSize: '0.72rem', 
+                                fontWeight: 800, 
+                                color: '#FFFFFF', 
+                                background: primaryIssue.severity === 'Critical' ? '#DC2626' : (primaryIssue.severity === 'High' ? '#EA580C' : '#D97706'),
+                                padding: '2px 7px',
+                                borderRadius: '4px'
+                              }}>
+                                {primaryIssue.severity || 'High'} Severity
+                              </span>
+                              {primaryIssue.category && (
+                                <span style={{ fontSize: '0.72rem', color: '#0A3D75', background: '#EBF3FA', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                  {primaryIssue.category}
+                                </span>
+                              )}
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>
+                                Target Task: {primaryIssue.task || primaryIssue.taskName || project.revisionTask || 'Milestone Deliverable'}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                              Reporter: {primaryIssue.reporter || project.tester || 'QA Tester'}
+                            </span>
+                          </div>
 
-                  {isTester && openIssues.length > 1 && (
-                    <div style={{ fontSize: '0.78rem', color: '#991B1B', fontWeight: 700, marginBottom: '8px' }}>
-                      ⚠️ Total {openIssues.length} open QA defects reported. (See full details in the Issues Raised by QA Tester section below)
-                    </div>
+                          {primaryIssue.description && (
+                            <p style={{ margin: '0 0 8px 0', fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                              <strong>Description:</strong> {primaryIssue.description}
+                            </p>
+                          )}
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem', background: '#F8FAFC', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                            <div>
+                              <strong style={{ color: '#047857', display: 'block', marginBottom: '2px' }}>Expected Result:</strong>
+                              <span style={{ color: '#475569' }}>{primaryIssue.expected || primaryIssue.expectedResult || 'Deliverable functions cleanly according to requirements.'}</span>
+                            </div>
+                            <div>
+                              <strong style={{ color: '#DC2626', display: 'block', marginBottom: '2px' }}>Actual Result:</strong>
+                              <span style={{ color: '#475569' }}>{primaryIssue.actual || primaryIssue.actualResult || 'Defect / failure observed in QA testing.'}</span>
+                            </div>
+                          </div>
+
+                          {/* Defect Screenshot / Proof Preview in Developer Revision Banner */}
+                          {(() => {
+                            const anyScreenshotIssue = (project.testingIssues || []).find(i => i.screenshot || i.attachmentUrl || i.attachmentDataUrl || i.attachment) || primaryIssue;
+                            const rawScreenshot = (anyScreenshotIssue && (anyScreenshotIssue.cloudUrl || anyScreenshotIssue.screenshot || anyScreenshotIssue.attachmentUrl || anyScreenshotIssue.attachmentDataUrl)) || project.defectScreenshot || (project.adminRejectionDocument && (project.adminRejectionDocument.url || project.adminRejectionDocument.dataUrl));
+                            const fileName = (anyScreenshotIssue && (anyScreenshotIssue.attachmentName || anyScreenshotIssue.attachment)) || project.defectScreenshotName || (project.adminRejectionDocument && project.adminRejectionDocument.name) || 'Defect_Proof_Screenshot.png';
+                            
+                            const isLogo = (fileName || '').toLowerCase().includes('logo');
+                            const permanentFallback = isLogo 
+                              ? 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/logo-KyNk5Irz.png'
+                              : 'https://vvyevrufmitebsnpqahb.supabase.co/storage/v1/object/public/bug-screenshots/bugs/1794751088839_WhatsApp_Image_2026-11-13_at_2.14.41_PM.jpeg';
+                            
+                            const bannerScreenshot = (rawScreenshot && !rawScreenshot.startsWith('blob:')) ? rawScreenshot : permanentFallback;
+                            if (!bannerScreenshot && !fileName) return null;
+
+                            return (
+                              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #FECACA' }}>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <ImageIcon size={14} color="#DC2626" />
+                                  <span>Defect Proof Screenshot (Uploaded by QA Tester):</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                  <img 
+                                    src={bannerScreenshot} 
+                                    alt="Defect Screenshot" 
+                                    style={{ 
+                                      maxHeight: '120px', 
+                                      maxWidth: '220px', 
+                                      objectFit: 'cover', 
+                                      borderRadius: '6px', 
+                                      border: '2px solid #CBD5E1', 
+                                      cursor: 'pointer',
+                                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                    }}
+                                    onError={(e) => {
+                                      if (anyScreenshotIssue?.attachmentDataUrl && e.currentTarget.src !== anyScreenshotIssue.attachmentDataUrl) {
+                                        e.currentTarget.src = anyScreenshotIssue.attachmentDataUrl;
+                                      } else if (e.currentTarget.src !== permanentFallback) {
+                                        e.currentTarget.src = permanentFallback;
+                                      }
+                                    }}
+                                    title="Click to view full screenshot in high resolution"
+                                    onClick={() => setPreviewDoc({
+                                      name: fileName,
+                                      type: 'image/png',
+                                      size: 'Defect Attachment',
+                                      date: anyScreenshotIssue?.date || 'Recent',
+                                      url: bannerScreenshot,
+                                      cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
+                                      dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                      fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                      attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
+                                    })}
+                                  />
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewDoc({
+                                        name: fileName,
+                                        type: 'image/png',
+                                        size: 'Defect Attachment',
+                                        date: anyScreenshotIssue?.date || 'Recent',
+                                        url: bannerScreenshot,
+                                        cloudUrl: anyScreenshotIssue?.cloudUrl || bannerScreenshot,
+                                        dataUrl: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                        fileData: anyScreenshotIssue?.attachmentDataUrl || bannerScreenshot,
+                                        attachmentDataUrl: anyScreenshotIssue?.attachmentDataUrl || null
+                                      })}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 12px',
+                                        background: '#FFFFFF',
+                                        border: '1px solid #CBD5E1',
+                                        borderRadius: '6px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        color: '#0A3D75',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                      }}
+                                    >
+                                      <Eye size={14} />
+                                      <span>View Full Screenshot</span>
+                                    </button>
+                                    <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                      {fileName} • Click thumbnail to inspect bug proof
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {openIssues.length > 1 && (
+                        <div style={{ fontSize: '0.78rem', color: '#991B1B', fontWeight: 700, marginBottom: '8px' }}>
+                          ⚠️ Total {openIssues.length} open QA defects reported. (See full details in the Issues Raised by QA Tester section below)
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
-              );
-            })()}
-            <div className="revision-action-row" style={{ marginTop: '12px' }}>
-              <button 
-                type="button" 
-                className="btn btn-navy-action"
-                onClick={() => {
-                  const tasksSection = document.getElementById('project-tasks-section');
-                  if (tasksSection) tasksSection.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                View Tasks Checklist
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-orange-primary"
-                onClick={() => {
-                  if (!isSubmissionAllowed) {
-                    if (!allTasksDone || devProg < 100) {
-                      const tasksSection = document.getElementById('project-tasks-section');
-                      if (tasksSection) tasksSection.scrollIntoView({ behavior: 'smooth' });
-                      showToast(`⚠️ You must resolve all issues and complete all milestone tasks (100%) to resubmit. Currently at ${devProg}%.`);
-                    } else if (!hasLiveLink || !hasDriveLink) {
-                      const linksSection = document.getElementById('project-submission-links-section');
-                      if (linksSection) linksSection.scrollIntoView({ behavior: 'smooth' });
-                      showToast('⚠️ Please enter both Live Project Link & Google Drive ZIP link to resubmit.');
+              )}
+              <div className="revision-action-row" style={{ marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-navy-action"
+                  onClick={() => {
+                    const tasksSection = document.getElementById('project-tasks-section');
+                    if (tasksSection) tasksSection.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  View Tasks Checklist
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-orange-primary"
+                  onClick={() => {
+                    if (!isSubmissionAllowed) {
+                      if (!allTasksDone || devProg < 100) {
+                        const tasksSection = document.getElementById('project-tasks-section');
+                        if (tasksSection) tasksSection.scrollIntoView({ behavior: 'smooth' });
+                        showToast(`⚠️ You must resolve all issues and complete all milestone tasks (100%) to resubmit. Currently at ${devProg}%.`);
+                      } else if (!hasLiveLink || !hasDriveLink) {
+                        const linksSection = document.getElementById('project-submission-links-section');
+                        if (linksSection) linksSection.scrollIntoView({ behavior: 'smooth' });
+                        showToast('⚠️ Please enter both Live Project Link & Google Drive ZIP link to resubmit.');
+                      }
+                      return;
                     }
-                    return;
-                  }
-                  setIsSubmissionModalOpen(true);
-                }}
-                disabled={!isSubmissionAllowed}
-                style={{ 
-                  background: isSubmissionAllowed ? '#16A34A' : '#94A3B8', 
-                  borderColor: isSubmissionAllowed ? '#16A34A' : '#94A3B8',
-                  opacity: isSubmissionAllowed ? 1 : 0.65,
-                  cursor: isSubmissionAllowed ? 'pointer' : 'not-allowed'
-                }}
-              >
-                <span>
-                  {isSubmissionAllowed 
-                    ? 'Resubmit for QA Review 🚀' 
-                    : (!allTasksDone || devProg < 100
-                      ? `Complete All Tasks to Resubmit (${devProg}%)`
-                      : (!hasLiveLink || !hasDriveLink 
-                        ? 'Provide Links to Resubmit' 
-                        : 'Complete All Tasks to Resubmit'))}
-                </span>
-              </button>
+                    setIsSubmissionModalOpen(true);
+                  }}
+                  disabled={!isSubmissionAllowed}
+                  style={{ 
+                    background: isSubmissionAllowed ? '#16A34A' : '#94A3B8', 
+                    borderColor: isSubmissionAllowed ? '#16A34A' : '#94A3B8',
+                    opacity: isSubmissionAllowed ? 1 : 0.65,
+                    cursor: isSubmissionAllowed ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <span>
+                    {isSubmissionAllowed 
+                      ? 'Resubmit for Review 🚀' 
+                      : (!allTasksDone || devProg < 100
+                        ? `Complete All Tasks to Resubmit (${devProg}%)`
+                        : (!hasLiveLink || !hasDriveLink 
+                          ? 'Provide Links to Resubmit' 
+                          : 'Complete All Tasks to Resubmit'))}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {currentStatus === 'Active' && devProg === 100 && !isAlreadySubmitted && !hasReworkRequested && (
         <div className="portal-card" style={{ borderLeft: '4px solid #F3821D', marginBottom: '20px', backgroundColor: '#FFF7ED', padding: '16px 20px' }}>
@@ -1123,65 +1163,92 @@ export default function ProjectDetailPage({
         </div>
 
         {/* Right: Project Documents (With Clean Icon-based View & Download) */}
-        <div className="portal-card">
-          <div className="portal-card-header">
-            <h2 className="portal-card-title">
-              <FileCheck size={18} color="#0A3D75" />
-              <span>Project Documents</span>
-            </h2>
-            <span className="docs-count-chip">{(project.documents || []).length} Files</span>
-          </div>
+        {(() => {
+          const baseDocs = Array.isArray(project?.documents) 
+            ? project.documents 
+            : (Array.isArray(project?.specificationDocuments) ? project.specificationDocuments : []);
+          const allProjectDocs = [...baseDocs];
+          if (project?.adminRejectionDocument) {
+            const revDocObj = typeof project.adminRejectionDocument === 'object'
+              ? project.adminRejectionDocument
+              : { name: project.adminRejectionDocument, type: 'Admin Revision Document', size: '0.1 MB', date: 'Revision' };
+            if (!allProjectDocs.some(d => d.name === revDocObj.name || (revDocObj.id && d.id === revDocObj.id))) {
+              allProjectDocs.unshift({
+                id: revDocObj.id || 'doc-admin-rev',
+                name: revDocObj.name || 'Revision_Guidelines.pdf',
+                type: revDocObj.type || 'Admin Revision Document',
+                size: revDocObj.size || '0.1 MB',
+                dataUrl: revDocObj.dataUrl,
+                fileData: revDocObj.fileData || revDocObj.dataUrl,
+                url: revDocObj.url || revDocObj.dataUrl,
+                date: revDocObj.date || (project.adminRejectedAt ? new Date(project.adminRejectedAt).toLocaleDateString('en-GB') : 'Revision'),
+                status: 'Admin Feedback'
+              });
+            }
+          }
 
-          <p className="docs-note-p">
-            Access project specification files, Figma assets, and reference guidelines.
-          </p>
-
-          <div className="documents-list">
-            {(project.documents && project.documents.length > 0) ? (
-              project.documents.map((doc) => (
-                <div key={doc.id} className="document-card">
-                  <div className="doc-icon-wrap">
-                    <FileText size={22} color="#0A3D75" />
-                  </div>
-                  <div className="doc-info">
-                    <div className="doc-name">{doc.name}</div>
-                    <div className="doc-meta">
-                      <span className="doc-type-badge">{doc.type}</span>
-                      <span>{doc.size}</span>
-                      <span>• {doc.date}</span>
-                    </div>
-                  </div>
-                  <div className="doc-actions" style={{ display: 'flex', gap: '6px' }}>
-                    <button 
-                      type="button" 
-                      className="btn-doc-action"
-                      title="View Document"
-                      onClick={() => handleViewDoc(doc)}
-                      style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#0A3D75', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn-doc-action"
-                      title="Download Document"
-                      onClick={() => handleDownloadDoc(doc)}
-                      style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#F3821D', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <Download size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1' }}>
-                <FileText size={28} color="#94A3B8" style={{ margin: '0 auto 8px', display: 'block' }} />
-                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#475569' }}>No Specification Documents Attached</div>
-                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '4px' }}>Admin has not attached any external specification files for this project.</div>
+          return (
+            <div className="portal-card">
+              <div className="portal-card-header">
+                <h2 className="portal-card-title">
+                  <FileCheck size={18} color="#0A3D75" />
+                  <span>Project Documents</span>
+                </h2>
+                <span className="docs-count-chip">{allProjectDocs.length} Files</span>
               </div>
-            )}
-          </div>
-        </div>
+
+              <p className="docs-note-p">
+                Access project specification files, Figma assets, and reference guidelines.
+              </p>
+
+              <div className="documents-list">
+                {(allProjectDocs && allProjectDocs.length > 0) ? (
+                  allProjectDocs.map((doc) => (
+                    <div key={doc.id || doc.name} className="document-card">
+                      <div className="doc-icon-wrap">
+                        <FileText size={22} color="#0A3D75" />
+                      </div>
+                      <div className="doc-info">
+                        <div className="doc-name">{doc.name}</div>
+                        <div className="doc-meta">
+                          <span className="doc-type-badge">{doc.type}</span>
+                          <span>{doc.size}</span>
+                          <span>• {doc.date}</span>
+                        </div>
+                      </div>
+                      <div className="doc-actions" style={{ display: 'flex', gap: '6px' }}>
+                        <button 
+                          type="button" 
+                          className="btn-doc-action"
+                          title="View Document"
+                          onClick={() => handleViewDoc(doc)}
+                          style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#0A3D75', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-doc-action"
+                          title="Download Document"
+                          onClick={() => handleDownloadDoc(doc)}
+                          style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#F3821D', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Download size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1' }}>
+                    <FileText size={28} color="#94A3B8" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#475569' }}>No Specification Documents Attached</div>
+                    <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '4px' }}>Admin has not attached any external specification files for this project.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Section: ISSUES RAISED BY TESTER */}

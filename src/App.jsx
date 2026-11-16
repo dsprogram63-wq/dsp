@@ -2519,6 +2519,8 @@ export default function App() {
         {routeState.subView === 'project-review' && (
           <ProjectReviewPage
             project={currentAdminProject}
+            developers={developers}
+            testers={testers}
             onBack={() => navigateTo('admin/submitted-projects')}
             onUpdateProject={handleUpdateAdminProject}
             onNavigate={navigateTo}

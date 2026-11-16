@@ -47,7 +47,8 @@ import { getRevisionSource } from '../../utils/projectStatusUtils';
 import { 
   sendProjectAssignmentNotifications,
   sendDeveloperDeadlineWarningEmail,
-  sendTesterDeadlineWarningEmail
+  sendTesterDeadlineWarningEmail,
+  sendAdminRevisionNotifications
 } from '../../services/emailService';
 import './AdminProjectDetailPage.css';
 
@@ -579,7 +580,24 @@ export default function AdminProjectDetailPage({
     if (onUpdateProject) {
       onUpdateProject(updatedProject);
     }
-    showToast('✓ Changes requested! Developer & QA Tester have been notified.');
+
+    // Dispatch real email notice to BOTH Developer and QA Tester from project@dsprogram.space
+    try {
+      sendAdminRevisionNotifications({
+        project: updatedProject,
+        revisionData: revData,
+        developers,
+        testers
+      }).then(res => {
+        const devOk = res?.developer?.success;
+        const testOk = res?.tester?.success;
+        console.log(`[Admin Revision Dispatch] Notified Developer: ${devOk}, Tester: ${testOk}`);
+      }).catch(err => console.error('[Admin Revision Dispatch] Error:', err));
+    } catch (e) {
+      console.error('[Admin Revision Dispatch] Exception:', e);
+    }
+
+    showToast('✓ Changes requested! Developer & QA Tester have been notified via email.');
   };
 
   return (
