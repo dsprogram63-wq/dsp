@@ -57,7 +57,7 @@ import { initialProjects, initialProfile } from './data/mockData';
 import { initialAdminProjects, initialDevelopers } from './data/adminMockData';
 import { initialTesters, initialTesterProfile } from './data/testerMockData';
 import { removeReferralTrustId, getOrAssignReferralTrustId } from './utils/referralTrustUtils';
-import { getDeletedMemberIds, addDeletedMemberId, isMemberDeleted } from './utils/memberUniqueness';
+import { getDeletedMemberIds, addDeletedMemberId, isMemberDeleted, getDeletedProjectIds, addDeletedProjectId, isProjectDeleted } from './utils/memberUniqueness';
 import { 
   getAuthenticatedFreelancerProjects, 
   getAuthenticatedFreelancerProjectById, 
@@ -300,9 +300,10 @@ export default function App() {
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
+          const delProjIds = getDeletedProjectIds();
+          parsed = parsed.filter(p => p && !MOCK_PROJECT_IDS.has(p.id) && !delProjIds.has(String(p.id).toLowerCase().trim())).map(sanitizeProject);
           const has7169 = parsed.some(p => p.id === 'DS-WEB-7169');
-          if (!has7169) {
+          if (!has7169 && !delProjIds.has('ds-web-7169')) {
             const p7169 = initialAdminProjects.find(p => p.id === 'DS-WEB-7169');
             if (p7169) return [sanitizeProject(p7169), ...parsed];
           }
@@ -312,7 +313,8 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse admin projects:', e);
     }
-    return initialAdminProjects.map(sanitizeProject);
+    const delProjIds = getDeletedProjectIds();
+    return initialAdminProjects.filter(p => p && !delProjIds.has(String(p.id).toLowerCase().trim())).map(sanitizeProject);
   });
 
   // State for Developers (Persistent across sessions & reloads)
@@ -440,7 +442,10 @@ export default function App() {
           } catch (e) {}
         }
         if (Array.isArray(liveData.adminProjects)) {
-          const cleanIncoming = liveData.adminProjects.filter(p => p && !MOCK_PROJECT_IDS.has(p.id)).map(sanitizeProject);
+          const delProjIds = getDeletedProjectIds();
+          const cleanIncoming = liveData.adminProjects
+            .filter(p => p && !MOCK_PROJECT_IDS.has(p.id) && !delProjIds.has(String(p.id).toLowerCase().trim()))
+            .map(sanitizeProject);
 
           setAdminProjects(prevProjects => {
             const currentList = Array.isArray(prevProjects) && prevProjects.length > 0
@@ -1135,6 +1140,99 @@ export default function App() {
     }).catch(() => {});
 
     return emailDispatchPromise;
+  };
+
+  // Admin Delete Project (permanently purges project from state, storage & cloud tables; frees up database storage)
+  const handleDeleteProject = (projectId) => {
+    if (!projectId) return;
+    const targetId = String(projectId).trim().toLowerCase();
+
+    // 1. Blacklist project ID so future polling never resurrects it
+    addDeletedProjectId(projectId);
+    addDeletedProjectId(targetId);
+
+    // 2. Remove from admin projects and freelancer safe projects
+    const updatedAdminProjs = adminProjects.filter(
+      p => String(p?.id || '').trim().toLowerCase() !== targetId
+    );
+    const updatedDevProjs = projects.filter(
+      p => String(p?.id || '').trim().toLowerCase() !== targetId
+    );
+
+    const adminSnap = JSON.stringify(updatedAdminProjs);
+    lastCloudSnapshotRef.current.adminProjects = adminSnap;
+
+    setAdminProjects(updatedAdminProjs);
+    setProjects(updatedDevProjs);
+
+    // 3. Persist updated projects to LocalStorage
+    try {
+      localStorage.setItem('dahej_real_v2_admin_projects', adminSnap);
+      localStorage.setItem('dahej_admin_projects', adminSnap);
+      localStorage.setItem('dahej_real_v2_freelancer_projects', JSON.stringify(updatedDevProjs));
+      localStorage.setItem('dahej_freelancer_projects', JSON.stringify(updatedDevProjs));
+    } catch (e) {
+      console.error('Failed to save projects to localStorage after deletion:', e);
+    }
+
+    // 4. Update Developer and Tester currentProjects to remove deleted project reference
+    setDevelopers(prevDevs => {
+      const updatedDevs = prevDevs.map(d => {
+        if (Array.isArray(d.currentProjects)) {
+          const filtered = d.currentProjects.filter(
+            cp => String(cp?.id || '').trim().toLowerCase() !== targetId
+          );
+          if (filtered.length !== d.currentProjects.length) {
+            return { ...d, currentProjects: filtered };
+          }
+        }
+        return d;
+      });
+      try {
+        localStorage.setItem('dahej_real_v2_developers', JSON.stringify(updatedDevs));
+        localStorage.setItem('dahej_developers', JSON.stringify(updatedDevs));
+      } catch (e) {}
+      return updatedDevs;
+    });
+
+    setTesters(prevTesters => {
+      const updatedTesters = prevTesters.map(t => {
+        if (Array.isArray(t.currentProjects)) {
+          const filtered = t.currentProjects.filter(
+            cp => String(cp?.id || '').trim().toLowerCase() !== targetId
+          );
+          if (filtered.length !== t.currentProjects.length) {
+            return { ...t, currentProjects: filtered };
+          }
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('dahej_real_v2_testers', JSON.stringify(updatedTesters));
+        localStorage.setItem('dahej_testers', JSON.stringify(updatedTesters));
+      } catch (e) {}
+      return updatedTesters;
+    });
+
+    // 5. Atomic Cloud Database & Storage Sync
+    saveLivePlatformData({
+      deleteProjectId: projectId,
+      adminProjects: updatedAdminProjs,
+      replaceAdminProjects: true
+    }).catch(err => {
+      console.warn('Live sync project deletion error:', err);
+    });
+
+    // 6. Reset selection and navigate to admin/projects if needed
+    if (String(selectedAdminProjectId || '').toLowerCase() === targetId) {
+      setSelectedAdminProjectId(null);
+    }
+    if (String(selectedProjectId || '').toLowerCase() === targetId) {
+      setSelectedProjectId(null);
+    }
+    if (routeState.subView === 'project-detail' || routeState.subView === 'project-review') {
+      navigateTo('admin/projects');
+    }
   };
 
   // Admin developer update (auto-cleans applicationMessage upon approval, saves password & persists atomically to developers table)
@@ -2392,6 +2490,7 @@ export default function App() {
             testers={testers}
             onNavigate={navigateTo}
             onOpenProject={handleOpenAdminProject}
+            onDeleteProject={handleDeleteProject}
             defaultFilter="All"
           />
         )}
@@ -2403,6 +2502,7 @@ export default function App() {
             testers={testers}
             onNavigate={navigateTo}
             onOpenProject={handleOpenAdminProject}
+            onDeleteProject={handleDeleteProject}
             defaultFilter="In Progress"
           />
         )}
@@ -2436,6 +2536,7 @@ export default function App() {
           <AdminCompletedProjectsPage
             projects={adminProjects}
             onOpenProject={handleOpenAdminProject}
+            onDeleteProject={handleDeleteProject}
           />
         )}
 
@@ -2514,6 +2615,7 @@ export default function App() {
             testers={testers}
             onBack={() => navigateTo('admin/projects')}
             onUpdateProject={handleUpdateAdminProject}
+            onDeleteProject={handleDeleteProject}
             onNavigate={navigateTo}
             externalNotice={projectNotice}
             onClearExternalNotice={() => setProjectNotice(null)}

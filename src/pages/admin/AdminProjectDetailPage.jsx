@@ -40,6 +40,8 @@ import AssignTesterModal from '../../components/admin/AssignTesterModal';
 import RevisionModal from '../../components/admin/RevisionModal';
 import CredentialModal from '../../components/portal/CredentialModal';
 import PaymentSettlementModal from '../../components/admin/PaymentSettlementModal';
+import DeleteProjectModal from '../../components/admin/DeleteProjectModal';
+import { exportFullProjectArchive } from '../../utils/exportUtils';
 import { initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
@@ -58,6 +60,7 @@ export default function AdminProjectDetailPage({
   testers = initialTesters,
   onBack, 
   onUpdateProject, 
+  onDeleteProject,
   onNavigate,
   externalNotice = null,
   onClearExternalNotice
@@ -68,6 +71,7 @@ export default function AdminProjectDetailPage({
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [isCredModalOpen, setIsCredModalOpen] = useState(false);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
@@ -743,6 +747,33 @@ export default function AdminProjectDetailPage({
               </button>
             </div>
           )}
+
+          {/* Export Complete Archive Record */}
+          <button
+            type="button"
+            className="btn btn-navy-action"
+            onClick={() => {
+              exportFullProjectArchive(project);
+              showToast('Complete project archive downloaded (Excel CSV)');
+            }}
+            style={{ background: '#F8FAFC', color: '#0A3D75', borderColor: '#CBD5E1' }}
+            title="Export complete A-to-Z project archive (Excel CSV)"
+          >
+            <Download size={15} />
+            <span>Export Archive</span>
+          </button>
+
+          {/* Delete Project */}
+          <button
+            type="button"
+            className="btn btn-navy-action"
+            onClick={() => setIsDeleteModalOpen(true)}
+            style={{ background: '#FFF5F5', color: '#DC2626', borderColor: '#FECACA' }}
+            title="Permanently delete project record to free up storage space"
+          >
+            <Trash2 size={15} />
+            <span>Delete Project</span>
+          </button>
         </div>
       </div>
 
@@ -2398,6 +2429,21 @@ export default function AdminProjectDetailPage({
         }}
         developers={developers}
         testers={testers}
+      />
+
+      <DeleteProjectModal
+        isOpen={isDeleteModalOpen}
+        project={project}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={(projectId) => {
+          setIsDeleteModalOpen(false);
+          if (onDeleteProject) {
+            onDeleteProject(projectId);
+          }
+          if (onBack) {
+            onBack();
+          }
+        }}
       />
     </div>
   );

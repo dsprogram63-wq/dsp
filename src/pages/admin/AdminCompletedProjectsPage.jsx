@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { Search, CheckCircle, Eye, Calendar, IndianRupee, Award } from 'lucide-react';
+import { Search, CheckCircle, Eye, Calendar, IndianRupee, Award, Download, Trash2 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
+import DeleteProjectModal from '../../components/admin/DeleteProjectModal';
+import { exportFullProjectArchive } from '../../utils/exportUtils';
 import { initialAdminProjects } from '../../data/adminMockData';
 
 export default function AdminCompletedProjectsPage({ 
   projects = initialAdminProjects, 
-  onOpenProject 
+  onOpenProject,
+  onDeleteProject
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   const completedProjects = projects.filter(p => p.status === 'Completed' || (p.adminApproved && (p.developerPaymentRemainingNum === 0 || p.developerRemainingAmount === 0)));
 
@@ -110,15 +114,55 @@ export default function AdminCompletedProjectsPage({
                       <StatusBadge status="Completed" size="small" />
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => onOpenProject(p.id)}
-                        className="btn btn-navy-action"
-                        style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                      >
-                        <Eye size={13} style={{ marginRight: '4px' }} />
-                        View Details
-                      </button>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenProject(p.id)}
+                          className="btn btn-navy-action"
+                          style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                        >
+                          <Eye size={13} style={{ marginRight: '4px' }} />
+                          View Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportFullProjectArchive(p);
+                          }}
+                          className="btn"
+                          style={{
+                            padding: '6px 9px',
+                            background: '#F1F5F9',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '6px',
+                            color: '#0A3D75',
+                            cursor: 'pointer'
+                          }}
+                          title="Export complete project archive (Excel CSV)"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProjectToDelete(p);
+                          }}
+                          className="btn"
+                          style={{
+                            padding: '6px 9px',
+                            background: '#FEF2F2',
+                            border: '1px solid #FECACA',
+                            borderRadius: '6px',
+                            color: '#DC2626',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete completed project record"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -137,6 +181,17 @@ export default function AdminCompletedProjectsPage({
           />
         </div>
       )}
+      <DeleteProjectModal
+        isOpen={Boolean(projectToDelete)}
+        project={projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={(projectId) => {
+          setProjectToDelete(null);
+          if (onDeleteProject) {
+            onDeleteProject(projectId);
+          }
+        }}
+      />
     </div>
   );
 }

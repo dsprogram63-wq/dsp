@@ -6,6 +6,7 @@
  */
 
 import { supabase } from './supabase.js';
+import { getDeletedProjectIds } from '../utils/memberUniqueness.js';
 
 const STORAGE_BUCKET = 'avatars';
 const TABLE_PATHS = {
@@ -144,14 +145,15 @@ export function sanitizeLivePlatformState(state) {
     });
   };
 
+  const deletedProjIds = getDeletedProjectIds();
   if (Array.isArray(state.adminProjects)) {
     state.adminProjects = reconcileProjectAssignments(
-      state.adminProjects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id))
+      state.adminProjects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id) && !deletedProjIds.has(String(p.id).toLowerCase().trim()))
     );
   }
   if (Array.isArray(state.projects)) {
     state.projects = reconcileProjectAssignments(
-      state.projects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id))
+      state.projects.filter((p) => p && !MOCK_PROJECT_IDS.has(p.id) && !deletedProjIds.has(String(p.id).toLowerCase().trim()))
     );
   }
 
@@ -471,7 +473,7 @@ export async function saveLivePlatformData(updates = {}) {
       ? mergeById(currentState.testers, updates.testers, Boolean(updates.replaceTesters))
       : currentState.testers;
 
-  const nextProjects = updates.updateProject
+  let nextProjects = updates.updateProject
     ? mergeById(currentState.adminProjects || currentState.projects, [updates.updateProject], false)
     : updates.adminProjects
       ? mergeById(
@@ -482,6 +484,13 @@ export async function saveLivePlatformData(updates = {}) {
       : updates.projects
         ? mergeById(currentState.projects, updates.projects, false)
         : currentState.adminProjects || currentState.projects;
+
+  if (updates.deleteProjectId) {
+    const targetDelId = String(updates.deleteProjectId).toLowerCase().trim();
+    nextProjects = (nextProjects || []).filter(
+      (p) => String(p?.id || '').toLowerCase().trim() !== targetDelId
+    );
+  }
 
   const nextApplications = updates.addApplication
     ? mergeById(currentState.applications, [updates.addApplication], false)

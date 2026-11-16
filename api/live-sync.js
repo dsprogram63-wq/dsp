@@ -143,10 +143,10 @@ export function sanitizeProjectBloat(p) {
   return copy;
 }
 
-function filterValidProjects(list = []) {
+function filterValidProjects(list = [], deletedProjSet = new Set()) {
   if (!Array.isArray(list)) return [];
   return list
-    .filter((p) => p && p.id && !MOCK_PROJECT_IDS.has(p.id))
+    .filter((p) => p && p.id && !MOCK_PROJECT_IDS.has(p.id) && !deletedProjSet.has(String(p.id).toLowerCase().trim()))
     .map(sanitizeProjectBloat);
 }
 
@@ -388,6 +388,14 @@ async function loadAllTables(supabase) {
 
   const deletedSet = new Set(deletedMemberIds.map((id) => String(id).toLowerCase().trim()));
 
+  const deletedProjectIds = Array.isArray(authFile?.deletedProjectIds)
+    ? authFile.deletedProjectIds
+    : Array.isArray(legacy?.deletedProjectIds)
+      ? legacy.deletedProjectIds
+      : [];
+
+  const deletedProjSet = new Set(deletedProjectIds.map((id) => String(id).toLowerCase().trim()));
+
   const rawDevelopers = sqlDevs || devFile?.rows || legacy?.developers || [];
   const rawTesters = sqlTesters || testerFile?.rows || legacy?.testers || [];
   const rawProjects = sqlProjs || projFile?.rows || legacy?.adminProjects || legacy?.projects || [];
@@ -396,7 +404,7 @@ async function loadAllTables(supabase) {
 
   const validDevelopers = filterValidDevelopers(rawDevelopers, deletedSet);
   const validTesters = filterValidTesters(rawTesters, deletedSet);
-  const validProjects = filterValidProjects(rawProjects);
+  const validProjects = filterValidProjects(rawProjects, deletedProjSet);
 
   // Cross-reconcile project assignments from developer & tester records
   let projectsReconciled = false;
@@ -473,6 +481,7 @@ async function loadAllTables(supabase) {
     applications: Array.isArray(rawApplications) ? rawApplications : [],
     passwords,
     deletedMemberIds,
+    deletedProjectIds,
     storageMode: sqlDevs || sqlTesters || sqlProjs ? 'postgres+table-storage' : 'table-storage',
     updatedAt:
       devFile?.updatedAt ||
@@ -560,6 +569,15 @@ export default async function handler(req, res) {
         ...(updates.deletedMemberId ? [String(updates.deletedMemberId).toLowerCase().trim()] : []),
       ]);
 
+      const deleteProjId = updates.deleteProjectId || updates.deletedProjectId;
+      const deletedProjSet = new Set([
+        ...current.deletedProjectIds.map((id) => String(id).toLowerCase().trim()),
+        ...(Array.isArray(updates.deletedProjectIds)
+          ? updates.deletedProjectIds.map((id) => String(id).toLowerCase().trim())
+          : []),
+        ...(deleteProjId ? [String(deleteProjId).toLowerCase().trim()] : []),
+      ]);
+
       const writePromises = [];
 
       // 1. Auth Registry Table (Passwords & Deleted IDs)
@@ -568,8 +586,9 @@ export default async function handler(req, res) {
         delete nextPasswords[String(updates.deletedMemberId).toLowerCase().trim()];
       }
       const deletedArr = Array.from(deletedSet);
+      const deletedProjArr = Array.from(deletedProjSet);
       const authChanged = Boolean(
-        updates.passwords || updates.deletedMemberId || updates.deletedMemberIds
+        updates.passwords || updates.deletedMemberId || updates.deletedMemberIds || deleteProjId || updates.deletedProjectIds
       );
       if (authChanged) {
         writePromises.push(
@@ -578,6 +597,7 @@ export default async function handler(req, res) {
             updatedAt: now,
             passwords: nextPasswords,
             deletedMemberIds: deletedArr,
+            deletedProjectIds: deletedProjArr,
           })
         );
       }
@@ -668,21 +688,32 @@ export default async function handler(req, res) {
       // 4. Projects Table (Independent table write & atomic record upsert)
       let nextProjects = current.projects;
       const projChanged = Boolean(
-        updates.adminProjects || updates.projects || updates.updateProject
+        updates.adminProjects || updates.projects || updates.updateProject || deleteProjId
       );
       if (projChanged) {
-        if (updates.updateProject && updates.updateProject.id) {
-          nextProjects = mergeRowsById(current.projects, [updates.updateProject], false, deletedSet);
+        if (deleteProjId) {
+          const targetDelId = String(deleteProjId).trim().toLowerCase();
+          nextProjects = current.projects.filter(p => String(p.id).trim().toLowerCase() !== targetDelId);
+          if (Array.isArray(updates.adminProjects || updates.projects)) {
+            nextProjects = mergeRowsById(
+              nextProjects,
+              updates.adminProjects || updates.projects,
+              Boolean(updates.replaceAdminProjects),
+              deletedProjSet
+            );
+          }
+        } else if (updates.updateProject && updates.updateProject.id) {
+          nextProjects = mergeRowsById(current.projects, [updates.updateProject], false, deletedProjSet);
         } else {
           const incomingProjs = updates.adminProjects || updates.projects;
           nextProjects = mergeRowsById(
             current.projects,
             incomingProjs,
             Boolean(updates.replaceAdminProjects),
-            deletedSet
+            deletedProjSet
           );
         }
-        nextProjects = filterValidProjects(nextProjects);
+        nextProjects = filterValidProjects(nextProjects, deletedProjSet);
 
         writePromises.push(
           writeStorageJson(supabase, TABLE_PATHS.projects, {
@@ -697,8 +728,8 @@ export default async function handler(req, res) {
             'projects',
             nextProjects,
             mapProjectSqlRow,
-            Boolean(updates.replaceAdminProjects),
-            null
+            Boolean(updates.replaceAdminProjects || deleteProjId),
+            deleteProjId || null
           )
         );
       }

@@ -4,6 +4,7 @@ import { initialTesters } from '../data/testerMockData.js';
 export const MASTER_ADMIN_EMAIL = 'dahejsupport@gmail.com';
 export const MASTER_ADMIN_NAME = 'keval patel';
 export const STORAGE_KEY_DELETED_MEMBERS = 'dahej_deleted_member_ids';
+export const STORAGE_KEY_DELETED_PROJECTS = 'dahej_deleted_project_ids';
 
 /**
  * Retrieve set of all permanently deleted member IDs (case-insensitive)
@@ -19,6 +20,43 @@ export function getDeletedMemberIds() {
     }
   } catch (e) {}
   return new Set();
+}
+
+/**
+ * Retrieve set of all permanently deleted project IDs (case-insensitive)
+ */
+export function getDeletedProjectIds() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DELETED_PROJECTS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.map(id => String(id).toLowerCase().trim()));
+      }
+    }
+  } catch (e) {}
+  return new Set();
+}
+
+/**
+ * Permanently blacklist a deleted project ID so it can never be resurrected by background polling
+ */
+export function addDeletedProjectId(id) {
+  if (!id) return;
+  try {
+    const target = String(id).toLowerCase().trim();
+    const current = getDeletedProjectIds();
+    current.add(target);
+    localStorage.setItem(STORAGE_KEY_DELETED_PROJECTS, JSON.stringify(Array.from(current)));
+  } catch (e) {}
+}
+
+/**
+ * Check if a project ID has been permanently deleted by Admin
+ */
+export function isProjectDeleted(id) {
+  if (!id) return false;
+  return getDeletedProjectIds().has(String(id).toLowerCase().trim());
 }
 
 /**

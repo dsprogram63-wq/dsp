@@ -3,11 +3,13 @@ import {
   Search, 
   PlusCircle, 
   FolderKanban,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import StatusBadge from '../../components/portal/StatusBadge';
 import EmptyState from '../../components/portal/EmptyState';
-import { exportToCSV } from '../../utils/exportUtils';
+import DeleteProjectModal from '../../components/admin/DeleteProjectModal';
+import { exportToCSV, exportFullProjectArchive } from '../../utils/exportUtils';
 import { initialAdminProjects, initialDevelopers } from '../../data/adminMockData';
 import { initialTesters } from '../../data/testerMockData';
 import './AdminProjectsPage.css';
@@ -18,6 +20,7 @@ export default function AdminProjectsPage({
   testers = initialTesters,
   onNavigate, 
   onOpenProject, 
+  onDeleteProject,
   defaultFilter = 'All' 
 }) {
   const [selectedStatus, setSelectedStatus] = useState(defaultFilter);
@@ -25,6 +28,7 @@ export default function AdminProjectsPage({
   const [selectedTester, setSelectedTester] = useState('All');
   const [selectedPriority, setSelectedPriority] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   // Exactly 9 Project Status Sections in Exact Required Order
   const statusTabs = [
@@ -554,14 +558,54 @@ export default function AdminProjectsPage({
                       </td>
 
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => onOpenProject(p.id)}
-                          className="btn btn-navy-action"
-                          style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                        >
-                          Manage
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => onOpenProject(p.id)}
+                            className="btn btn-navy-action"
+                            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                          >
+                            Manage
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportFullProjectArchive(p);
+                            }}
+                            className="btn"
+                            style={{
+                              padding: '6px 9px',
+                              background: '#F1F5F9',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: '6px',
+                              color: '#0A3D75',
+                              cursor: 'pointer'
+                            }}
+                            title="Export complete project archive (Excel CSV)"
+                          >
+                            <Download size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProjectToDelete(p);
+                            }}
+                            className="btn"
+                            style={{
+                              padding: '6px 9px',
+                              background: '#FEF2F2',
+                              border: '1px solid #FECACA',
+                              borderRadius: '6px',
+                              color: '#DC2626',
+                              cursor: 'pointer'
+                            }}
+                            title="Delete project record"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -587,6 +631,17 @@ export default function AdminProjectsPage({
           />
         </div>
       )}
+      <DeleteProjectModal
+        isOpen={Boolean(projectToDelete)}
+        project={projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={(projectId) => {
+          setProjectToDelete(null);
+          if (onDeleteProject) {
+            onDeleteProject(projectId);
+          }
+        }}
+      />
     </div>
   );
 }
