@@ -84,9 +84,70 @@ function filterValidTesters(list = [], deletedIds = new Set()) {
   );
 }
 
+export function sanitizeProjectBloat(p) {
+  if (!p || typeof p !== 'object') return p;
+  const copy = { ...p };
+
+  if (copy.adminRejectionDocument && typeof copy.adminRejectionDocument === 'object') {
+    const doc = { ...copy.adminRejectionDocument };
+    if (doc.url && !doc.url.startsWith('data:')) {
+      delete doc.dataUrl;
+      delete doc.fileData;
+    }
+    copy.adminRejectionDocument = doc;
+  }
+
+  if (Array.isArray(copy.documents)) {
+    copy.documents = copy.documents.map((d) => {
+      const cleanDoc = { ...d };
+      if (cleanDoc.url && !cleanDoc.url.startsWith('data:')) {
+        delete cleanDoc.dataUrl;
+        delete cleanDoc.fileData;
+      }
+      return cleanDoc;
+    });
+  }
+
+  const cleanIssueList = (list = []) => {
+    return list.map((iss) => {
+      const cleanIss = { ...iss };
+      const cUrl =
+        cleanIss.cloudUrl ||
+        cleanIss.screenshot ||
+        (cleanIss.attachmentUrl && !cleanIss.attachmentUrl.startsWith('data:') ? cleanIss.attachmentUrl : null);
+      if (cUrl) {
+        cleanIss.cloudUrl = cUrl;
+        cleanIss.screenshot = cUrl;
+        cleanIss.attachmentUrl = cUrl;
+        delete cleanIss.attachmentDataUrl;
+        delete cleanIss.dataUrl;
+      }
+      return cleanIss;
+    });
+  };
+
+  if (Array.isArray(copy.testingIssues)) {
+    copy.testingIssues = cleanIssueList(copy.testingIssues);
+  }
+  if (Array.isArray(copy.issues)) {
+    copy.issues = cleanIssueList(copy.issues);
+  }
+
+  if (copy.defectScreenshot && copy.defectScreenshot.startsWith('http')) {
+    delete copy.defectScreenshotDataUrl;
+  }
+  if (copy.submissionData) {
+    delete copy.submissionData;
+  }
+
+  return copy;
+}
+
 function filterValidProjects(list = []) {
   if (!Array.isArray(list)) return [];
-  return list.filter((p) => p && p.id && !MOCK_PROJECT_IDS.has(p.id));
+  return list
+    .filter((p) => p && p.id && !MOCK_PROJECT_IDS.has(p.id))
+    .map(sanitizeProjectBloat);
 }
 
 function mergeRowsById(prev = [], incoming = [], replace = false, deletedIds = new Set()) {
@@ -442,7 +503,14 @@ export default async function handler(req, res) {
     try {
       const tables = await loadAllTables(supabase);
 
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      const etag = `"${tables.updatedAt || 'v1'}"`;
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
       return res.status(200).json({
         success: true,
         storageMode: tables.storageMode,

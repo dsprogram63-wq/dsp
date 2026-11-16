@@ -653,8 +653,12 @@ export default function App() {
   useEffect(() => {
     syncFromCloud();
 
-    // Periodic live sync every 10 seconds so Admin sees newly registered developers without manual refresh
-    const pollInterval = setInterval(syncFromCloud, 10000);
+    // Periodic live sync only when document is visible (saves bandwidth)
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncFromCloud();
+      }
+    }, 45000);
 
     // Sync on tab focus / window visibility
     const handleVisibility = () => {

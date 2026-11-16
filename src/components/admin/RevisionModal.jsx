@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, ShieldAlert, Send, Upload, FileText, Trash2 } from 'lucide-react';
+import { supabase } from '../../services/supabase.js';
 import './AdminModals.css';
 
 export default function RevisionModal({ 
@@ -19,18 +20,44 @@ export default function RevisionModal({
     const file = e.target.files && e.target.files[0];
     if (file) {
       const sizeInMB = file.size / (1024 * 1024);
+      const cleanFileName = `admin-docs/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+      // Upload directly to Supabase storage to keep database lightweight
+      if (supabase?.storage) {
+        supabase.storage
+          .from('bug-screenshots')
+          .upload(cleanFileName, file, { upsert: true })
+          .then(({ error }) => {
+            if (!error) {
+              const { data: pubData } = supabase.storage.from('bug-screenshots').getPublicUrl(cleanFileName);
+              setDocumentFile({
+                name: file.name,
+                size: sizeInMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeInMB.toFixed(1)} MB`,
+                type: file.type || 'Document',
+                url: pubData.publicUrl,
+                cloudUrl: pubData.publicUrl,
+                date: new Date().toLocaleDateString('en-GB')
+              });
+            }
+          })
+          .catch(() => {});
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUrl = event.target.result;
-        setDocumentFile({
-          name: file.name,
-          size: sizeInMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeInMB.toFixed(1)} MB`,
-          type: file.type || 'PDF Document',
-          dataUrl: dataUrl,
-          fileData: dataUrl,
-          url: dataUrl,
-          date: new Date().toLocaleDateString('en-GB')
-        });
+        setDocumentFile((prev) =>
+          prev?.url && !prev.url.startsWith('data:')
+            ? prev
+            : {
+                name: file.name,
+                size: sizeInMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeInMB.toFixed(1)} MB`,
+                type: file.type || 'Document',
+                dataUrl: dataUrl,
+                url: dataUrl,
+                date: new Date().toLocaleDateString('en-GB')
+              }
+        );
       };
       reader.readAsDataURL(file);
     }

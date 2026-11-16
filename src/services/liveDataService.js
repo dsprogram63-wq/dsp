@@ -19,6 +19,7 @@ const TABLE_PATHS = {
 
 // In-memory cache of the latest live state
 let memoryCloudState = null;
+let lastLiveSyncEtag = null;
 
 const MOCK_DEV_IDS = new Set(['DEV-512', 'DEV-452', 'DEV-892', 'DEV-519', 'DEV-DEMO']);
 const MOCK_TESTER_IDS = new Set(['TST-317', 'TST-841', 'TST-781', 'TST-DEMO']);
@@ -316,12 +317,21 @@ export async function fetchLivePlatformData() {
   const endpoints = getSyncEndpoints();
   for (const url of endpoints) {
     try {
+      const headers = { Accept: 'application/json' };
+      if (lastLiveSyncEtag && memoryCloudState) {
+        headers['If-None-Match'] = lastLiveSyncEtag;
+      }
       const res = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers,
         signal: AbortSignal.timeout ? AbortSignal.timeout(4500) : undefined,
       });
+      if (res.status === 304 && memoryCloudState) {
+        return memoryCloudState;
+      }
       if (res.ok) {
+        const etag = res.headers.get('ETag');
+        if (etag) lastLiveSyncEtag = etag;
         const json = await res.json();
         if (json && json.data) {
           liveData = json.data;
