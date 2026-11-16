@@ -42,7 +42,8 @@ import {
   getTesterDashboardStatus,
   calculateQAProgressFromTasks,
   areAllQATasksPassed,
-  calculateProjectProgressFromTasks
+  calculateProjectProgressFromTasks,
+  getRevisionSource
 } from '../../utils/projectStatusUtils';
 import { downloadProjectDocument, getDocPreviewSource } from '../../utils/documentDownloadHelper';
 import '../../components/tester/TesterModals.css';
@@ -71,13 +72,46 @@ export default function TesterProjectWorkspace({
   const [previewDoc, setPreviewDoc] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Derive exact single lifecycle state
+  const currentStatus = getTesterDashboardStatus(project);
+  const isFinalized = Boolean(
+    project.testerFinalized || 
+    project.qaFinalized || 
+    project.testingStatus === 'Tester Approved' || 
+    project.testingStatus === 'Finalized' || 
+    project.status === 'Finalized' || 
+    currentStatus === 'Finalized'
+  );
+  const isAdminApproved = Boolean(
+    project.adminApproved || 
+    project.status === 'Approved' || 
+    project.status === 'Completed' || 
+    currentStatus === 'Approved' || 
+    currentStatus === 'Completed'
+  );
+  const isRevision = !isFinalized && !isAdminApproved && Boolean(
+    project.adminRejected || 
+    project.status === 'Changes Requested' || 
+    project.status === 'Revision Required' || 
+    project.testingStatus === 'Changes Requested' || 
+    currentStatus === 'Revision Required'
+  );
+  const revSource = getRevisionSource(project);
+  const isGenuineAdminRejection = !isFinalized && !isAdminApproved && revSource.isAdmin && Boolean(
+    project.adminRejected &&
+    project.revisionOrigin !== 'tester' &&
+    project.changesRequestedBy !== 'tester' &&
+    project.requestedByRole !== 'tester' &&
+    !project.adminRejectionComment?.startsWith('QA Defect Reported:')
+  );
+
   // Admin Project Documents (Strictly match whatever documents were actually uploaded for this project)
   const baseDocs = Array.isArray(project?.documents) 
     ? project.documents 
     : (Array.isArray(project?.specificationDocuments) ? project.specificationDocuments : []);
 
   const projectDocs = [...baseDocs];
-  if (project?.adminRejectionDocument) {
+  if (isGenuineAdminRejection && project?.adminRejectionDocument) {
     const revDocObj = typeof project.adminRejectionDocument === 'object' 
       ? project.adminRejectionDocument 
       : { name: project.adminRejectionDocument, type: 'Revision Guideline', size: '1.5 MB', date: 'Revision' };
@@ -205,30 +239,6 @@ export default function TesterProjectWorkspace({
   const testerPaid = getTesterPaid(project);
   const testerRemaining = getTesterRemaining(project);
 
-  // Derive exact single lifecycle state
-  const currentStatus = getTesterDashboardStatus(project);
-  const isFinalized = Boolean(
-    project.testerFinalized || 
-    project.qaFinalized || 
-    project.testingStatus === 'Tester Approved' || 
-    project.testingStatus === 'Finalized' || 
-    project.status === 'Finalized' || 
-    currentStatus === 'Finalized'
-  );
-  const isAdminApproved = Boolean(
-    project.adminApproved || 
-    project.status === 'Approved' || 
-    project.status === 'Completed' || 
-    currentStatus === 'Approved' || 
-    currentStatus === 'Completed'
-  );
-  const isRevision = !isFinalized && !isAdminApproved && Boolean(
-    project.adminRejected || 
-    project.status === 'Changes Requested' || 
-    project.status === 'Revision Required' || 
-    project.testingStatus === 'Changes Requested' || 
-    currentStatus === 'Revision Required'
-  );
   const isDevSubmitted = Boolean(project.developerSubmitted || project.freelancerSubmitted || project.status === 'Submitted' || project.status === 'Under Review' || isFinalized || isAdminApproved);
   const isQAStarted = Boolean(project.testerStarted || project.qaStarted || project.testingProgress > 0 || project.status === 'Under Review');
 
@@ -359,50 +369,42 @@ export default function TesterProjectWorkspace({
 
     const newQAProgress = calculateQAProgressFromTasks(updatedTasks);
 
+    const updatedProjectData = {
+      ...project,
+      tasks: updatedTasks,
+      testingChecklist: updatedTasks,
+      testingIssues: updatedIssues,
+      issues: updatedIssues,
+      testingProgress: newQAProgress,
+      status: 'Revision Required',
+      testingStatus: 'Changes Requested',
+      revisionOrigin: 'tester',
+      changesRequestedBy: 'tester',
+      requestedByRole: 'tester',
+      requestedByName: project.tester || 'QA Tester',
+      revisionRequestedAt: new Date().toISOString(),
+      adminRejected: false,
+      adminRejectedAt: null,
+      adminRejectionComment: null,
+      adminFeedback: null,
+      adminRejectionDocument: null,
+      defectScreenshot: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
+      defectScreenshotName: newIssue.attachmentName || newIssue.attachment,
+      defectScreenshotDataUrl: newIssue.attachmentDataUrl,
+      testingActivity: [
+        { event: `Defect Reported by QA: ${newIssue.title}`, time: 'Just now', by: project.tester || 'QA Tester' },
+        ...(project.testingActivity || [])
+      ]
+    };
+
     if (onUpdateProject) {
-      onUpdateProject({
-        ...project,
-        tasks: updatedTasks,
-        testingChecklist: updatedTasks,
-        testingIssues: updatedIssues,
-        issues: updatedIssues,
-        testingProgress: newQAProgress,
-        status: 'Revision Required',
-        testingStatus: 'Changes Requested',
-        revisionOrigin: 'tester',
-        changesRequestedBy: 'tester',
-        requestedByRole: 'tester',
-        requestedByName: project.tester || 'QA Tester',
-        revisionRequestedAt: new Date().toISOString(),
-        adminRejected: true,
-        adminRejectedAt: new Date().toISOString(),
-        adminRejectionComment: `QA Defect Reported: ${newIssue.title}`,
-        adminFeedback: newIssue.description,
-        adminRejectionDocument: (newIssue.attachment || newIssue.attachmentName) ? {
-          name: newIssue.attachmentName || newIssue.attachment || 'Defect_Proof.png',
-          type: 'image/png',
-          size: 'Defect Screenshot',
-          date: newIssue.date || 'Recent',
-          url: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
-          cloudUrl: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
-          dataUrl: newIssue.attachmentDataUrl || newIssue.screenshot,
-          fileData: newIssue.attachmentDataUrl || newIssue.screenshot,
-          attachmentDataUrl: newIssue.attachmentDataUrl || null
-        } : null,
-        defectScreenshot: newIssue.cloudUrl || newIssue.screenshot || newIssue.attachmentUrl,
-        defectScreenshotName: newIssue.attachmentName || newIssue.attachment,
-        defectScreenshotDataUrl: newIssue.attachmentDataUrl,
-        testingActivity: [
-          { event: `Defect Reported by QA: ${newIssue.title}`, time: 'Just now', by: project.tester || 'QA Tester' },
-          ...(project.testingActivity || [])
-        ]
-      });
+      onUpdateProject(updatedProjectData);
     }
 
     // Dispatch Defect Notification Email directly to assigned Developer from project@dsprogram.space (Admin is NOT notified)
     try {
       sendTesterDefectReportEmail({
-        project,
+        project: updatedProjectData,
         issue: newIssue,
         testerName: project.tester || 'QA Tester'
       }).then(res => {
@@ -472,11 +474,14 @@ export default function TesterProjectWorkspace({
       requestedByRole: 'tester',
       requestedByName: project.tester || 'QA Tester',
       revisionRequestedAt: new Date().toISOString(),
-      adminRejected: true,
-      adminRejectedAt: new Date().toISOString(),
-      adminRejectionComment: changeData.reason + (changeData.requiredChanges ? `\nRequired Changes: ${changeData.requiredChanges}` : ''),
-      adminFeedback: changeData.detailedNotes || changeData.reason,
-      adminRejectionDocument: changeData.documentName ? { name: changeData.documentName, type: 'PDF', size: '1.8 MB', date: timeStr } : null,
+      revisionReason: changeData.reason + (changeData.requiredChanges ? `\nRequired Changes: ${changeData.requiredChanges}` : ''),
+      testerNotes: changeData.detailedNotes || changeData.reason,
+      testerRejectionDocument: changeData.documentName ? { name: changeData.documentName, type: 'PDF', size: '1.8 MB', date: timeStr } : null,
+      adminRejected: false,
+      adminRejectedAt: null,
+      adminRejectionComment: null,
+      adminFeedback: null,
+      adminRejectionDocument: null,
       tasks: updatedTasks,
       testingIssues: updatedIssues,
       issues: updatedIssues,
@@ -493,7 +498,7 @@ export default function TesterProjectWorkspace({
     // Dispatch Defect Notification Email directly to assigned Developer from project@dsprogram.space (Admin is NOT notified)
     try {
       sendTesterDefectReportEmail({
-        project,
+        project: updated,
         issue: newIssue,
         testerName: project.tester || 'QA Tester'
       }).then(res => {
@@ -643,7 +648,7 @@ export default function TesterProjectWorkspace({
       </div>
 
       {/* State-Based Information Banners */}
-      {isRevision && (
+      {isGenuineAdminRejection ? (
         <div className="portal-card" style={{ borderLeft: '5px solid #DC2626', backgroundColor: '#FEF2F2', padding: '18px 22px', marginBottom: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
             <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#FEE2E2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -727,7 +732,33 @@ export default function TesterProjectWorkspace({
             </div>
           </div>
         </div>
-      )}
+      ) : isRevision ? (
+        <div className="portal-card" style={{ borderLeft: '5px solid #F59E0B', backgroundColor: '#FFFBEB', padding: '16px 20px', marginBottom: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#FEF3C7', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <AlertCircle size={22} color="#D97706" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ margin: 0, color: '#92400E', fontSize: '1rem', fontWeight: 800 }}>
+                    ⚠️ QA Defect Rework Active • Returned to Developer
+                  </h4>
+                  <span style={{ fontSize: '0.7rem', background: '#F59E0B', color: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800, textTransform: 'uppercase' }}>
+                    QA Rework
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.78rem', color: '#92400E', fontWeight: 700 }}>
+                  {project.revisionRequestedAt ? `Reported on ${new Date(project.revisionRequestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Action Pending'}
+                </span>
+              </div>
+              <p style={{ margin: '8px 0 0 0', fontSize: '0.88rem', color: '#78350F', lineHeight: 1.5 }}>
+                Developer has been notified to fix reported QA defect(s) and resubmit for verification.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {!isDevSubmitted && !isRevision && (
         <div className="portal-card" style={{ borderLeft: '4px solid #64748B', marginBottom: '20px', backgroundColor: '#F8FAFC', padding: '16px 20px' }}>
@@ -971,7 +1002,7 @@ export default function TesterProjectWorkspace({
           </div>
 
           {/* Admin Revision Callout in Checklist Tab */}
-          {isRevision && (
+          {isGenuineAdminRejection && (
             <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: '10px', padding: '14px 16px', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               <AlertOctagon size={20} color="#DC2626" style={{ flexShrink: 0, marginTop: '2px' }} />
               <div style={{ flex: 1 }}>
@@ -1188,8 +1219,8 @@ export default function TesterProjectWorkspace({
             </button>
           </div>
 
-          {/* Admin Change Request Escalation Card */}
-          {isRevision && (
+          {/* Admin Change Request Escalation Card - Render ONLY for genuine Admin rejections, never for QA defects */}
+          {isGenuineAdminRejection && (
             <div className="qa-defect-card severity-high" style={{ borderLeft: '5px solid #DC2626', background: '#FEF2F2', borderColor: '#FECACA', marginBottom: '16px' }}>
               <div className="qa-defect-card-header">
                 <div className="qa-defect-tags-row">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertOctagon, RefreshCw, User, AlertCircle, FileText, ArrowRight } from 'lucide-react';
 import EmptyState from '../../components/portal/EmptyState';
+import { getRevisionSource } from '../../utils/projectStatusUtils';
 
 export default function TesterRevisionRequiredPage({ 
   projects = [], 
@@ -31,7 +32,7 @@ export default function TesterRevisionRequiredPage({
                 <tr>
                   <th>Project Name</th>
                   <th>Developer</th>
-                  <th style={{ minWidth: '220px' }}>Admin Feedback & Required Changes</th>
+                  <th style={{ minWidth: '220px' }}>Feedback & Required Changes</th>
                   <th>Target Milestone</th>
                   <th>Requested Date</th>
                   <th>Status</th>
@@ -40,10 +41,18 @@ export default function TesterRevisionRequiredPage({
               </thead>
               <tbody>
                 {revisionProjects.map((proj) => {
-                  const feedbackText = proj.adminRejectionComment || proj.adminFeedback || proj.revisionReason || 'Corrections requested';
-                  const targetTask = proj.revisionTask || 'General Project Scope';
-                  const reqDate = proj.adminRejectedAt 
-                    ? new Date(proj.adminRejectedAt).toLocaleDateString('en-GB') 
+                  const revSource = getRevisionSource(proj);
+                  const isTester = revSource.isTester;
+                  const openIssues = (proj.testingIssues || proj.issues || []).filter(i => i.status !== 'Resolved');
+                  const primaryIssue = openIssues[0] || (proj.testingIssues || proj.issues || [])[0] || null;
+                  const feedbackText = isTester 
+                    ? (primaryIssue?.title || proj.revisionReason || 'QA Defect Reported') 
+                    : (proj.adminRejectionComment || proj.adminFeedback || proj.revisionReason || 'Corrections requested');
+                  const targetTask = isTester
+                    ? (primaryIssue?.task || proj.revisionTask || 'QA Checklist Deliverable')
+                    : (proj.revisionTask || 'General Project Scope');
+                  const reqDate = (isTester ? (proj.revisionRequestedAt || proj.adminRejectedAt) : (proj.adminRejectedAt || proj.revisionRequestedAt))
+                    ? new Date(isTester ? (proj.revisionRequestedAt || proj.adminRejectedAt) : (proj.adminRejectedAt || proj.revisionRequestedAt)).toLocaleDateString('en-GB') 
                     : (proj.submittedDate || 'Recent');
 
                   return (
@@ -69,18 +78,24 @@ export default function TesterRevisionRequiredPage({
                       </td>
 
                       <td>
-                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', padding: '6px 10px', fontSize: '0.82rem', color: '#7F1D1D' }}>
-                          <div style={{ fontWeight: 700, color: '#991B1B', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                            <AlertOctagon size={12} color="#DC2626" />
-                            <span>Admin Requested Fixes:</span>
+                        <div style={{ background: isTester ? '#FFFBEB' : '#FEF2F2', border: `1px solid ${isTester ? '#FDE68A' : '#FECACA'}`, borderRadius: '6px', padding: '6px 10px', fontSize: '0.82rem', color: isTester ? '#78350F' : '#7F1D1D' }}>
+                          <div style={{ fontWeight: 700, color: isTester ? '#92400E' : '#991B1B', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                            {isTester ? <AlertCircle size={12} color="#D97706" /> : <AlertOctagon size={12} color="#DC2626" />}
+                            <span>{isTester ? 'QA Reported Defect:' : 'Admin Requested Fixes:'}</span>
                           </div>
                           <p style={{ margin: 0, lineHeight: 1.4, whiteSpace: 'pre-wrap', maxHeight: '60px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {feedbackText}
                           </p>
-                          {proj.adminRejectionDocument && (
+                          {!isTester && proj.adminRejectionDocument && (
                             <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: '#DC2626', fontWeight: 700 }}>
                               <FileText size={11} />
                               <span>{typeof proj.adminRejectionDocument === 'string' ? proj.adminRejectionDocument : (proj.adminRejectionDocument.name || 'Guideline Doc Attached')}</span>
+                            </div>
+                          )}
+                          {isTester && (primaryIssue?.attachment || primaryIssue?.attachmentName || proj.defectScreenshotName) && (
+                            <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: '#D97706', fontWeight: 700 }}>
+                              <FileText size={11} />
+                              <span>{primaryIssue?.attachmentName || primaryIssue?.attachment || proj.defectScreenshotName || 'Defect Proof Attached'}</span>
                             </div>
                           )}
                         </div>
