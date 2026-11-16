@@ -203,7 +203,13 @@ export function getFreelancerProjectStatus(p) {
     p.testerFinalized === true ||
     ts === 'tester approved' || 
     ts === 'finalized' || 
-    s === 'finalized'
+    s === 'finalized' ||
+    (
+      (p.testingProgress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.status === 'Passed' || t.status === 'Pass'))) &&
+      (p.developerProgress === 100 || p.progress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.status === 'Completed' || t.status === 'Done' || t.progress === 100))) &&
+      !(Array.isArray(p.tasks) && p.tasks.some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail')) &&
+      !((p.testingIssues || p.issues || []).some(i => i.status === 'Open' || i.status === 'In Progress'))
+    )
   );
 
   if (isQAFinalized) {
@@ -301,7 +307,13 @@ export function getTesterDashboardStatus(p) {
     p.qaFinalized === true ||
     ts === 'tester approved' || 
     ts === 'finalized' || 
-    s === 'finalized'
+    s === 'finalized' ||
+    (
+      (p.testingProgress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.status === 'Passed' || t.status === 'Pass'))) &&
+      (p.developerProgress === 100 || p.progress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.status === 'Completed' || t.status === 'Done' || t.progress === 100))) &&
+      !(Array.isArray(p.tasks) && p.tasks.some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail')) &&
+      !((p.testingIssues || p.issues || []).some(i => i.status === 'Open' || i.status === 'In Progress'))
+    )
   );
 
   if (isFinalized) {
@@ -366,7 +378,21 @@ export function getAdminProjectStatus(p) {
   }
 
   // 2. Check QA Finalized (Checked before rejection so finalized projects move to Pending Approval)
-  if (p.testerFinalized === true || p.qaFinalized === true || s === 'finalized' || ts === 'finalized' || ts === 'tester approved') {
+  const isQAFinalizedOrPassed = Boolean(
+    p.testerFinalized === true || 
+    p.qaFinalized === true || 
+    s === 'finalized' || 
+    ts === 'finalized' || 
+    ts === 'tester approved' ||
+    (
+      (p.testingProgress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.status === 'Passed' || t.status === 'Pass'))) &&
+      (p.developerProgress === 100 || p.progress === 100 || (Array.isArray(p.tasks) && p.tasks.length > 0 && p.tasks.every(t => t.status === 'Completed' || t.status === 'Done' || t.progress === 100))) &&
+      !(Array.isArray(p.tasks) && p.tasks.some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail')) &&
+      !((p.testingIssues || p.issues || []).some(i => i.status === 'Open' || i.status === 'In Progress'))
+    )
+  );
+
+  if (isQAFinalizedOrPassed) {
     return 'Pending Approval';
   }
 

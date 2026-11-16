@@ -72,13 +72,37 @@ export default function ProjectReviewPage({
 
   const completedCount = project.completedTasksCount !== undefined ? project.completedTasksCount : (project.tasks || []).filter(t => t.status === 'Completed').length;
   const totalCount = project.totalTasksCount !== undefined ? project.totalTasksCount : (project.tasks || []).length;
-  const isTesterFinalized = Boolean(project.testerFinalized || project.qaFinalized || project.testingStatus === 'Tester Approved' || project.status === 'Finalized');
-  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
-  const isRevision = !isTesterFinalized && !isAdminApproved && Boolean(project.testingStatus === 'Changes Requested' || project.status === 'Revision Required' || project.adminRejected);
 
-  // 1. Developer is submitted ONLY when developer has finished work and submitted
+  const testingIssues = Array.isArray(project.testingIssues) 
+    ? project.testingIssues 
+    : (Array.isArray(project.issues) ? project.issues : []);
+  const openIssues = testingIssues.filter(i => i.status === 'Open' || i.status === 'In Progress');
+  const hasUnresolvedIssues = openIssues.length > 0;
+
+  const allQAPassed = totalCount > 0 && 
+    (project.tasks || []).every(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.status === 'Passed' || t.status === 'Pass') &&
+    !(project.tasks || []).some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail');
+
+  const isTesterFinalized = Boolean(
+    project.testerFinalized || 
+    project.qaFinalized || 
+    project.testingStatus === 'Tester Approved' || 
+    project.status === 'Finalized' ||
+    Boolean(project.testerFinalizedAt) ||
+    (allQAPassed && !hasUnresolvedIssues)
+  );
+
+  const isAdminApproved = Boolean(project.adminApproved || project.status === 'Approved' || project.status === 'Completed');
+
+  const isDevWorkDone = (
+    ((completedCount > 0 && completedCount === totalCount) || project.developerProgress === 100 || project.progress === 100) &&
+    !hasUnresolvedIssues
+  );
+
+  // 1. Developer is submitted
   const isDevSubmitted = Boolean(
-    !isRevision && (
+    isDevWorkDone ||
+    (
       project.developerSubmitted === true ||
       project.freelancerSubmitted === true ||
       project.developerSubmission === 'Submitted' ||
@@ -86,20 +110,14 @@ export default function ProjectReviewPage({
       project.status === 'Submitted' ||
       project.status === 'Finalized' ||
       (Boolean(project.submittedDate && project.submittedDate !== '—') && (project.developerProgress === 100 || project.progress === 100))
-    ) && (
-      project.developerSubmitted ||
-      project.freelancerSubmitted ||
-      project.developerProgress === 100 ||
-      project.progress === 100 ||
-      (completedCount > 0 && completedCount === totalCount)
     )
   );
 
-  // 2. QA Tester is submitted ONLY when QA has finished testing and finalized checklist
+  // 2. QA Tester is submitted
   const isTesterSubmitted = Boolean(
-    !isRevision && (
-      project.testerFinalized === true ||
-      project.qaFinalized === true ||
+    isTesterFinalized ||
+    ((project.testingProgress === 100 || allQAPassed) && isDevSubmitted && !hasUnresolvedIssues) ||
+    (
       project.testingStatus === 'Tester Approved' ||
       project.status === 'Finalized' ||
       Boolean(project.testerFinalizedAt)
@@ -108,6 +126,12 @@ export default function ProjectReviewPage({
 
   // 3. Both Developer and QA Tester must have submitted before review decisions unlock
   const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
+
+  const isRevision = !isBothSubmitted && !isTesterFinalized && !isAdminApproved && !isDevWorkDone && Boolean(
+    project.testingStatus === 'Changes Requested' || 
+    project.status === 'Revision Required' || 
+    project.adminRejected
+  );
 
   const toggleSecret = (id) => {
     setRevealedSecrets(prev => ({ ...prev, [id]: !prev[id] }));
@@ -192,6 +216,14 @@ export default function ProjectReviewPage({
       adminApproved: true,
       adminApprovedAt: new Date().toISOString(),
       adminRejected: false,
+      adminRejectedAt: null,
+      adminRejectionComment: null,
+      adminRejectionDocument: null,
+      adminFeedback: null,
+      revisionReason: null,
+      revisionTask: null,
+      testerFinalized: true,
+      qaFinalized: true,
       status: 'Approved',
       testingStatus: 'Tester Approved',
       approvedDate: timeStr,
@@ -887,13 +919,11 @@ export default function ProjectReviewPage({
             >
               <Clock size={16} color="#64748B" />
               <span>
-                {isRevision 
-                  ? 'Awaiting Developer Revision Submission' 
-                  : !isDevSubmitted 
-                    ? 'Awaiting Developer Submission' 
-                    : !isTesterSubmitted 
-                      ? 'Awaiting QA Tester Submission' 
-                      : 'Awaiting Submissions'}
+                {!isDevSubmitted 
+                  ? (isRevision ? 'Awaiting Developer Revision Submission' : 'Awaiting Developer Submission')
+                  : !isTesterSubmitted 
+                    ? 'Awaiting QA Testing Completion' 
+                    : 'Awaiting Submissions'}
               </span>
             </div>
           )}

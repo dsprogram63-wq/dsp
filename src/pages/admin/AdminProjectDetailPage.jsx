@@ -240,13 +240,24 @@ export default function AdminProjectDetailPage({
   const statusLower = (project.status || '').toLowerCase().trim();
   const testingStatusLower = (project.testingStatus || '').toLowerCase().trim();
 
+  const testingIssues = Array.isArray(project.testingIssues) 
+    ? project.testingIssues 
+    : (Array.isArray(project.issues) ? project.issues : []);
+  const openIssues = testingIssues.filter(i => i.status === 'Open' || i.status === 'In Progress');
+  const hasUnresolvedIssues = openIssues.length > 0;
+
+  const allQAPassed = totalCount > 0 && 
+    (project.tasks || []).every(t => t.qaStatus === 'Passed' || t.qaStatus === 'Pass' || t.status === 'Passed' || t.status === 'Pass') &&
+    !(project.tasks || []).some(t => t.qaStatus === 'Failed' || t.qaStatus === 'Fail');
+
   const isTesterFinalized = Boolean(
     project.testerFinalized || 
     project.qaFinalized || 
     testingStatusLower === 'tester approved' || 
     testingStatusLower === 'finalized' || 
     statusLower === 'finalized' ||
-    Boolean(project.testerFinalizedAt)
+    Boolean(project.testerFinalizedAt) ||
+    (allQAPassed && !hasUnresolvedIssues)
   );
 
   const isTesterApproved = Boolean(
@@ -261,25 +272,15 @@ export default function AdminProjectDetailPage({
     Boolean(project.adminApprovedAt)
   );
 
-  const isFinalizedOrApproved = Boolean(
-    project.testerFinalized ||
-    project.qaFinalized ||
-    project.adminApproved ||
-    statusLower === 'finalized' ||
-    statusLower === 'approved' ||
-    statusLower === 'completed' ||
-    testingStatusLower === 'tester approved'
-  );
-
-  const isRevision = !isFinalizedOrApproved && Boolean(
-    testingStatusLower === 'changes requested' || 
-    statusLower === 'revision required' || 
-    project.adminRejected
+  const isDevWorkDone = (
+    ((completedCount > 0 && completedCount === totalCount) || project.developerProgress === 100 || project.progress === 100) &&
+    !hasUnresolvedIssues
   );
 
   // 1. Developer is submitted ONLY when developer has completed milestone work and formally submitted
   const isDevSubmitted = Boolean(
-    !isRevision && (
+    isDevWorkDone ||
+    (!isRevision && (
       project.developerSubmitted === true ||
       project.freelancerSubmitted === true ||
       (project.developerSubmission || '').toLowerCase() === 'submitted' ||
@@ -290,24 +291,41 @@ export default function AdminProjectDetailPage({
       (project.developerProgress === 100) ||
       (project.progress === 100) ||
       (completedCount > 0 && completedCount === totalCount)
-    )
+    ))
   );
 
   // 2. QA Tester is submitted ONLY when QA has finished testing and finalized / approved checklist
   const isTesterSubmitted = Boolean(
-    !isRevision && (
-      project.testerFinalized === true ||
-      project.qaFinalized === true ||
+    isTesterFinalized ||
+    ((project.testingProgress === 100 || allQAPassed) && isDevSubmitted && !hasUnresolvedIssues) ||
+    (!isRevision && (
       testingStatusLower === 'tester approved' ||
       testingStatusLower === 'finalized' ||
       statusLower === 'finalized' ||
       Boolean(project.testerFinalizedAt) ||
       (project.testingProgress === 100 && testingStatusLower !== 'in testing' && testingStatusLower !== 'changes requested')
-    )
+    ))
   );
 
   // 3. Both Developer and QA Tester must have submitted / done work
   const isBothSubmitted = Boolean(!isAdminApproved && isDevSubmitted && isTesterSubmitted);
+
+  const isFinalizedOrApproved = Boolean(
+    isBothSubmitted ||
+    project.testerFinalized ||
+    project.qaFinalized ||
+    project.adminApproved ||
+    statusLower === 'finalized' ||
+    statusLower === 'approved' ||
+    statusLower === 'completed' ||
+    testingStatusLower === 'tester approved'
+  );
+
+  const isRevision = !isFinalizedOrApproved && !isDevWorkDone && Boolean(
+    testingStatusLower === 'changes requested' || 
+    statusLower === 'revision required' || 
+    project.adminRejected
+  );
 
   // 4. Strict Project Locked / Finalized check: Once developer & tester are done, or project is finalized/approved/completed
   const isFinalizedOrLocked = Boolean(
@@ -490,6 +508,14 @@ export default function AdminProjectDetailPage({
       adminApproved: true,
       adminApprovedAt: new Date().toISOString(),
       adminRejected: false,
+      adminRejectedAt: null,
+      adminRejectionComment: null,
+      adminRejectionDocument: null,
+      adminFeedback: null,
+      revisionReason: null,
+      revisionTask: null,
+      testerFinalized: true,
+      qaFinalized: true,
       status: 'Approved',
       testingStatus: 'Tester Approved',
       approvedDate: timeStr,
@@ -686,13 +712,11 @@ export default function AdminProjectDetailPage({
             >
               <Clock size={14} color="#64748B" />
               <span>
-                {isRevision
-                  ? 'Awaiting Developer Revision Submission'
-                  : !isDevSubmitted 
-                    ? 'Awaiting Developer Submission' 
-                    : !isTesterSubmitted 
-                      ? 'Awaiting QA Tester Submission' 
-                      : 'Awaiting Submissions'}
+                {!isDevSubmitted 
+                  ? (isRevision ? 'Awaiting Developer Revision Submission' : 'Awaiting Developer Submission')
+                  : !isTesterSubmitted 
+                    ? 'Awaiting QA Testing Completion' 
+                    : 'Awaiting Submissions'}
               </span>
             </div>
           )}
@@ -728,7 +752,7 @@ export default function AdminProjectDetailPage({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span className="hero-category-badge">{project.projectType || 'Corporate Website'}</span>
             <span className="project-id-chip">{project.id}</span>
-            <StatusBadge status={project.status} />
+            <StatusBadge status={getAdminProjectStatus(project)} />
           </div>
 
           <h1 className="hero-project-title">{project.name}</h1>
@@ -816,6 +840,52 @@ export default function AdminProjectDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Ready for Master Admin Approval Banner */}
+      {isBothSubmitted && !isAdminApproved && (
+        <div className="portal-card" style={{ borderLeft: '5px solid #10B981', backgroundColor: '#ECFDF5', padding: '16px 20px', marginBottom: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#D1FAE5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle size={24} color="#059669" />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                  <h4 style={{ margin: 0, color: '#065F46', fontSize: '1.02rem', fontWeight: 800 }}>
+                    Ready for Master Admin Final Approval
+                  </h4>
+                  <span style={{ fontSize: '0.72rem', background: '#10B981', color: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800, textTransform: 'uppercase' }}>
+                    100% Verified
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: '#047857', lineHeight: 1.5 }}>
+                  Developer milestone work (100%) and QA testing checklist (100% Passed) have been fully completed with 0 open defects. You can approve project delivery or request further revisions below.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-navy-action"
+                style={{ background: '#FEF2F2', color: '#DC2626', borderColor: '#FCA5A5', padding: '8px 16px', fontSize: '0.84rem' }}
+                onClick={() => setIsRevisionModalOpen(true)}
+              >
+                <ShieldAlert size={14} />
+                <span>Reject & Request Changes</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-orange-primary"
+                onClick={handleApproveProject}
+                style={{ background: '#10B981', borderColor: '#10B981', padding: '8px 22px', fontSize: '0.88rem', fontWeight: 800 }}
+              >
+                <CheckCircle size={15} />
+                <span>Approve Project Delivery</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Changes Requested / Rejection Banner */}
       {isRevision && (() => {
