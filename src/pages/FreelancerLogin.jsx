@@ -13,8 +13,7 @@ import {
   Sparkles,
   ArrowRight,
   Code2,
-  FlaskConical,
-  ShieldAlert
+  FlaskConical
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { initialDevelopers } from '../data/adminMockData';
@@ -669,16 +668,6 @@ export default function FreelancerLogin({
             <ArrowLeft size={16} />
             <span>Back to Main Page</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('admin-login')}
-            className="admin-switch-badge-btn"
-            title="Go to Admin Login Page"
-          >
-            <ShieldAlert size={14} />
-            <span>Admin Portal Login</span>
-          </button>
         </div>
 
         {/* Main Card */}
@@ -1173,21 +1162,6 @@ export default function FreelancerLogin({
               </p>
             </div>
           )}
-
-          {/* Admin Switch Banner */}
-          <div className="admin-portal-footer-link">
-            <div className="admin-footer-text">
-              <span>Are you an Administrator?</span>
-              <button
-                type="button"
-                onClick={() => onNavigate('admin-login')}
-                className="btn-admin-direct-link"
-              >
-                <span>Access Admin Operations Login</span>
-                <ArrowRight size={13} />
-              </button>
-            </div>
-          </div>
 
           <div className="login-divider">
             <span>Or</span>

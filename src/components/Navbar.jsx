@@ -89,16 +89,6 @@ export default function Navbar({ onNavigate, currentPage = 'home' }) {
             {/* Actions */}
             <div className="navbar-actions">
               <button
-                onClick={() => onNavigate('admin/dashboard')}
-                className="btn-visit-link"
-                type="button"
-                style={{ cursor: 'pointer', background: 'transparent' }}
-                title="Open Admin Operations Console"
-              >
-                <span>Admin Console</span>
-              </button>
-
-              <button
                 onClick={() => onNavigate('login')}
                 className="btn-nav-orange"
                 type="button"
