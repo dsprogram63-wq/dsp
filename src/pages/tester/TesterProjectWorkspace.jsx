@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -176,7 +176,24 @@ export default function TesterProjectWorkspace({
     }
   }, [project?.id, project?.status, project?.testingStatus, project?.tasks, project?.testingIssues, project?.submittedDate]);
 
-  if (!project) return null;
+  if (!project) {
+    return (
+      <div className="portal-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <AlertCircle size={40} color="#DC2626" style={{ margin: '0 auto 12px' }} />
+        <h3 style={{ color: '#0A3D75', fontWeight: 800, margin: '0 0 8px 0' }}>Project Workspace Unavailable</h3>
+        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '0 0 16px 0' }}>This project could not be found or has not been assigned to your QA tester account.</p>
+        <button 
+          type="button" 
+          onClick={onBack || (() => onNavigate && onNavigate('tester/testing-queue'))}
+          className="btn btn-navy-action"
+          style={{ padding: '8px 18px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <ArrowLeft size={14} />
+          <span>Back to Testing Queue</span>
+        </button>
+      </div>
+    );
+  }
 
   const showToast = (msg) => {
     setToastMessage(msg);

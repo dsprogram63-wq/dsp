@@ -2230,11 +2230,12 @@ export default function App() {
     const assignedTesterProjects = getAuthenticatedTesterProjects(currentLoggedInTester, adminProjects);
 
     let currentTesterProject = null;
+    const targetTesterProjectId = selectedTesterProjectId || routeState.selectedProjectId;
     if (routeState.subView === 'project-detail') {
-      const projResult = getAuthenticatedTesterProjectById(currentLoggedInTester, adminProjects, selectedTesterProjectId);
+      const projResult = getAuthenticatedTesterProjectById(currentLoggedInTester, adminProjects, targetTesterProjectId);
       currentTesterProject = projResult.project; // null if unauthorized or not found
     } else {
-      currentTesterProject = assignedTesterProjects.find(p => p.id === selectedTesterProjectId) || assignedTesterProjects[0] || null;
+      currentTesterProject = assignedTesterProjects.find(p => p.id === targetTesterProjectId) || assignedTesterProjects[0] || null;
     }
 
     return (
