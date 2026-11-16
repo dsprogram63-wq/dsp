@@ -12,7 +12,6 @@ import {
   Shield, 
   AlertTriangle,
   RotateCcw,
-  Sparkles,
   ArrowRight,
   Server
 } from 'lucide-react';
@@ -26,8 +25,8 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [viewMode, setViewMode] = useState('login');
 
   // Login Form States
-  const [adminEmail, setAdminEmail] = useState('dahejsupport@gmail.com');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -39,7 +38,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Forgot Password States
-  const [resetEmail, setResetEmail] = useState('dahejsupport@gmail.com');
+  const [resetEmail, setResetEmail] = useState('');
   const [resetOtpSent, setResetOtpSent] = useState(false);
   const [resetOtpCode, setResetOtpCode] = useState('');
   const [resetOtpTimer, setResetOtpTimer] = useState(0);
@@ -234,68 +233,6 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
     }, 900);
   };
 
-  // Quick 1-Click Demo Login
-  const handleQuickDemoAdminLogin = async () => {
-    setNoticeMessage({
-      type: 'info',
-      text: '📡 Verifying device GPS location access for Administrator login...'
-    });
-
-    let verifiedLocation = null;
-    try {
-      verifiedLocation = await requireExactDeviceLocation();
-    } catch (geoErr) {
-      recordLoginEvent({
-        user: 'Keval Patel',
-        email: 'dahejsupport@gmail.com',
-        role: 'Master Admin',
-        status: 'Failed',
-        authMethod: '1-Click Demo Quick Login',
-        reason: 'Location Access Denied (GPS Required)'
-      });
-      setNoticeMessage({
-        type: 'error',
-        text: 'Access Blocked: Exact device location access is mandatory. Please allow location permissions in your browser address bar and try again.'
-      });
-      return;
-    }
-
-    setAdminEmail('dahejsupport@gmail.com');
-    setAdminPassword('admin123');
-    setOtpCode('');
-    setOtpSent(true);
-    setLoginSuccess(true);
-    recordLoginEvent({
-      user: 'Keval Patel',
-      email: 'dahejsupport@gmail.com',
-      role: 'Master Admin',
-      status: 'Success',
-      authMethod: '1-Click Demo Quick Login',
-      locationData: verifiedLocation
-    });
-    setNoticeMessage({
-      type: 'success',
-      text: `Admin authorization granted (${verifiedLocation.location || verifiedLocation.latitude})! Redirecting to Admin Dashboard...`
-    });
-
-    setTimeout(() => {
-      const adminData = {
-        role: 'admin',
-        user: {
-          name: 'Keval Patel',
-          email: 'dahejsupport@gmail.com',
-          id: 'DS-ADM-001',
-          roleTitle: 'Chief Operations Administrator'
-        }
-      };
-      if (onLoginSuccess) {
-        onLoginSuccess('admin', adminData.user);
-      } else {
-        onNavigate('admin/dashboard');
-      }
-    }, 700);
-  };
-
   // Forgot Password: Send Reset OTP via Brevo
   const handleSendResetOtp = async (e, forceChannel = 'dual') => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
@@ -443,37 +380,6 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                 </p>
               </>
             )}
-          </div>
-
-          {/* Quick 1-Click Demo Login Box */}
-          <div className="admin-demo-access-banner">
-            <div className="admin-demo-header">
-              <div className="admin-demo-title">
-                <Sparkles size={14} color="#F3821D" />
-                <span>Admin Demo Credentials</span>
-              </div>
-              <span className="admin-demo-pill">Ready to Test</span>
-            </div>
-            
-            <div className="admin-demo-creds-row">
-              <div className="admin-demo-cred">
-                <span className="demo-lbl">Mail:</span>
-                <span className="demo-val">dahejsupport@gmail.com</span>
-              </div>
-              <div className="admin-demo-cred">
-                <span className="demo-lbl">Pass:</span>
-                <span className="demo-val">admin123</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleQuickDemoAdminLogin}
-              className="admin-quick-login-btn"
-            >
-              <KeyRound size={15} />
-              <span>1-Click Admin Demo Login</span>
-            </button>
           </div>
 
           {/* ========================================================================= */}

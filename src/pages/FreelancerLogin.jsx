@@ -76,7 +76,6 @@ export default function FreelancerLogin({
     return [];
   };
 
-  const allStoredDevs = getFreshDevelopers();
   const allStoredTesters = getFreshTesters();
 
   // Login Form States (Clean empty defaults - requires actual user credentials)
@@ -531,27 +530,6 @@ export default function FreelancerLogin({
     }, 750);
   };
 
-  // Quick Select specific account from directory pills
-  const handleSelectSpecificUser = (role, userObj) => {
-    if (userObj.status === 'Pending') {
-      setNoticeMessage({
-        type: 'warning',
-        text: `Cannot Login: "${userObj.name}" (${userObj.id}) is PENDING Admin verification. Please approve this profile in the Admin Directory first.`
-      });
-      return;
-    }
-    setSelectedRole(role);
-    setIdentifier(userObj.email || userObj.id);
-    setPassword(''); // Never auto-fill password; user must enter their admin password
-    setLoginOtpSent(false);
-    setLoginOtpCode('');
-    setNoticeMessage({
-      type: 'info',
-      text: `Selected "${userObj.name}". Please enter the password assigned by Admin upon approval.`
-    });
-  };
-
-
   // Handle Forgot Password Send OTP via Brevo
   const handleSendResetOtp = async (e, forceChannel = 'dual') => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
@@ -777,82 +755,6 @@ export default function FreelancerLogin({
                     </div>
                   )}
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Select Verified Workspace Account */}
-          {viewMode === 'login' && !loginSuccess && (
-            <div className={`verified-accounts-box ${selectedRole}`} style={{
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              marginBottom: '16px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
-                  <ShieldCheck size={15} color={isFreelancer ? '#0A3D75' : '#16A34A'} />
-                  <span>Approved {isFreelancer ? 'Developer' : 'QA Tester'} Accounts</span>
-                </div>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: isFreelancer ? '#EBF3FA' : '#ECFDF5', color: isFreelancer ? '#0A3D75' : '#059669' }}>
-                  Verified Only
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {isFreelancer ? (
-                  allStoredDevs.filter(d => (d.status === 'Active' || d.status === 'Approved') && !MOCK_DEV_IDS.has(d.id)).length > 0 ? (
-                    allStoredDevs.filter(d => (d.status === 'Active' || d.status === 'Approved') && !MOCK_DEV_IDS.has(d.id)).slice(0, 4).map(d => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => handleSelectSpecificUser('freelancer', d)}
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          border: identifier === d.email ? '1.5px solid #0A3D75' : '1px solid #CBD5E1',
-                          background: identifier === d.email ? '#EBF3FA' : '#FFFFFF',
-                          color: '#0A3D75',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {d.name} ({d.id})
-                      </button>
-                    ))
-                  ) : (
-                    <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                      No approved developers found.
-                    </span>
-                  )
-                ) : (
-                  allStoredTesters.filter(t => (t.status === 'Active' || t.status === 'Approved') && !MOCK_TESTER_IDS.has(t.id)).length > 0 ? (
-                    allStoredTesters.filter(t => (t.status === 'Active' || t.status === 'Approved') && !MOCK_TESTER_IDS.has(t.id)).slice(0, 4).map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectSpecificUser('tester', t)}
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          border: identifier === t.email ? '1.5px solid #16A34A' : '1px solid #CBD5E1',
-                          background: identifier === t.email ? '#ECFDF5' : '#FFFFFF',
-                          color: '#059669',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {t.name} ({t.id})
-                      </button>
-                    ))
-                  ) : (
-                    <span style={{ fontSize: '0.74rem', color: '#64748B', fontStyle: 'italic' }}>
-                      No approved testers found.
-                    </span>
-                  )
-                )}
               </div>
             </div>
           )}
